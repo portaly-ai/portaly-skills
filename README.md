@@ -11,15 +11,15 @@ AI agent skills for [Portaly](https://portaly.cc) creators. Integrate Portaly se
 npx skills add portaly-ai/portaly-skills
 
 # Specific skill
-npx skills add portaly-ai/portaly-skills --skill portaly-analytics-integration
+npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 ```
 
 ## Skills
 
 | Skill | Description | Triggers |
 |-------|-------------|----------|
-| **portaly-analytics-integration** | GA4 analytics setup, Portaly event tracking, and dashboard connection | `GA4`, `Google Analytics`, `event tracking` |
-| **portaly-vibe-payment-integration** | Portaly Vibe hosted checkout, subscription plans, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout` |
+| **portaly-analytics** | GA4 analytics setup, Portaly event tracking, and dashboard connection | `GA4`, `Google Analytics`, `event tracking` |
+| **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout` |
 
 ## Portaly Analytics Integration
 

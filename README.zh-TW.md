@@ -11,15 +11,15 @@
 npx skills add portaly-ai/portaly-skills
 
 # 安裝單一 skill
-npx skills add portaly-ai/portaly-skills --skill portaly-analytics-integration
+npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 ```
 
 ## Skills 一覽
 
 | Skill | 說明 | 觸發關鍵字 |
 |-------|------|-----------|
-| **portaly-analytics-integration** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
-| **portaly-vibe-payment-integration** | Portaly Vibe 託管結帳、訂閱方案、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳` |
+| **portaly-analytics** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
+| **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳` |
 
 ## Portaly Analytics Integration
 

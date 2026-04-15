@@ -1,5 +1,5 @@
 ---
-name: portaly-vibe-payment-integration
+name: portaly-payment
 description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans, checkout sessions, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
