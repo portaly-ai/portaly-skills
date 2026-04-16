@@ -83,16 +83,42 @@ Then generate a custom migration script that:
 
 See `scripts/migrate_users.mjs` for a Node.js reference template. If the vibe coder uses a different language (Python, Ruby, etc.), generate an equivalent script in their language following the same pattern: batch 100, retry on 429, report progress.
 
-### Step 4 — Run Initial Sync
+### Step 4 — Pre-flight Environment Check
+
+Before running any sync, **you MUST verify the environment** to prevent accidental data pushes:
+
+1. **Check the API Key mode** — read the `PORTALY_API_KEY` value from `.env` and confirm its prefix:
+   - `pcs_test_*` → Test mode (safe to experiment)
+   - `pcs_live_*` → Live mode (writes to production Portaly)
+
+2. **Check which database the vibe coder's app is connected to** — read their DB connection config (e.g. `.env`, `DATABASE_URL`, ORM config) and ask:
+   - Is this a local dev DB, staging DB, or production DB?
+   - Does it contain real user data or test data?
+
+3. **Confirm the combination makes sense:**
+   - ✅ Test API Key + any DB → safe, always OK for first run
+   - ✅ Live API Key + production DB → correct for go-live
+   - ⚠️ Live API Key + local/staging DB → **warn the user**: incomplete or test data will be pushed to Portaly production
+   - ⚠️ Test API Key + production DB → harmless but pointless for go-live
+
+**Ask the user to confirm before proceeding.** Example: "Your `.env` has a test key and your app connects to the local DB — this will sync local test users to Portaly's test environment. OK to proceed?"
+
+### Step 5 — Test Run (Test Key + Local DB)
+
+Run the migration script with the **test API key** to verify everything works. The data source can be the local dev DB — this is just to confirm the script runs, the field mapping is correct, and data shows up in Portaly.
 
 ```bash
-# Use test key first
 PORTALY_API_KEY=pcs_test_xxx node migrate_users.mjs
 ```
 
-Verify at `https://payment.portaly.cc/dashboard/users` (switch to Test mode).
+After running, ask the user to verify at `https://payment.portaly.cc/dashboard/users` (switch to **Test mode**). Check:
+- Are the users showing up?
+- Are the fields mapped correctly?
+- Any errors in the sync logs?
 
-### Step 5 — Insert Incremental Sync Hooks
+If there are issues, fix the mapping and re-run. Test mode is safe to experiment with.
+
+### Step 6 — Insert Incremental Sync Hooks
 
 Provide framework-specific snippets. Use the framework's **hooks / event system** (e.g. Payload `afterChange`, Prisma middleware, Mongoose post-save). The sync helper only calls the **Portaly external API** — it should never call the app's own API.
 
@@ -160,14 +186,40 @@ async function syncToPortaly(user: {
 - **Login** — call sync in the framework's auth hook (e.g. Payload `afterLogin`, NextAuth `events.signIn`, Supabase auth webhooks, Django `user_logged_in` signal, Flask-Login `user_logged_in` signal) and pass `last_login_at` set to the current time in ISO 8601 format. No need to store this in the vibe coder's own database — just generate the timestamp at call time and send it to Portaly.
 - **Account deletion** — sync with `status: "deleted"` to remove from Portaly
 
-### Step 6 — Switch to Live Mode
+### Step 7 — Go Live
 
-1. Create a live API Key at the dashboard
-2. Update `.env`: `PORTALY_API_KEY=pcs_live_xxx`
-3. Run migration script again with live key
-4. Update production code to use live key
+This step has two parts: (A) migrate existing production users, and (B) deploy incremental sync hooks to production.
 
-### Step 7 — View Dashboard
+#### 7a — Migrate Production Users
+
+The migration script needs to read **production user data** and push it with a **live API key**. Ask the user how to connect to their production database:
+
+- **Option 1: Run locally with production DB credentials** — the user temporarily sets their production `DATABASE_URL` (or equivalent) in `.env` and runs the script locally.
+- **Option 2: Run on a production server / CI** — the user copies the migration script to a machine that already has production DB access and runs it there.
+
+**Before running, perform the Pre-flight Check (Step 4) again:**
+1. Confirm `PORTALY_API_KEY` is a live key (`pcs_live_*`)
+2. Confirm the DB connection points to production (real user data)
+3. Ask the user to confirm: "This will sync all production users to Portaly's live environment. Proceed?"
+
+```bash
+PORTALY_API_KEY=pcs_live_xxx node migrate_users.mjs
+```
+
+Verify at `https://payment.portaly.cc/dashboard/users` (Live mode).
+
+#### 7b — Deploy Incremental Sync Hooks
+
+The sync hooks from Step 6 should already be in the codebase. Make sure the **production environment variables** are set:
+
+```
+PORTALY_API_HOST=https://payment.portaly.cc
+PORTALY_API_KEY=pcs_live_xxx
+```
+
+Then deploy the application as usual. After deployment, verify incremental sync works by creating/updating a user and checking the Dashboard.
+
+### Step 8 — View Dashboard
 
 Guide the creator to `https://payment.portaly.cc/dashboard/users`:
 - User list with search and status filter
