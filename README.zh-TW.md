@@ -2,7 +2,7 @@
 
 # Portaly Skills
 
-[Portaly](https://portaly.cc) 創作者專用的 AI Agent Skill 集合。透過 AI Agent 將 Portaly 服務 — 分析、支付 — 整合到任何專案中。
+[Portaly](https://portaly.cc) 創作者專用的 AI Agent Skill 集合。透過 AI Agent 將 Portaly 服務 — 分析、支付、用戶管理 — 整合到任何專案中。
 
 ## 安裝
 
@@ -20,8 +20,13 @@ npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 |-------|------|-----------|
 | **portaly-analytics** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
 | **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳` |
+| **portaly-user** | 用戶同步至 Portaly Vibe — 全量遷移、增量同步、Dashboard 查看 | `用戶同步`、`member sync`、`用戶管理` |
 
 ## Portaly Analytics Integration
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-analytics
+```
 
 協助創作者在網站安裝 Google Analytics 4，並連結到 Portaly 後台查看分析數據。
 
@@ -31,7 +36,18 @@ npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 
 **前置條件：** Google Analytics 4 帳號與 Measurement ID（`G-XXXXXXX`），以及 Portaly 帳號。
 
+**Skill 觸發條件：**
+- 「幫我在網站安裝 Google Analytics」
+- 「我想追蹤 Portaly 結帳事件」
+- 「幫我串接 GA4 到我的 Next.js 專案」
+- 「我想在 Portaly 後台看到網站分析數據」
+- 「幫我把 Google Analytics 連結到 Portaly」
+
 ## Portaly Vibe Payment Integration
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-payment
+```
 
 協助串接 Portaly Vibe 託管支付結帳，包含商家設定、訂閱方案、結帳 session 與 callback 驗證。
 
@@ -42,6 +58,32 @@ npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 - 訂閱者自助入口（Self-Service Portal）
 
 **前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly 管理後台](https://portaly.cc/admin/creator-subscription) 申請。
+
+**Skill 觸發條件：**
+- 「幫我在 Portaly Vibe 上新增一個訂閱商品」
+- 「幫我串接 Portaly Vibe 的支付功能」
+- 「我要使用 Portaly Vibe 的支付 API」
+- 「請協助我整合 Portaly Vibe 的支付功能」
+
+## Portaly User Management
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-user
+```
+
+協助 vibe coder 將應用程式的用戶資料同步到 Portaly Vibe，讓創作者在 Dashboard 查看完整的使用者與訂閱狀態。
+
+- 全量同步：批次匯入既有用戶，支援分批與指數退避
+- 增量同步：在註冊/更新/停用事件中以 fire-and-forget 模式自動同步
+- Dashboard 可視化：`https://payment.portaly.cc/dashboard/users`
+- 同步紀錄：追蹤每次同步的成功/失敗狀態
+
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://payment.portaly.cc/dashboard/api-keys) 申請。
+
+**Skill 觸發條件：**
+- 「幫我同步用戶到 Portaly Vibe」
+- 「幫我把既有的會員資料遷移到 Portaly」
+- 「幫我設定用戶增量同步」
 
 ## 從舊 Repo 遷移
 

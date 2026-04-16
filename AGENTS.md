@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for AI coding agents to help Portaly creators integrate analytics and payment services. Skills are packaged instructions, reference docs, and example scripts that extend an agent's capabilities.
+A collection of skills for AI coding agents to help Portaly creators integrate analytics, payment, and user management services. Skills are packaged instructions, reference docs, and example scripts that extend an agent's capabilities.
 
 **This is not an application project** — no build system, no npm dependencies, no tests. Content is documentation-driven skill definitions, reference materials, and copy-ready example code.
 
@@ -20,6 +20,10 @@ skills/
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, checkout and renewal docs
     scripts/                  # Callback verification examples (.mjs, .py)
+  portaly-user/               # User management and sync
+    SKILL.md                  # Skill definition (entry point)
+    references/               # User sync API contract
+    scripts/                  # Migration and sync examples (.mjs)
 ```
 
 ## Skill Architecture
@@ -48,6 +52,14 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Callback verification: HMAC-SHA256, timestamp is ISO datetime (not Unix), valid within 5 minutes
 - Rate limit: read 120 req/min, write 20 req/min
 - `callbackUrl` must use HTTPS
+
+**User Skill:**
+- API host: `https://payment.portaly.cc`
+- Uses the same Creator Subscription API Key (`pcs_live_*` / `pcs_test_*`)
+- Email is the dedup key: `UNIQUE(profile_id, api_key_id, email)`
+- Batch limit: max 100 users per sync call
+- Sync calls must be fire-and-forget — never block the main business flow
+- Deletion: sync with `status: "deleted"` removes the user (no separate DELETE endpoint)
 
 ## End-User Installation
 
