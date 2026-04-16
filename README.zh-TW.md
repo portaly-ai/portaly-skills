@@ -21,6 +21,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 | **portaly-analytics** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
 | **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳` |
 | **portaly-user** | 用戶同步至 Portaly Vibe — 全量遷移、增量同步、Dashboard 查看 | `用戶同步`、`member sync`、`用戶管理` |
+| **portaly-sentry** | Portaly Vibe 支付串接的安全與可靠性健康檢查 | `健康檢查`、`安全審計`、`sentry 掃描` |
 
 ## Portaly Analytics Integration
 
@@ -85,6 +86,27 @@ npx skills add portaly-ai/portaly-skills --skill portaly-user
 - 「幫我把既有的會員資料遷移到 Portaly」
 - 「幫我設定用戶增量同步」
 
+## Portaly Sentry 健康檢查
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-sentry
+```
+
+在部署前對 Portaly Vibe 支付串接進行 26 項安全與可靠性審計。專為使用 vibe coding 工具的非工程師設計，讓你安心上線。
+
+- 8 大檢查類別：簽名驗證、訂閱生命週期、Callback 端點、環境憑證、安全最佳實踐、Web 安全、依賴安全、資料處理
+- PASS / FAIL / WARN 清單報告，附修復建議與程式碼差異
+- 可選：將結果回報至 Portaly Vibe Dashboard
+- 可選：設定每週自動排程掃描
+
+**前置條件：** 需要已有 Portaly Vibe 支付串接（搭配 `portaly-payment` 使用）。靜態分析檢查不需要憑證。回報結果至 Portaly 需要 `PORTALY_API_KEY`。
+
+**Skill 觸發條件：**
+- 「幫我檢查 Portaly 支付串接是否安全」
+- 「我想在部署前做一次健康檢查」
+- 「幫我掃描 Portaly callback 是否正確」
+- 「執行 Portaly sentry 掃描」
+
 ## 從舊 Repo 遷移
 
 如果你之前從獨立的 repository 安裝過 skill：
@@ -92,12 +114,14 @@ npx skills add portaly-ai/portaly-skills --skill portaly-user
 ```bash
 rm -rf ~/.claude/skills/portaly-analytics-skill
 rm -rf ~/.claude/skills/portaly-payment-skill
+rm -rf ~/.claude/skills/portaly-sentry-skill
 npx skills add portaly-ai/portaly-skills --all -g
 ```
 
 舊的 repository 已封存：
 - `real-engine-tw/portaly-analytics-skill`（已封存）
 - `real-engine-tw/portaly-payment-skill`（已封存）
+- `real-engine-tw/portaly-sentry-skill`（已封存）
 
 ## Windows 注意事項
 

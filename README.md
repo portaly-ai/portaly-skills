@@ -21,6 +21,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 | **portaly-analytics** | GA4 analytics setup, Portaly event tracking, and dashboard connection | `GA4`, `Google Analytics`, `event tracking` |
 | **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout` |
 | **portaly-user** | User sync to Portaly Vibe — migration, incremental sync, and dashboard viewing | `user sync`, `member sync`, `user management` |
+| **portaly-sentry** | Security and reliability health check for Portaly Vibe payment integrations | `health check`, `security audit`, `sentry scan` |
 
 ## Portaly Analytics Integration
 
@@ -85,6 +86,27 @@ Helps vibe coders sync their application users to Portaly Vibe, so creators can 
 - "Help me migrate existing users to Portaly"
 - "Set up incremental user sync with Portaly"
 
+## Portaly Sentry Health Check
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-sentry
+```
+
+Runs a 26-item security and reliability audit on a Portaly Vibe payment integration before deployment. Designed for non-engineers using vibe coding tools who want to ship with confidence.
+
+- 8 check categories: signature verification, subscription lifecycle, callback endpoint, environment credentials, security best practices, web security, dependency security, data handling
+- PASS / FAIL / WARN checklist report with fix instructions and code diffs
+- Optional: report results to Portaly Vibe dashboard
+- Optional: schedule weekly automated scans
+
+**Prerequisites:** An existing Portaly Vibe payment integration (works alongside `portaly-payment`). Static analysis checks require no credentials. Reporting to Portaly requires a `PORTALY_API_KEY`.
+
+**Skill triggers:**
+- "Run a health check on my Portaly payment integration"
+- "Is my Portaly callback verification secure?"
+- "Pre-deploy security audit for Portaly Vibe"
+- "Run a Portaly sentry scan"
+
 ## Migrating from Old Repos
 
 If you previously installed skills from the individual repositories:
@@ -92,12 +114,14 @@ If you previously installed skills from the individual repositories:
 ```bash
 rm -rf ~/.claude/skills/portaly-analytics-skill
 rm -rf ~/.claude/skills/portaly-payment-skill
+rm -rf ~/.claude/skills/portaly-sentry-skill
 npx skills add portaly-ai/portaly-skills --all -g
 ```
 
 The old repositories have been archived:
 - `real-engine-tw/portaly-analytics-skill` (archived)
 - `real-engine-tw/portaly-payment-skill` (archived)
+- `real-engine-tw/portaly-sentry-skill` (archived)
 
 ## License
 
