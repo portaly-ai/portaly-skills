@@ -118,6 +118,12 @@ After running, ask the user to verify at `https://payment.portaly.cc/dashboard/u
 
 If there are issues, fix the mapping and re-run. Test mode is safe to experiment with.
 
+**Important:** Testing is done, but the integration is NOT complete yet. The test run only verified the script and field mapping — production users have NOT been synced. Let the user know there are still steps remaining:
+1. Insert incremental sync hooks into their codebase (Step 6)
+2. Migrate production users with a live API key and deploy (Step 7)
+
+Ask: "Test sync looks good! Next I'll add sync hooks to your codebase so new user changes are automatically pushed to Portaly. After that, we'll do the production migration with your live API key. Ready to continue?"
+
 ### Step 6 — Insert Incremental Sync Hooks
 
 Provide framework-specific snippets. Use the framework's **hooks / event system** (e.g. Payload `afterChange`, Prisma middleware, Mongoose post-save). The sync helper only calls the **Portaly external API** — it should never call the app's own API.
@@ -188,25 +194,36 @@ async function syncToPortaly(user: {
 
 ### Step 7 — Go Live
 
+> **Do NOT skip this step.** The test run (Step 5) only validated the integration in test mode. Production users are NOT yet synced to Portaly. The user must complete this step to go live.
+
 This step has two parts: (A) migrate existing production users, and (B) deploy incremental sync hooks to production.
 
 #### 7a — Migrate Production Users
 
-The migration script needs to read **production user data** and push it with a **live API key**. Ask the user how to connect to their production database:
+The migration script needs **two things changed** from the test run: the API key AND the database connection. Present both clearly to the user as a checklist:
 
-- **Option 1: Run locally with production DB credentials** — the user temporarily sets their production `DATABASE_URL` (or equivalent) in `.env` and runs the script locally.
-- **Option 2: Run on a production server / CI** — the user copies the migration script to a machine that already has production DB access and runs it there.
+**Go-live checklist — both items are required:**
 
-**Before running, perform the Pre-flight Check (Step 4) again:**
-1. Confirm `PORTALY_API_KEY` is a live key (`pcs_live_*`)
-2. Confirm the DB connection points to production (real user data)
-3. Ask the user to confirm: "This will sync all production users to Portaly's live environment. Proceed?"
+1. **Switch API Key** — replace the test key with a live key in `.env`:
+   ```
+   PORTALY_API_KEY=pcs_live_xxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+2. **Switch DB connection** — the migration script must read from the **production database**, not the local dev DB used in testing. Ask the user which approach they prefer:
+   - **Option A: Run locally** — temporarily set the production `DATABASE_URL` (or equivalent connection string) in `.env`, run the script, then revert.
+   - **Option B: Run on production server / CI** — copy the migration script to a machine that already has production DB access and run it there.
+
+**Before running, verify both are correct (Pre-flight Check):**
+1. Read `.env` → `PORTALY_API_KEY` starts with `pcs_live_*`
+2. Read `.env` → `DATABASE_URL` (or equivalent) points to the production database, not localhost or a dev/staging DB
+3. Ask the user to confirm: "This will read users from your production DB and sync them to Portaly's live environment. Both the API key and DB connection are set to production — OK to proceed?"
 
 ```bash
-PORTALY_API_KEY=pcs_live_xxx node migrate_users.mjs
+npx tsx --env-file=.env scripts/migrate-users-to-portaly.ts
 ```
 
 Verify at `https://payment.portaly.cc/dashboard/users` (Live mode).
+
+> **After migration, remind the user to revert `.env`** if they temporarily set production DB credentials locally (Option A). They should restore their local dev `DATABASE_URL` to avoid accidentally writing to production during development.
 
 #### 7b — Deploy Incremental Sync Hooks
 
