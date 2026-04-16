@@ -11,12 +11,12 @@ Use this skill to help a human user integrate Portaly Vibe's User Management API
 
 - **Source of truth**: The user's data lives in the vibe coder's system. Portaly Vibe is a read-only mirror + subscription status overlay.
 - **Sync API**: Push-based. The vibe coder calls `POST /api/creator-subscription/admin/users/sync` to send user data to Portaly Vibe.
-- **Dashboard**: Creators view users at `https://payment.portaly.cc/dashboard/users`. It is **read-only** — all changes come from the Sync API.
+- **Dashboard**: Creators view users at `https://portaly.ai/dashboard/users`. It is **read-only** — all changes come from the Sync API.
 - **Subscription enrichment**: Each user's row shows their Portaly subscription status (if any) as an attribute. No subscription = "Free".
 
 ## API Host
 
-`https://payment.portaly.cc`
+`https://portaly.ai`
 
 ## Authentication
 
@@ -134,7 +134,7 @@ Generate a `syncToPortaly` function based on the mapping from Step 2. Only inclu
 
 ```typescript
 const PORTALY_API_KEY = process.env.PORTALY_API_KEY
-const PORTALY_API_HOST = process.env.PORTALY_API_HOST || 'https://payment.portaly.cc'
+const PORTALY_API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'
 
 async function syncToPortaly(users: Array<{
   email: string;
@@ -263,9 +263,9 @@ Tell the user the integration is complete, then present **exactly** the followin
 
 **Action items to present (output all of these):**
 
-1. **Set environment variables** in your production/staging environment. Get them at `https://payment.portaly.cc/dashboard/api-keys`. All three are required:
+1. **Set environment variables** in your production/staging environment. Get them at `https://portaly.ai/dashboard/api-keys`. All three are required:
    ```
-   PORTALY_API_HOST=https://payment.portaly.cc
+   PORTALY_API_HOST=https://portaly.ai
    PORTALY_API_KEY=pcs_live_xxxxxxxxxxxxxxxxxxxxxxxx
    PORTALY_CALLBACK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxx
    ```
@@ -277,7 +277,7 @@ Tell the user the integration is complete, then present **exactly** the followin
 
 Then explain: after the first sync, **no manual sync is needed for daily use.** When users register, log in, update their profile, or delete their account, the system automatically syncs to Portaly in real time. The user only needs to click "Sync to Portaly" again if data is out of sync (e.g. a previous sync failed, or the database was manually modified).
 
-Finally, point the user to the Portaly Dashboard to verify: `https://payment.portaly.cc/dashboard/users`
+Finally, point the user to the Portaly Dashboard to verify: `https://portaly.ai/dashboard/users`
 
 Replace `{user dashboard path}` with the actual path where the button was added.
 

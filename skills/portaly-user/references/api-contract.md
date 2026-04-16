@@ -3,7 +3,7 @@
 ## Base URL
 
 ```
-https://payment.portaly.cc
+https://portaly.ai
 ```
 
 ## Authentication

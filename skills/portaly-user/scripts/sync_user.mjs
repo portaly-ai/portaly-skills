@@ -12,7 +12,7 @@
  */
 
 const API_KEY = process.env.PORTALY_API_KEY
-const API_HOST = process.env.PORTALY_API_HOST || 'https://payment.portaly.cc'
+const API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'
 const API_URL = `${API_HOST}/api/creator-subscription/admin/users/sync`
 
 /**
