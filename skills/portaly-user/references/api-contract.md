@@ -40,6 +40,7 @@ Batch upsert users. Max 100 per call.
       "role": "admin",
       "plan_name": "Pro",
       "last_login_at": "2026-04-15T08:30:00.000Z",
+      "created_at": "2026-01-10T12:00:00.000Z",
       "metadata": { "tier": "gold" }
     }
   ]
@@ -55,6 +56,7 @@ Batch upsert users. Max 100 per call.
 | `role` | string | No | Max 255 chars |
 | `plan_name` | string | No | Max 255 chars |
 | `last_login_at` | string | No | ISO 8601 datetime (e.g. `2026-04-15T08:30:00.000Z`) |
+| `created_at` | string | No | ISO 8601 datetime — user registration time in the vibe coder's system (e.g. `2026-01-10T12:00:00.000Z`) |
 | `metadata` | object | No | Arbitrary key-value, max 10KB serialized |
 
 **Response (200):**

@@ -57,6 +57,7 @@ Help the vibe coder map their user fields to the Portaly schema.
 | `role` | string | No | User role (e.g. `admin`, `member`, `viewer`) |
 | `plan_name` | string | No | Vibe coder's own plan label (not Portaly subscription) |
 | `last_login_at` | ISO 8601 | No | Last login timestamp (e.g. `2026-04-15T08:30:00.000Z`) |
+| `created_at` | ISO 8601 | No | User registration timestamp in the vibe coder's system (e.g. `2026-01-10T12:00:00.000Z`) |
 | `metadata` | object | No | Arbitrary key-value data (max 10KB) |
 
 **How to map:** Read the vibe coder's user model, then match available fields to the Portaly schema. Only map fields that actually exist — skip any the system doesn't have. `email` is the only required field.
@@ -148,6 +149,7 @@ async function syncToPortaly(users: Array<{
   role?: string;              // → role
   planName?: string;          // → plan_name
   lastLoginAt?: Date | null;  // → last_login_at (ISO 8601)
+  createdAt?: Date | null;    // → created_at (ISO 8601)
   status?: string;            // → status ('active' or 'deleted')
   metadata?: Record<string, unknown>;
 }>) {
@@ -163,6 +165,7 @@ async function syncToPortaly(users: Array<{
       role: user.role,
       plan_name: user.planName,
       last_login_at: user.lastLoginAt?.toISOString(),
+      created_at: user.createdAt?.toISOString(),
       status: user.status || 'active',
       metadata: user.metadata,
     }))
