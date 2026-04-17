@@ -1,4 +1,4 @@
-[繁體中文](./README.zh-TW.md) | English
+English | [繁體中文](./README.zh-TW.md)
 
 # Portaly Skills
 
