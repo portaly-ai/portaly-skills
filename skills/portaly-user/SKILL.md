@@ -116,9 +116,9 @@ Add a **"Sync to Portaly"** button to the user dashboard. When clicked, it batch
    - Label: "Sync to Portaly"
    - **Helper text next to the button** (required) — render this as visible UI copy so the user understands they only need to click once. Use the vibe coder's existing typography (e.g. a small `<p>`, tooltip, or description element next to the button):
 
-     > Click once to sync all existing users to Portaly. After that, new registrations, logins, profile updates, and deletions are synced automatically in real time. Click again only if data gets out of sync.
+     > Click once to sync all existing users to Portaly. After that, new registrations, logins, profile updates, and deletions are synced automatically in real time. Click again only if data gets out of sync. [View members on Portaly Vibe](https://portaly.ai/dashboard/users)
 
-     Translate this copy into the dashboard's primary language if the rest of the UI is not in English.
+     The "View members on Portaly Vibe" text must be a clickable link pointing to `https://portaly.ai/dashboard/users` (open in a new tab, e.g. `target="_blank" rel="noopener noreferrer"`). Translate the helper copy into the dashboard's primary language if the rest of the UI is not in English — but keep the link destination unchanged.
    - Show loading state while syncing
    - Show result summary (created / updated / errors) after completion
    - If there are errors, display them to the user
