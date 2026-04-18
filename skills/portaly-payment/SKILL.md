@@ -87,18 +87,18 @@ Payment site URLs to which buyers are redirected for checkout:
 - Be explicit that this step is performed by a human operator in Portaly admin panel, not by the third-party integration code.
 - Tell the human user to store the issued secret material safely, or store it on the user's behalf only in an appropriate secret manager or secure environment store.
 - Explain that the API key is used for bearer authentication in API calls and the `callbackSecret` is used for verifying the authenticity of callbacks from Portaly If user asking.
-- Do not leave the API key or `callbackSecret` in chat transcripts, source files, client-side code, screenshots, or plaintext docs.
-- Asking the human user to paste the API key to chat and directly saving to `.env` file as possible.
-- Then, Agent should asking for `callbackSecret` and save it to `.env` file as well.
-- create a `.env` file if not exist and save the following content:
+- **Never ask the user to paste the API key or `callbackSecret` into chat.** Chat transcripts can be logged, cached, or echoed back by the model in summaries, diffs, or tool call arguments. Treat secrets as values the agent never needs to see in plaintext.
+- Instead, instruct the human user to place the secrets into `.env` **themselves** (via their editor or shell), using this template:
 
-```
-PORTALY_API_KEY=pcs_live_xxx
-PORTALY_CALLBACK_SECRET=xxx
-```
+  ```
+  PORTALY_API_KEY=pcs_live_xxx        # or pcs_test_xxx for test mode
+  PORTALY_CALLBACK_SECRET=xxx
+  ```
 
-- If the user chose a **test** key, the API key will start with `pcs_test_` instead. The `.env` format is the same; only the key value differs.
-- **Verify that `.gitignore` includes `.env`** before proceeding. If `.gitignore` does not exist or does not include `.env`, create or update it immediately. Never allow credentials to be committed to version control.
+- The agent reads these at runtime via `process.env.PORTALY_API_KEY` (Node) or `os.environ["PORTALY_API_KEY"]` (Python) — it never needs the literal secret value in-context.
+- If the project uses a secret manager (1Password CLI, Doppler, AWS/GCP Secrets Manager, Vault, etc.), prefer that over `.env`.
+- **Before proceeding, verify that `.gitignore` includes `.env`.** If `.gitignore` does not exist or does not include `.env`, create or update it immediately. Never allow credentials to be committed to version control.
+- If the user does paste a secret into chat by mistake, advise them to **rotate the key** in the Portaly admin panel before using it — assume the pasted value is compromised.
 
 ### 2. Configure merchant settings
 
@@ -232,6 +232,13 @@ When answering with this skill, prefer this order:
 
 ## Guardrails
 
+- **Default to test mode for development.** If the loaded key starts with `pcs_live_`, confirm with the human user that live mode is intended before making any API call. Never silently run against production billing.
+- **Money-moving actions require explicit user confirmation.** Before calling any of the following, state the exact action, target (`subscriptionId` / `sessionId`), and mode (live/test), then wait for the user's "yes":
+  - `POST /subscriptions/{id}/cancel`
+  - `POST /subscriptions/{id}/resume`
+  - `POST /checkout-sessions/{id}/complete` (manual completion)
+  - Any plan creation/update in **live** mode
+- Do **not** batch or loop these actions across multiple subscriptions without per-action confirmation.
 - Prefer the hosted checkout flow whenever possible. It already handles email verification, payment-method persistence, callback dispatch, subscription creation, payment creation, invoice task creation, and order bridge writes.
 - Distinguish clearly between:
   - setup APIs that the Agent can call directly with the Portaly Vibe Payment API key
