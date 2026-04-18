@@ -119,7 +119,7 @@ Once GA4 is installed and collecting data, guide the user to connect it to Porta
 
 - **Measurement ID format**: Always `G-XXXXXXX`. If the user provides a different format (e.g., `UA-XXXXX`), that is a Universal Analytics ID — guide them to create a GA4 Property instead.
 - **Credentials security**: The Measurement ID (`G-XXXXXXX`) is not a secret — it's visible in page source. However, always store it in `.env` for easy configuration management and verify `.gitignore` includes `.env`.
-- **Cross-domain tracking**: If the user's app redirects to `payment.portaly.cc` for checkout and back, recommend setting up cross-domain tracking in GA4 to maintain session continuity:
+- **Cross-domain tracking**: If the user's app redirects to `portaly.ai` for checkout and back, recommend setting up cross-domain tracking in GA4 to maintain session continuity:
   1. Go to GA4 Admin → Data Streams → Web → Configure tag settings → Configure your domains
   2. Add both domains
 - **Ad blockers**: Some visitors use ad blockers that block gtag.js. GA4 numbers will always undercount. Do not promise 100% tracking accuracy.

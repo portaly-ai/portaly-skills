@@ -75,10 +75,10 @@ Helps vibe coders sync their application users to Portaly Vibe, so creators can 
 
 - Bulk migration with batching and backoff
 - Incremental sync with fire-and-forget pattern
-- Dashboard viewing at `https://payment.portaly.cc/dashboard/users`
+- Dashboard viewing at `https://portaly.ai/dashboard/users`
 - Sync log tracking
 
-**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`). Apply at [Portaly Vibe Dashboard](https://payment.portaly.cc/dashboard/api-keys).
+**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`). Apply at [Portaly Vibe Dashboard](https://portaly.ai/dashboard/api-keys).
 
 **Skill triggers:**
 - "Sync my users to Portaly Vibe"

@@ -21,7 +21,7 @@ Use the following API host for both modes:
 
 Payment site URLs to which buyers are redirected for checkout:
 
-- `https://payment.portaly.cc`
+- `https://portaly.ai`
 
 ### Mode behavior
 
@@ -209,7 +209,7 @@ What to persist for recurring lifecycle:
 ### 9. Enable subscriber self-service portal (optional)
 
 - Use this when the merchant wants subscribers to manage their own subscriptions directly.
-- The merchant backend creates a portal session via `POST /api/creator-subscription/portal-sessions` on `https://payment.portaly.cc`, then redirects the subscriber to the returned `portalUrl`.
+- The merchant backend creates a portal session via `POST /api/creator-subscription/portal-sessions` on `https://portaly.ai`, then redirects the subscriber to the returned `portalUrl`.
 - This is a **server-to-server** call — the API key must never be exposed to the client.
 - The subscriber lands on Portaly's hosted portal page, already authenticated via the session token. No additional login is required.
 - In the portal, subscribers can view subscriptions, cancel, resume, and view payment history.

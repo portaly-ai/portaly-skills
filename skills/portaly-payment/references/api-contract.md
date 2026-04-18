@@ -736,7 +736,7 @@ Use this when the human user wants to let their subscribers manage their own sub
 - Endpoint:
   - `POST /api/creator-subscription/portal-sessions`
 - API host:
-  - `https://payment.portaly.cc`
+  - `https://portaly.ai`
 - Required headers:
   - `Authorization: Bearer {portaly_vibe_payment_api_key}`
   - `Content-Type: application/json`
@@ -773,7 +773,7 @@ Request body (by subscription — scoped to one subscription):
 {
   "data": {
     "portalSessionId": "portal_abc123",
-    "portalUrl": "https://payment.portaly.cc/portal/portal_abc123?token=hex_token",
+    "portalUrl": "https://portaly.ai/portal/portal_abc123?token=hex_token",
     "expiresAt": "2026-03-29T12:30:00.000Z"
   }
 }
@@ -790,7 +790,7 @@ Node.js example:
 ```js
 // Server-side: create portal session and redirect subscriber
 const response = await fetch(
-  "https://payment.portaly.cc/api/creator-subscription/portal-sessions",
+  "https://portaly.ai/api/creator-subscription/portal-sessions",
   {
     method: "POST",
     headers: {
@@ -815,7 +815,7 @@ Express route example:
 app.get("/manage-subscription", async (req, res) => {
   // req.user is the authenticated subscriber on the merchant's side
   const response = await fetch(
-    "https://payment.portaly.cc/api/creator-subscription/portal-sessions",
+    "https://portaly.ai/api/creator-subscription/portal-sessions",
     {
       method: "POST",
       headers: {

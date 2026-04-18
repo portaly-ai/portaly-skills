@@ -75,10 +75,10 @@ npx skills add portaly-ai/portaly-skills --skill portaly-user
 
 - 全量同步：批次匯入既有用戶，支援分批與指數退避
 - 增量同步：在註冊/更新/停用事件中以 fire-and-forget 模式自動同步
-- Dashboard 可視化：`https://payment.portaly.cc/dashboard/users`
+- Dashboard 可視化：`https://portaly.ai/dashboard/users`
 - 同步紀錄：追蹤每次同步的成功/失敗狀態
 
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://payment.portaly.cc/dashboard/api-keys) 申請。
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard/api-keys) 申請。
 
 **Skill 觸發條件：**
 - 「幫我同步用戶到 Portaly Vibe」

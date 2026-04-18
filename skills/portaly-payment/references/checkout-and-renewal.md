@@ -78,7 +78,7 @@ In the hosted flow, Portaly handles:
 ## Subscriber Self-Service Portal
 
 - Merchants can let subscribers manage their own subscriptions without building custom UI.
-- The merchant backend creates a **portal session** by calling `POST /api/creator-subscription/portal-sessions` on `https://payment.portaly.cc` with the API key.
+- The merchant backend creates a **portal session** by calling `POST /api/creator-subscription/portal-sessions` on `https://portaly.ai` with the API key.
 - Portaly returns a `portalUrl` containing a short-lived token (30-minute TTL).
 - The merchant redirects the subscriber (who is already authenticated on the merchant's site) to `portalUrl`.
 - The subscriber can view, cancel, and resume subscriptions, and view payment history.
