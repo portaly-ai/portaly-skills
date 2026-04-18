@@ -40,7 +40,7 @@ Payment site URLs to which buyers are redirected for checkout:
 
 ## Quick Start
 
-- Before starting, AI agent should ask the human user to claim or create a Portaly Vibe Payment API key/CallbackSecret in the Portaly admin at `https://portaly.ai/dashboard` and store the issued secret material safely.
+- Before starting, AI agent should ask the human user to claim or create a Portaly Vibe Payment API key/CallbackSecret in the Portaly Vibe Dashboard at `https://portaly.ai/dashboard` and store the issued secret material safely.
 - Ask the human user whether they want a **live** or **test** key. Recommend starting with a test key for integration development.
 
 1. Confirm what the human user is trying to build.
@@ -82,9 +82,9 @@ Payment site URLs to which buyers are redirected for checkout:
 ### 1. Apply for the API key
 
 - Require a Portaly Vibe Payment API key and CallbackSecret for this integration.
-- Instruct the human user to apply for or create the Portaly Vibe Payment API key in the Portaly admin at `https://portaly.ai/dashboard`.
+- Instruct the human user to apply for or create the Portaly Vibe Payment API key in the Portaly Vibe Dashboard at `https://portaly.ai/dashboard`.
 - Ask whether the user wants a **live** key (`pcs_live_…`) or a **test** key (`pcs_test_…`). Recommend starting with a test key for development and switching to live for production.
-- Be explicit that this step is performed by a human operator in Portaly admin panel, not by the third-party integration code.
+- Be explicit that this step is performed by a human operator in Portaly Vibe Dashboard, not by the third-party integration code.
 - Tell the human user to store the issued secret material safely, or store it on the user's behalf only in an appropriate secret manager or secure environment store.
 - Explain that the API key is used for bearer authentication in API calls and the `callbackSecret` is used for verifying the authenticity of callbacks from Portaly If user asking.
 - **Never ask the user to paste the API key or `callbackSecret` into chat.** Chat transcripts can be logged, cached, or echoed back by the model in summaries, diffs, or tool call arguments. Treat secrets as values the agent never needs to see in plaintext.
@@ -98,7 +98,7 @@ Payment site URLs to which buyers are redirected for checkout:
 - The agent reads these at runtime via `process.env.PORTALY_API_KEY` (Node) or `os.environ["PORTALY_API_KEY"]` (Python) — it never needs the literal secret value in-context.
 - If the project uses a secret manager (1Password CLI, Doppler, AWS/GCP Secrets Manager, Vault, etc.), prefer that over `.env`.
 - **Before proceeding, verify that `.gitignore` includes `.env`.** If `.gitignore` does not exist or does not include `.env`, create or update it immediately. Never allow credentials to be committed to version control.
-- If the user does paste a secret into chat by mistake, advise them to **rotate the key** in the Portaly admin panel before using it — assume the pasted value is compromised.
+- If the user does paste a secret into chat by mistake, advise them to **rotate the key** in the Portaly Vibe Dashboard before using it — assume the pasted value is compromised.
 
 ### 2. Configure merchant settings
 

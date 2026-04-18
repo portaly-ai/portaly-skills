@@ -271,7 +271,7 @@ Tell the user the integration is complete, then present **exactly** the followin
 
 **Action items to present (output all of these):**
 
-1. **Set environment variables** in your production/staging environment. Get them at `https://portaly.ai/dashboard/api-keys`. All three are required:
+1. **Set environment variables** in your production/staging environment. Get them at `https://portaly.ai/dashboard`. All three are required:
    ```
    PORTALY_API_HOST=https://portaly.ai
    PORTALY_API_KEY=pcs_live_xxxxxxxxxxxxxxxxxxxxxxxx

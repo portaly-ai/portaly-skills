@@ -57,7 +57,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 訂閱生命週期管理（取消 / 恢復）
 - 訂閱者自助入口（Self-Service Portal）
 
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly 管理後台](https://portaly.ai/dashboard) 申請。
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard) 申請。
 
 **Skill 觸發條件：**
 - 「幫我在 Portaly Vibe 上新增一個訂閱商品」
@@ -78,7 +78,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-user
 - Dashboard 可視化：`https://portaly.ai/dashboard/users`
 - 同步紀錄：追蹤每次同步的成功/失敗狀態
 
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard/api-keys) 申請。
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard) 申請。
 
 **Skill 觸發條件：**
 - 「幫我同步用戶到 Portaly Vibe」

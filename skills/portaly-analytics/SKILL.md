@@ -101,13 +101,13 @@ NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXX
 
 Once GA4 is installed and collecting data, guide the user to connect it to Portaly:
 
-1. Go to Portaly admin: `https://portaly.ai/dashboard/analytics`
-2. Navigate to **分析工具** (Analytics) settings
+1. Go to Portaly Vibe Dashboard: `https://portaly.ai/dashboard/analytics`
+2. Navigate to **數據分析** (Analytics) settings
 3. Click **連結 Google Analytics**
 4. Sign in with the Google account that owns the GA4 Property
 5. Grant Portaly read-only access to Google Analytics data
 6. Select the GA4 Property to connect
-7. Done — analytics dashboard will appear in Portaly admin
+7. Done — analytics dashboard will appear in Portaly Vibe Dashboard
 
 **Key points to communicate to the user:**
 - Portaly only requests **read-only** access (`analytics.readonly` scope). Portaly cannot modify your GA4 settings or data.

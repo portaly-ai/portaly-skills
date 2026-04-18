@@ -29,12 +29,12 @@ Use this when the human user asks how to authenticate third-party requests.
 
 ## API Key Creation
 
-Use this when the human user is creating a new API key from the Portaly admin panel.
+Use this when the human user is creating a new API key from the Portaly Vibe Dashboard.
 
 - Endpoint:
   - `POST /api/creator-subscription/api-keys`
 - Required auth:
-  - Firebase auth (Portaly admin panel only — not a third-party API)
+  - Firebase auth (Portaly Vibe Dashboard only — not a third-party API)
 - Request fields:
   - `profileId`: required
   - `mode`: optional, `live` (default) or `test`
