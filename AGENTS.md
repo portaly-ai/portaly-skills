@@ -45,7 +45,7 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - GA4 data has a 24–48 hour processing delay
 
 **Payment Skill:**
-- API host: `https://portaly.cc`, payment page: `https://portaly.ai`
+- API host: `https://portaly.ai`
 - Dual mode: live (`pcs_live_`) / test (`pcs_test_`), determined by API key
 - Plans are shared across modes — query existing plans before creating new ones
 - Core contract: `subscriptionId === checkoutSessionId === sessionId`

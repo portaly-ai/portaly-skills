@@ -11,15 +11,9 @@ Use this skill to help a human user finish a Portaly Vibe API integration quickl
 
 Portaly Vibe Payment supports two modes per API key: **live** and **test**.
 
-### API Host
+### Host
 
-Use the following API host for both modes:
-
-- `https://portaly.cc`
-
-### Payment site
-
-Payment site URLs to which buyers are redirected for checkout:
+Use the following host for both API calls and buyer-facing checkout pages:
 
 - `https://portaly.ai`
 

@@ -611,14 +611,14 @@ Pagination example:
 ```js
 // First page
 const page1 = await fetch(
-  "https://portaly.cc/api/creator-subscription/subscriptions?limit=20",
+  "https://portaly.ai/api/creator-subscription/subscriptions?limit=20",
   { headers: { authorization: `Bearer ${apiKey}` } }
 ).then(r => r.json());
 
 // Next page (if hasMore)
 if (page1.pagination.hasMore) {
   const page2 = await fetch(
-    `https://portaly.cc/api/creator-subscription/subscriptions?limit=20&startAfter=${page1.pagination.nextCursor}`,
+    `https://portaly.ai/api/creator-subscription/subscriptions?limit=20&startAfter=${page1.pagination.nextCursor}`,
     { headers: { authorization: `Bearer ${apiKey}` } }
   ).then(r => r.json());
 }
