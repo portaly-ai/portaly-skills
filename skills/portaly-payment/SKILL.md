@@ -40,7 +40,7 @@ Payment site URLs to which buyers are redirected for checkout:
 
 ## Quick Start
 
-- Before starting, AI agent should ask the human user to claim or create a Portaly Vibe Payment API key/CallbackSecret in the Portaly admin at `https://portaly.cc/admin/creator-subscription` and store the issued secret material safely.
+- Before starting, AI agent should ask the human user to claim or create a Portaly Vibe Payment API key/CallbackSecret in the Portaly admin at `https://portaly.ai/dashboard` and store the issued secret material safely.
 - Ask the human user whether they want a **live** or **test** key. Recommend starting with a test key for integration development.
 
 1. Confirm what the human user is trying to build.
@@ -82,7 +82,7 @@ Payment site URLs to which buyers are redirected for checkout:
 ### 1. Apply for the API key
 
 - Require a Portaly Vibe Payment API key and CallbackSecret for this integration.
-- Instruct the human user to apply for or create the Portaly Vibe Payment API key in the Portaly admin at `https://portaly.cc/admin/creator-subscription`.
+- Instruct the human user to apply for or create the Portaly Vibe Payment API key in the Portaly admin at `https://portaly.ai/dashboard`.
 - Ask whether the user wants a **live** key (`pcs_live_…`) or a **test** key (`pcs_test_…`). Recommend starting with a test key for development and switching to live for production.
 - Be explicit that this step is performed by a human operator in Portaly admin panel, not by the third-party integration code.
 - Tell the human user to store the issued secret material safely, or store it on the user's behalf only in an appropriate secret manager or secure environment store.

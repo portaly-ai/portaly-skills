@@ -57,7 +57,7 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 - Recurring subscription management (cancel / resume)
 - Subscriber self-service portal
 
-**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`). Apply at [Portaly Admin](https://portaly.cc/admin/creator-subscription).
+**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`). Apply at [Portaly Admin](https://portaly.ai/dashboard).
 
 **Skill triggers:**
 - "Add a subscription product on Portaly Vibe"

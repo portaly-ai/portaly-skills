@@ -101,7 +101,7 @@ NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXX
 
 Once GA4 is installed and collecting data, guide the user to connect it to Portaly:
 
-1. Go to Portaly admin: `https://portaly.cc/admin`
+1. Go to Portaly admin: `https://portaly.ai/dashboard/analytics`
 2. Navigate to **分析工具** (Analytics) settings
 3. Click **連結 Google Analytics**
 4. Sign in with the Google account that owns the GA4 Property
