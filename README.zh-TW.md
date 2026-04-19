@@ -14,6 +14,16 @@ npx skills add portaly-ai/portaly-skills
 npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 ```
 
+## 更新
+
+```bash
+# 更新所有已安裝的 skill 到最新版
+npx skills update
+
+# 更新單一 skill
+npx skills update portaly-analytics
+```
+
 ## Skills 一覽
 
 | Skill | 說明 | 觸發關鍵字 |

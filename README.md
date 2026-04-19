@@ -14,6 +14,16 @@ npx skills add portaly-ai/portaly-skills
 npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 ```
 
+## Updating
+
+```bash
+# Update all installed skills to latest
+npx skills update
+
+# Update a specific skill
+npx skills update portaly-analytics
+```
+
 ## Skills
 
 | Skill | Description | Triggers |
