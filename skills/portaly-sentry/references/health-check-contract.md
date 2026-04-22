@@ -92,7 +92,7 @@ Use this when the user wants to send health check results to Portaly for their V
 - Endpoint:
   - `POST /api/creator-subscription/health-check-reports`
 - API host:
-  - `https://portaly.cc`
+  - `https://portaly.ai`
 - Required headers:
   - `Authorization: Bearer {portaly_vibe_payment_api_key}`
   - `Content-Type: application/json`
@@ -163,7 +163,7 @@ Response (success):
 {
   "data": {
     "reportId": "rpt_abc123",
-    "dashboardUrl": "https://portaly.cc/admin/health-check/rpt_abc123"
+    "dashboardUrl": "https://portaly.ai/dashboard/sentry-scans"
   }
 }
 ```

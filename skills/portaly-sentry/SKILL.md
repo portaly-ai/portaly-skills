@@ -204,7 +204,7 @@ File: {file_path}:{line}
 If the user wants to report results to Portaly:
 
 1. Confirm user consent before sending any data.
-2. POST to `https://portaly.cc/api/creator-subscription/health-check-reports` with `Authorization: Bearer {PORTALY_API_KEY}`.
+2. POST to `https://portaly.ai/api/creator-subscription/health-check-reports` with `Authorization: Bearer {PORTALY_API_KEY}`.
 3. See `references/health-check-contract.md` for the full request/response schema.
 4. If the endpoint returns 404, it is not yet live — skip reporting and show results locally only.
 
