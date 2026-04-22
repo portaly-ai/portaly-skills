@@ -31,6 +31,7 @@ npx skills update portaly-analytics
 | **portaly-analytics** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
 | **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳` |
 | **portaly-user** | 用戶同步至 Portaly Vibe — 全量遷移、增量同步、Dashboard 查看 | `用戶同步`、`member sync`、`用戶管理` |
+| **portaly-sentry** | Portaly Vibe 支付串接的安全與可靠性健康檢查，可回報結果到 Vibe 儀表板 | `Portaly 健康檢查`、`sentry 掃描`、`金流安全審計` |
 
 ## Portaly Analytics Integration
 
@@ -94,6 +95,29 @@ npx skills add portaly-ai/portaly-skills --skill portaly-user
 - 「幫我同步用戶到 Portaly Vibe」
 - 「幫我把既有的會員資料遷移到 Portaly」
 - 「幫我設定用戶增量同步」
+
+## Portaly Sentry 健康檢查
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-sentry
+```
+
+在部署前對 Portaly Vibe 支付串接執行安全與可靠性稽核。搭配 `portaly-payment` 使用——以其 API 合約作為正確串接的 canonical 參考。
+
+- 8 大類、合計 26 項檢查：簽章驗證、訂閱生命週期、Callback 端點、環境憑證、安全最佳實踐、Web 安全、依賴安全、資料處理
+- 純靜態分析——不需要執行使用者的程式碼
+- Read-only audit——絕不修改使用者程式碼
+- 可選擇將掃描結果回報至 Vibe 儀表板 `https://portaly.cc/dashboard/sentry-scans`
+- 支援手動執行與每週排程掃描
+
+**前置條件：** 已安裝 `portaly-payment` skill（作為 canonical 參考）。選用：Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），用來把結果回報到 Vibe 儀表板。
+
+**Skill 觸發條件：**
+- 「部署前幫我跑一次 Portaly 健康檢查」
+- 「幫我稽核 Portaly 支付串接有沒有安全問題」
+- 「掃描我的 Portaly callback 簽章驗證是否正確」
+- 「我的 Portaly 串接可以安心上線嗎？」
+- 「執行一次 Portaly sentry 掃描」
 
 ## 從舊 Repo 遷移
 
