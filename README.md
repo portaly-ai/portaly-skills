@@ -31,6 +31,7 @@ npx skills update portaly-analytics
 | **portaly-analytics** | GA4 analytics setup, Portaly event tracking, and dashboard connection | `GA4`, `Google Analytics`, `event tracking` |
 | **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout` |
 | **portaly-user** | User sync to Portaly Vibe — migration, incremental sync, and dashboard viewing | `user sync`, `member sync`, `user management` |
+| **portaly-sentry** | Security & reliability health check for Portaly Vibe payment integrations, with report-back to the Vibe dashboard | `Portaly health check`, `sentry scan`, `payment security audit` |
 
 ## Portaly Analytics Integration
 
@@ -94,6 +95,29 @@ Helps vibe coders sync their application users to Portaly Vibe, so creators can 
 - "Sync my users to Portaly Vibe"
 - "Help me migrate existing users to Portaly"
 - "Set up incremental user sync with Portaly"
+
+## Portaly Sentry Health Check
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-sentry
+```
+
+Runs a pre-deploy security and reliability audit on a Portaly Vibe payment integration. Pairs with `portaly-payment` — its API contract is used as the canonical reference for what a correct integration looks like.
+
+- 26 checks across 8 categories: signature verification, subscription lifecycle, callback endpoint, environment & credentials, security, web fundamentals, dependencies, and data handling
+- Static analysis only — no runtime access to the project required
+- Read-only audit — never modifies user code
+- Optionally reports results to the Vibe dashboard at `https://portaly.cc/dashboard/sentry-scans`
+- Supports manual and weekly-scheduled scans
+
+**Prerequisites:** `portaly-payment` skill installed (used as the canonical reference). Optional: Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`) to report results to the Vibe dashboard.
+
+**Skill triggers:**
+- "Run a Portaly health check before I deploy"
+- "Audit my Portaly payment integration for security issues"
+- "Scan my Portaly callback for signature verification bugs"
+- "Is my Portaly integration safe to go live?"
+- "Run a Portaly sentry scan"
 
 ## Migrating from Old Repos
 

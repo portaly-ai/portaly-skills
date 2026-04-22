@@ -24,6 +24,10 @@ skills/
     SKILL.md                  # Skill definition (entry point)
     references/               # User sync API contract
     scripts/                  # Migration and sync examples (.mjs)
+  portaly-sentry/             # Pre-deploy health check for payment integrations
+    SKILL.md                  # Skill definition (entry point)
+    references/               # Health check contract (26 checks), common pitfalls
+    scripts/                  # Static analyzers (.mjs) — signature sort, subscription lifecycle
 ```
 
 ## Skill Architecture
@@ -60,6 +64,14 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Batch limit: max 100 users per sync call
 - Sync calls must be fire-and-forget — never block the main business flow
 - Deletion: sync with `status: "deleted"` removes the user (no separate DELETE endpoint)
+
+**Sentry Skill:**
+- 26 checks across 8 categories: `SIG` (signature), `SUB` (subscription), `CBK` (callback), `ENV` (env & credentials), `SEC` (security), `WEB` (web fundamentals), `DEP` (dependencies), `DATA` (data handling)
+- Three severity levels: `CRITICAL` (must fix before deploy), `WARNING` (should fix), `INFO` (fix when convenient)
+- Static analysis only — read-only audit, never modifies user code
+- Depends on `portaly-payment` skill's `references/api-contract.md` as the canonical reference for correct integration
+- Reporting API (optional): `POST /api/creator-subscription/health-check-reports` on host `https://portaly.cc`, authenticated with `Authorization: Bearer {PORTALY_API_KEY}` — same key as the payment skill. May return 404 if not yet live; in that case skip reporting and show results locally only.
+- Results flow into the creator's Vibe dashboard at `https://portaly.cc/dashboard/sentry-scans`
 
 ## End-User Installation
 
