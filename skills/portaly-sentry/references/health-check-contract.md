@@ -55,7 +55,7 @@
 | ID | Check | Severity | Pass Criteria | Fail Criteria |
 |---|---|---|---|---|
 | SEC-001 | No client-side exposure | CRITICAL | API key and callback secret do not appear in files served to the browser (no `NEXT_PUBLIC_PORTALY_CALLBACK_SECRET`, not in `public/` or client-side `src/` bundles). | Found secret in client-accessible code. |
-| SEC-002 | Raw callback body persisted | INFO | Full callback payload is saved to a database collection/table for audit trail. | Only specific fields are saved, or nothing is persisted. |
+| SEC-002 | Callback audit trail | INFO | Any form of audit trail exists for processed callbacks: at minimum `sessionId` and `status` are logged or persisted. Does not require storing the full raw body. | No logging or persistence of callback events — impossible to investigate disputes or replay issues. Note: storing the full raw body is discouraged if it contains PII; logging key fields is sufficient. |
 | SEC-003 | Secret rotation readiness | INFO | All secrets are read from `process.env` (or framework equivalent), not hardcoded. Application can rotate secrets by updating env vars without code changes. | Secrets are hardcoded or read from config files committed to version control. |
 | SEC-004 | CORS configuration | WARNING | Callback endpoint does not set `Access-Control-Allow-Origin: *`. Either no CORS headers or restricted to specific origins. | `Access-Control-Allow-Origin: *` is set on the callback endpoint, allowing any origin to interact with it. |
 | SEC-005 | CSP headers | INFO | Payment-related pages (success, cancel, checkout redirect) include a `Content-Security-Policy` header. | No CSP header on payment-related pages. |
@@ -64,23 +64,23 @@
 
 | ID | Check | Severity | Pass Criteria | Fail Criteria |
 |---|---|---|---|---|
-| WEB-001 | Open redirect protection | CRITICAL | `successRedirectUrl` and `cancelRedirectUrl` are validated against a domain allowlist before redirect. Server-side validation, not client-side only. | URLs are passed through without validation, allowing attackers to craft URLs that redirect users to phishing sites. |
+| WEB-001 | Open redirect protection | WARNING | If the project accepts `successRedirectUrl` or `cancelRedirectUrl` as user-supplied input, those values are validated against a domain allowlist before use. If the project delegates redirect handling entirely to Portaly (hosted checkout), this check does not apply. | User-supplied redirect URLs are passed through without domain validation, enabling phishing via crafted links. |
 | WEB-002 | Error info leakage | WARNING | Error responses in callback handler return generic messages (e.g., `{ error: "invalid signature" }`). No stack traces, file paths, or DB schema in responses. | `catch` blocks send `err.stack`, `err.message` with internal details, or framework default error pages with debug info. |
-| WEB-003 | Content-Type validation | WARNING | Callback endpoint checks that `Content-Type` header is `application/json` before processing. | No Content-Type validation — endpoint accepts any content type. |
-| WEB-004 | Body size limit | WARNING | Body parser has an explicit size limit (e.g., `express.json({ limit: '1mb' })`, Next.js `bodyParser` config, or equivalent). | No body size limit configured — vulnerable to payload bomb attacks. |
+| WEB-003 | Content-Type validation | INFO | Callback endpoint checks that `Content-Type` header is `application/json` before processing. Frameworks like Next.js App Router handle this automatically — manual verification only needed for Express or custom servers. | No Content-Type validation on a custom/bare server endpoint. |
+| WEB-004 | Body size limit | INFO | Body parser has an explicit size limit, or the framework's default limit is in effect (e.g., Next.js default 4.5 MB). Explicit configuration only needed for Express or custom servers. | No size limit and using a bare server with no framework defaults. |
 
 ### DEP — Dependency Security
 
 | ID | Check | Severity | Pass Criteria | Fail Criteria |
 |---|---|---|---|---|
-| DEP-001 | Known vulnerability scan | CRITICAL | `npm audit` or `pnpm audit` reports zero critical or high severity vulnerabilities in production dependencies. | One or more critical/high CVEs found in dependencies. |
+| DEP-001 | Known vulnerability scan | CRITICAL | `npm audit` or `pnpm audit` reports zero **critical** severity CVEs in **production** dependencies (`npm audit --omit=dev`). High-severity CVEs in production deps are WARNING. Dev-dependency vulnerabilities do not affect this check. | One or more critical CVEs found in production dependencies. |
 | DEP-002 | Lock file present | WARNING | `package-lock.json` or `pnpm-lock.yaml` exists in the project root and is not in `.gitignore`. | No lock file found, or lock file is gitignored — supply chain risk from inconsistent installs. |
 
 ### DATA — Data Handling Security
 
 | ID | Check | Severity | Pass Criteria | Fail Criteria |
 |---|---|---|---|---|
-| DATA-001 | Input validation | WARNING | Callback payload fields are validated (type, length, format) before being written to the database. At minimum: `sessionId` is a string, `status` is one of the expected values, `amount` is a positive number. | Callback payload is written directly to the database without any validation. |
+| DATA-001 | Input validation | INFO | Callback payload fields are validated (type, length, format) before being written to the database. At minimum: `sessionId` is a string, `status` is one of the expected values, `amount` is a positive number. Best verified by manual code review rather than static analysis. | Callback payload is written directly to the database without any validation. |
 | DATA-002 | Sensitive data logging | WARNING | Log statements in callback handler and payment flows do not output full API keys, callback secrets, or complete customer PII (full email, payment references). Logs use `sessionId` and `status` only, or mask sensitive fields. | Found `console.log(req.body)`, `console.log(payload)`, or similar that dumps the full callback payload including potential PII to logs. |
 
 ## Report API Contract
