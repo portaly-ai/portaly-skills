@@ -208,13 +208,41 @@ If the user wants to report results to Portaly:
 3. See `references/health-check-contract.md` for the full request/response schema.
 4. If the endpoint returns 404, it is not yet live — skip reporting and show results locally only.
 
-### Step 12 — Schedule weekly scan (optional)
+### Step 12 — Set up automated scanning (optional)
 
-If the user wants recurring scans:
+Three options, from simplest to most rigorous. Present all three and let the user choose.
 
-1. Guide them to set up a cron job, CI pipeline step, or Claude Code scheduled task that runs the health check weekly.
-2. Each scheduled run should report results to Portaly so they appear on the Vibe dashboard.
-3. Recommend running on Monday mornings to catch issues before the work week.
+**Option A — GitHub Actions (recommended for any project with a GitHub repo)**
+
+Tell the user to create `.github/workflows/portaly-sentry.yml` with the template in
+`references/ci-setup-guide.md`. Then add `PORTALY_API_KEY` as a GitHub repository secret.
+This runs on every push to main AND weekly on Monday — blocks merges if CRITICAL issues are found.
+
+**Option B — Pre-push git hook (local machine enforcement)**
+
+Run once to install:
+```bash
+cat > .git/hooks/pre-push << 'EOF'
+#!/bin/sh
+set -e
+node "$(git rev-parse --show-toplevel)/.claude/skills/portaly-sentry/scripts/report.mjs" \
+  --dir "$(git rev-parse --show-toplevel)" --fail-on critical
+EOF
+chmod +x .git/hooks/pre-push
+```
+
+**Option C — Automated script runner via `scripts/report.mjs`**
+
+For any CI system or scheduled task, point at the automation script directly:
+```bash
+PORTALY_API_KEY=pcs_live_... node .claude/skills/portaly-sentry/scripts/report.mjs \
+  --dir . --scan-type scheduled --fail-on critical
+```
+
+`--fail-on critical` makes the command exit 1 when CRITICAL issues are found,
+which any CI system will treat as a build failure.
+
+See `references/ci-setup-guide.md` for the full CLI reference and setup instructions.
 
 ## Output Style
 
@@ -253,10 +281,14 @@ If the user wants recurring scans:
   Use for the full checklist item definitions, severity levels, pass/fail criteria, and the report API contract.
 - `references/common-pitfalls.md`
   Use for detailed descriptions of known bugs found in real integrations, with wrong vs correct implementations and detection methods.
+- `scripts/report.mjs`
+  Use for fully automated CI/CD scanning — runs all 26 checks, prints a formatted report, and POSTs results to portaly.ai. Accepts `--fail-on critical` for CI exit code control.
 - `scripts/check_signature_sort.mjs`
-  Use for automated signature sort pattern verification across project files.
+  Use for automated signature sort pattern verification across project files. Called internally by `report.mjs`.
 - `scripts/check_subscription_lifecycle.mjs`
-  Use for automated subscription ID lifecycle tracing.
+  Use for automated subscription ID lifecycle tracing. Called internally by `report.mjs`.
+- `references/ci-setup-guide.md`
+  Use when the user wants to set up GitHub Actions, pre-push hooks, or npm scripts for automated scanning.
 - Cross-reference: `../portaly-payment/scripts/sign_callback.mjs`
   Canonical Portaly callback signature implementation. Use as the reference for what correct looks like.
 - Cross-reference: `../portaly-payment/references/api-contract.md`
