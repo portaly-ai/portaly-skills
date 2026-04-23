@@ -24,7 +24,7 @@
 
 import { spawnSync } from 'child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
-import { join, relative, dirname } from 'path'
+import { join, relative, dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -38,7 +38,7 @@ const arg = (name, fallback = null) => {
 }
 const flag = (name) => args.includes(name)
 
-const projectDir = arg('--dir', process.cwd())
+const projectDir = resolve(arg('--dir', process.cwd()))
 const projectNameOverride = arg('--project-name')
 const failOn = arg('--fail-on', 'critical') // 'critical' | 'any' | 'none'
 const scanType = arg('--scan-type', 'manual')
@@ -77,6 +77,7 @@ const c = (str, col) => `${col}${str}${RESET}`
 // ── File utilities ────────────────────────────────────────────────────────────
 
 function listFiles(root) {
+  if (!existsSync(root) || !statSync(root).isDirectory()) return []
   const results = []
   const walk = (d) => {
     let entries
