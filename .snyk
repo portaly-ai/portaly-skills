@@ -1,0 +1,31 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+
+ignore:
+  SNYK-JS-PATHTRAVERSAL-6ef3783f:
+    - skills/portaly-sentry/scripts/report.mjs:
+        reason: >
+          CLI tool — --dir is the intended mechanism for specifying the scan
+          target directory. The operator runs this script in a trusted context
+          (local dev or CI). resolve() normalises the path; isDirectory() guards
+          against non-directory input. No web/network attack surface exists.
+        expires: 2027-01-01T00:00:00.000Z
+  6ef3783f-5ad1-4168-bb6f-3219cb0ff946:
+    - skills/portaly-sentry/scripts/report.mjs:
+        reason: >
+          False positive — CLI tool, --dir is the intended scan-target argument.
+        expires: 2027-01-01T00:00:00.000Z
+  a72d5e84-f432-4623-9695-2ce2f7c21478:
+    - skills/portaly-sentry/scripts/report.mjs:
+        reason: >
+          False positive — readFileSync paths are derived from readdirSync
+          walking the operator-supplied --dir. No external/untrusted input.
+        expires: 2027-01-01T00:00:00.000Z
+  c1e0f1d3-a79b-4777-a5de-5ef878e4d7d1:
+    - skills/portaly-sentry/scripts/report.mjs:
+        reason: >
+          False positive — same taint chain as above; file paths originate from
+          the developer-controlled --dir argument, not from user/network input.
+        expires: 2027-01-01T00:00:00.000Z
+
+patch: {}
