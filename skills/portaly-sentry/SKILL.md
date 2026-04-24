@@ -9,6 +9,10 @@ Use this skill to run a comprehensive security and reliability health check on a
 
 This skill works alongside `portaly-payment`. It uses the same API contract as the canonical source of truth for what a correct integration looks like.
 
+## Language
+
+All user-facing templates in this skill are written in English as the canonical form. When speaking to a user, render each template in whatever language the user has been using in the conversation (e.g. Traditional Chinese, Simplified Chinese, Japanese, English). Keep IDs (`SIG-004`), code identifiers, file paths, URLs, and key-letter choices (`[Y]`, `[N]`, `[?]`, `[STOP]`, `[A]`, `[B]`, `[C]`) unchanged. Plain-language copy in `references/fix-explanations.md` follows the same rule — translate it at render time, don't paraphrase in place.
+
 ## Quick Start
 
 ### Step 0 — Confirm integration exists
@@ -20,42 +24,46 @@ This skill works alongside `portaly-payment`. It uses the same API contract as t
 
 Before asking anything else, show the user this intro so they understand what Sentry actually does. Do not skip this step — the first-time user has no idea what "SIG" or "SUB" means.
 
+Template (translate to the user's language; keep emoji and category names):
+
 ```
-Portaly Sentry 會從 3 個面向幫你健檢金流整合：
-🏦 付款這件事本身做對了嗎     簽章驗證、callback、訂閱
-🔐 你的商家金鑰有沒有保護好   環境變數、憑證管理
-🛡️ 系統其他地方會不會被打穿   套件漏洞、Web 安全、資料處理
-共 26 項檢查，依嚴重度分為 CRITICAL / WARNING / INFO。
+Portaly Sentry checks your payment integration across 3 areas:
+🏦 Is the payment flow itself done right?  signatures, callbacks, subscriptions
+🔐 Are your merchant credentials safe?     env vars, credential management
+🛡️ Is everything else hardened?            dependencies, web security, data handling
+26 checks in total, graded by severity: CRITICAL / WARNING / INFO.
 ```
 
 ### Step 0.2 — Ask which project and which scan standard
 
-Do **not** pick a default — ask the user both questions and wait for an answer. Phrase it exactly as a checkpoint, not a suggestion.
+Do **not** pick a default — ask the user both questions and wait for an answer. Phrase it as a checkpoint, not a suggestion.
+
+Template:
 
 ```
-請告訴我：
-① 要掃哪個專案？（例如 ~/gratitude-app）
-② 想用哪個標準？
-   🚀 準備上線 — 只看 CRITICAL，全過即可放行
-   🔧 日常健檢 — CRITICAL + WARNING 全過
-   🏆 追求業界模範 — 26 項全過（含 INFO）
-   ⏰ 每週自動健檢 — 設定排程（不立即掃描）
+Two things before I start:
+① Which project should I scan? (e.g. ~/gratitude-app)
+② Which standard do you want?
+   🚀 Pre-launch    — block on CRITICAL only; passes go live
+   🔧 Routine check — block on CRITICAL + WARNING
+   🏆 Gold standard — all 26 must pass (including INFO)
+   ⏰ Weekly auto   — set up a scheduled scan (don't scan now)
 ```
 
 Standard → scope mapping (internal):
 
 | User choice | Report includes | Blocking severity |
 |---|---|---|
-| 🚀 準備上線 | all 26 checks | CRITICAL only |
-| 🔧 日常健檢 | all 26 checks | CRITICAL + WARNING |
-| 🏆 追求業界模範 | all 26 checks | all severities |
-| ⏰ 每週自動健檢 | skip scan → jump to Step 12 | n/a |
+| 🚀 Pre-launch | all 26 checks | CRITICAL only |
+| 🔧 Routine check | all 26 checks | CRITICAL + WARNING |
+| 🏆 Gold standard | all 26 checks | all severities |
+| ⏰ Weekly auto | skip scan → jump to Step 12 | n/a |
 
-All three non-scheduled standards still run all 26 checks. What changes is the pass/fail threshold used in the summary's "目前狀態：✅ 可以放心上線 / ❌ 還不能安全上線" line.
+All three non-scheduled standards still run all 26 checks. What changes is the pass/fail threshold used in the Layer 1 summary's "Status" line (see Step 10).
 
 ### Step 0.3 — Advanced: scan a single category
 
-Only offer this if the user asks for it explicitly (e.g. "我只想掃簽章" or "re-run SIG"). Do not surface this as a main option — category codes overwhelm first-time users.
+Only offer this if the user asks for it explicitly (e.g. "only scan signatures" or "re-run SIG"). Do not surface this as a main option — category codes overwhelm first-time users.
 
 - Single category — SIG, SUB, CBK, ENV, SEC, WEB, DEP, or DATA
 
@@ -229,43 +237,47 @@ Output three layers, in this order:
 
 #### Layer 1 — Plain-language summary (always show)
 
-Load titles from `references/fix-explanations.md` — do not invent new phrasing.
+Load titles from `references/fix-explanations.md` — do not invent new phrasing. Translate the template into the user's conversation language at render time.
+
+Template:
 
 ```
-📊 你的金流整合健檢結果
-🔴 致命問題   {N} 項   ← 上線前一定要修
-🟡 建議修復   {N} 項   ← 這週內處理
-⚪ 有空再做   {N} 項   ← 有餘力再補
+📊 Payment integration health check
+🔴 Critical issues  {N}   ← must fix before launch
+🟡 Should fix       {N}   ← take care of this week
+⚪ Nice to have     {N}   ← tackle when you have time
 
-目前狀態：{status_line}
+Status: {status_line}
 
-最嚴重的 {min(3, failures)} 件事：
-1. {白話標題 from fix-explanations.md}（{ID}）
+Top {min(3, failures)} things to fix:
+1. {plain title from fix-explanations.md} ({ID})
 2. ...
 3. ...
 
-🔗 完整健檢結果（所有 26 項、修復建議、歷史紀錄）
+🔗 Full report (all 26 checks, fix guidance, history)
 https://portaly.ai/dashboard/sentry-scans/{scan_id}
 ```
 
 `{status_line}` is decided by the scan standard chosen in Step 0.2:
 
-| Standard | 可以放心上線條件 |
+| Standard | Condition for "safe to launch" |
 |---|---|
-| 🚀 準備上線 | 0 CRITICAL failures |
-| 🔧 日常健檢 | 0 CRITICAL **and** 0 WARNING failures |
-| 🏆 追求業界模範 | 0 failures across all 26 checks |
+| 🚀 Pre-launch | 0 CRITICAL failures |
+| 🔧 Routine check | 0 CRITICAL **and** 0 WARNING failures |
+| 🏆 Gold standard | 0 failures across all 26 checks |
 
-Use `✅ 可以放心上線` or `❌ 還不能安全上線` — nothing in between. If the user has not reported to Portaly yet (no `scan_id`), omit the dashboard link and show only local results.
+Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. If the user has not reported to Portaly yet (no `scan_id`), omit the dashboard link and show only local results.
 
 #### Layer 2 — Fix mode choice (always show right after summary)
 
+Template:
+
 ```
 ─────────────────────────────────────
-要現在開始修嗎？
-[A] 好，全部照順序修（建議）
-[B] 只修 🔴 致命問題（最快上線）
-[C] 我想先看完整報告
+Want to start fixing now?
+[A] Yes, walk me through all of them in order (recommended)
+[B] Just the 🔴 critical ones (fastest path to launch)
+[C] Show me the full report first
 ```
 
 The user's answer routes to:
@@ -310,30 +322,32 @@ Enter this workflow only after the user explicitly picks **[A]** (fix all) or **
 
 #### Per-item template
 
-Render the block below for each failure. All plain-language copy comes from `references/fix-explanations.md` — do not paraphrase on the fly.
+Render the block below for each failure. All plain-language copy comes from `references/fix-explanations.md` — do not paraphrase on the fly. Translate the template into the user's conversation language at render time, but keep IDs, file paths, code in the diff, and the `[Y]/[N]/[?]/[STOP]` keys unchanged.
+
+Template:
 
 ```
-🔴 第 {n} 項，共 {m} 項       | 進度 {progress_bar} {percent}%
+🔴 Item {n} of {m}        | Progress {progress_bar} {percent}%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-修復：{白話標題}（{ID}）
+Fix: {plain title} ({ID})
 
-📍 會動哪個檔案？
-{file_path}（{summary of change: "新增 1 個 import、修改 3 行" etc.}）
+📍 Which file?
+{file_path} ({change summary, e.g. "add 1 import, change 3 lines"})
 
-❓ 為什麼要改？
-{為什麼要改 from fix-explanations.md}
+❓ Why does this matter?
+{why it matters, from fix-explanations.md}
 
-🔧 修改預覽：
+🔧 Preview:
 {unified diff, - old / + new}
 
-✅ 會影響：{會影響 from fix-explanations.md}
-✅ 不會影響：{不會影響 from fix-explanations.md}
+✅ Affects:       {affects, from fix-explanations.md}
+✅ Doesn't affect: {doesn't affect, from fix-explanations.md}
 ─────────────────────────────────────
-要套用這個修改嗎？
-[Y] 好，修下去
-[N] 跳過這項
-[?] 我想先了解更多
-[STOP] 先停在這，我有事要處理
+Apply this fix?
+[Y] Go ahead, apply it
+[N] Skip this one
+[?] I'd like to understand more first
+[STOP] Pause here, I'll come back later
 ```
 
 #### Rules
@@ -342,28 +356,34 @@ Render the block below for each failure. All plain-language copy comes from `ref
 - **Match severity icon to the header:** 🔴 for CRITICAL, 🟡 for WARNING, ⚪ for INFO.
 - **Progress bar:** use `▓` filled and `░` empty, 7 blocks total. Example at 3/7: `▓▓▓░░░░`.
 - **Use the user's own code style in the diff.** Match their module system (ESM vs CommonJS), variable names, and framework idioms. Pull canonical fix patterns from `references/common-pitfalls.md` and `../portaly-payment/scripts/sign_callback.mjs`, then adapt to the user's style.
-- **Never show raw CRITICAL/WARNING/INFO in user-facing text** — use 🔴 致命 / 🟡 建議 / ⚪ 有空再做.
+- **Never show raw CRITICAL/WARNING/INFO labels in user-facing text.** Translate each severity into natural phrasing in the user's conversation language (e.g. English uses "Critical / Should fix / Nice to have"). Keep the 🔴/🟡/⚪ icons to carry severity visually.
 
 #### Handling each response
 
-| User reply | Action |
-|---|---|
-| `[Y]` or "好" / "修" / "套用" | Apply the edit, confirm success in one line (`✅ 已套用 {ID}`), then move to item n+1. |
-| `[N]` or "跳過" | Do not modify the file. Mark as `⏭️ 已跳過 {ID}` and move to item n+1. |
-| `[?]` or "為什麼" / "了解更多" | Load the corresponding pitfall entry from `references/common-pitfalls.md` (wrong vs correct implementation with explanation). After explaining, re-prompt with the same Y/N/?/STOP choices — do not re-render the full template. |
-| `[STOP]` or "暫停" / "先停" | Stop immediately. Show a resume summary: `已完成 X 項 / 跳過 Y 項 / 剩 Z 項未處理。隨時說「繼續修復」我就從第 {n} 項接著做。` Do not proceed. |
+Match the user's reply to intent rather than an exact string. The key-letter triggers are canonical; equivalent words in English or the user's own language count as the same intent.
+
+| Intent | Canonical trigger | Action |
+|---|---|---|
+| Apply | `[Y]` (or "yes" / "apply" / "ok" / equivalent) | Apply the edit, confirm success in one line (e.g. `✅ Applied {ID}`), then move to item n+1. |
+| Skip | `[N]` (or "skip" / "no" / equivalent) | Do not modify the file. Mark as `⏭️ Skipped {ID}` and move to item n+1. |
+| Explain | `[?]` (or "why" / "tell me more" / equivalent) | Load the corresponding pitfall entry from `references/common-pitfalls.md` (wrong vs correct implementation with explanation). After explaining, re-prompt with the same Y/N/?/STOP choices — do not re-render the full template. |
+| Stop | `[STOP]` (or "pause" / "later" / equivalent) | Stop immediately. Show a resume summary: `Applied X / Skipped Y / Remaining Z. Say "resume fixing" any time and I'll pick up at item {n}.` Do not proceed. |
+
+Translate all user-facing strings (confirmation lines, resume summary, template labels) into the user's conversation language.
 
 #### After the last item
 
+Template:
+
 ```
-🎉 修復流程結束
-✅ 已套用 {X} 項
-⏭️ 已跳過 {Y} 項
+🎉 Fix session complete
+✅ Applied: {X}
+⏭️ Skipped: {Y}
 ─────────────────────────────────────
-建議下一步：
-1. 執行你平常的測試／預覽一下結帳流程
-2. 重跑一次 Sentry 健檢確認都通過
-3. 有 Portaly API Key 的話可以同步結果到 dashboard
+Suggested next steps:
+1. Run your usual tests or try a checkout end-to-end
+2. Re-run Sentry to confirm everything passes now
+3. If you have a Portaly API key, sync the results to your dashboard
 ```
 
 ### Step 11 — Report to Portaly (optional)
@@ -414,7 +434,7 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 ## Output Style
 
 - **Lead with the plain-language summary (Layer 1), not the table.** The 26-row table is Layer 3, shown only on request.
-- Use the **白話標題** from `references/fix-explanations.md` when naming a failed check — never surface raw IDs like "SIG-004" as the headline. Put the ID in parentheses after the title.
+- Use the **plain title** from `references/fix-explanations.md` when naming a failed check — never surface raw IDs like "SIG-004" as the headline. Put the ID in parentheses after the title.
 - Use `[PASS]`, `[FAIL]`, `[WARN]`, `[SKIP]` status indicators only inside Layer 3 tables.
 - Group Layer 3 checks by category (SIG, SUB, CBK, ENV, SEC, WEB, DEP, DATA).
 - Per-failure fix instructions belong in the Interactive Fix Workflow (one at a time, with explicit confirmation), not in a dumped list after the table.
@@ -446,9 +466,9 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 - `references/health-check-contract.md`
   Use for the full checklist item definitions, severity levels, pass/fail criteria, and the report API contract.
 - `references/common-pitfalls.md`
-  Use for detailed descriptions of known bugs found in real integrations, with wrong vs correct implementations and detection methods. Load this when a user picks `[?] 我想先了解更多` in the Interactive Fix Workflow.
+  Use for detailed descriptions of known bugs found in real integrations, with wrong vs correct implementations and detection methods. Load this when a user picks `[?]` (explain more) in the Interactive Fix Workflow.
 - `references/fix-explanations.md`
-  Use for user-facing plain-language copy of all 26 checks: 白話標題, 為什麼要改, 會影響, 不會影響. Load during Layer 1 summary rendering and during each Interactive Fix Workflow item. Do not paraphrase on the fly — keep wording consistent across summary and per-item views.
+  Use for user-facing plain-language copy of all 26 checks: plain title, why it matters, affects, doesn't affect. Load during Layer 1 summary rendering and during each Interactive Fix Workflow item. Do not paraphrase on the fly — translate at render time but keep the canonical phrasing consistent across summary and per-item views.
 - `scripts/report.mjs`
   Use for fully automated CI/CD scanning — runs all 26 checks, prints a formatted report, and POSTs results to portaly.ai. Accepts `--fail-on critical` for CI exit code control.
 - `scripts/check_signature_sort.mjs`
