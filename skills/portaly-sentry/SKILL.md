@@ -5,18 +5,62 @@ description: Run a security and reliability health check on a Portaly Vibe payme
 
 # Portaly Sentry — Payment Integration Health Check
 
-Use this skill to run a comprehensive security and reliability health check on a Portaly Vibe payment integration. This skill is designed for non-engineers using vibe coding tools who want to ship with confidence. Keep output actionable: prefer pass/fail/warn checklists over long explanations.
+Use this skill to run a comprehensive security and reliability health check on a Portaly Vibe payment integration. This skill is designed for non-engineers using vibe coding tools who want to ship with confidence. Keep output human and actionable: lead with a plain-language summary and let the user drill in — reserve the 26-row technical table for when they ask for it.
 
 This skill works alongside `portaly-payment`. It uses the same API contract as the canonical source of truth for what a correct integration looks like.
 
 ## Quick Start
 
+### Step 0 — Confirm integration exists
+
 - Confirm the project has a Portaly Vibe payment integration (look for `portaly`, `callbackSecret`, `x-portaly-signature`, or checkout session creation code).
 - If no integration is found, tell the user and stop.
-- Ask the user what they want:
-  - **Full scan** — run all 8 check categories (default)
-  - **Specific category** — run only SIG, SUB, CBK, ENV, SEC, WEB, DEP, or DATA
-  - **Scheduled scan** — set up weekly automated health checks
+
+### Step 0.1 — Introduce what Sentry checks, in plain language
+
+Before asking anything else, show the user this intro so they understand what Sentry actually does. Do not skip this step — the first-time user has no idea what "SIG" or "SUB" means.
+
+```
+Portaly Sentry 會從 3 個面向幫你健檢金流整合：
+🏦 付款這件事本身做對了嗎     簽章驗證、callback、訂閱
+🔐 你的商家金鑰有沒有保護好   環境變數、憑證管理
+🛡️ 系統其他地方會不會被打穿   套件漏洞、Web 安全、資料處理
+共 26 項檢查，依嚴重度分為 CRITICAL / WARNING / INFO。
+```
+
+### Step 0.2 — Ask which project and which scan standard
+
+Do **not** pick a default — ask the user both questions and wait for an answer. Phrase it exactly as a checkpoint, not a suggestion.
+
+```
+請告訴我：
+① 要掃哪個專案？（例如 ~/gratitude-app）
+② 想用哪個標準？
+   🚀 準備上線 — 只看 CRITICAL，全過即可放行
+   🔧 日常健檢 — CRITICAL + WARNING 全過
+   🏆 追求業界模範 — 26 項全過（含 INFO）
+   ⏰ 每週自動健檢 — 設定排程（不立即掃描）
+```
+
+Standard → scope mapping (internal):
+
+| User choice | Report includes | Blocking severity |
+|---|---|---|
+| 🚀 準備上線 | all 26 checks | CRITICAL only |
+| 🔧 日常健檢 | all 26 checks | CRITICAL + WARNING |
+| 🏆 追求業界模範 | all 26 checks | all severities |
+| ⏰ 每週自動健檢 | skip scan → jump to Step 12 | n/a |
+
+All three non-scheduled standards still run all 26 checks. What changes is the pass/fail threshold used in the summary's "目前狀態：✅ 可以放心上線 / ❌ 還不能安全上線" line.
+
+### Step 0.3 — Advanced: scan a single category
+
+Only offer this if the user asks for it explicitly (e.g. "我只想掃簽章" or "re-run SIG"). Do not surface this as a main option — category codes overwhelm first-time users.
+
+- Single category — SIG, SUB, CBK, ENV, SEC, WEB, DEP, or DATA
+
+### Prerequisites
+
 - Static analysis checks (SIG, SUB, CBK, ENV, SEC, WEB, DATA) do not require credentials.
 - For DEP checks, the project must have a `package.json`.
 - For reporting results to Portaly, the user needs a `PORTALY_API_KEY`.
@@ -177,26 +221,149 @@ Reference: `scripts/check_subscription_lifecycle.mjs` can automate this step.
 1. Check if callback payload fields are validated before database writes (type checks, length limits, sanitization).
 2. Grep log statements (`console.log`, `console.error`, `logger.`) for potential secret or PII exposure — flag any that log the full callback payload, API key, or callback secret.
 
-### Step 10 — Generate report
+### Step 10 — Present the summary first (not the full table)
 
-Produce the health check report in this format:
+After running all checks, the first thing the user sees must be a plain-language summary, **not** a 26-row table. The full technical report lives on the dashboard — only show it locally when the user asks or when reporting to Portaly fails.
+
+Output three layers, in this order:
+
+#### Layer 1 — Plain-language summary (always show)
+
+Load titles from `references/fix-explanations.md` — do not invent new phrasing.
+
+```
+📊 你的金流整合健檢結果
+🔴 致命問題   {N} 項   ← 上線前一定要修
+🟡 建議修復   {N} 項   ← 這週內處理
+⚪ 有空再做   {N} 項   ← 有餘力再補
+
+目前狀態：{status_line}
+
+最嚴重的 {min(3, failures)} 件事：
+1. {白話標題 from fix-explanations.md}（{ID}）
+2. ...
+3. ...
+
+🔗 完整健檢結果（所有 26 項、修復建議、歷史紀錄）
+https://portaly.ai/dashboard/sentry-scans/{scan_id}
+```
+
+`{status_line}` is decided by the scan standard chosen in Step 0.2:
+
+| Standard | 可以放心上線條件 |
+|---|---|
+| 🚀 準備上線 | 0 CRITICAL failures |
+| 🔧 日常健檢 | 0 CRITICAL **and** 0 WARNING failures |
+| 🏆 追求業界模範 | 0 failures across all 26 checks |
+
+Use `✅ 可以放心上線` or `❌ 還不能安全上線` — nothing in between. If the user has not reported to Portaly yet (no `scan_id`), omit the dashboard link and show only local results.
+
+#### Layer 2 — Fix mode choice (always show right after summary)
+
+```
+─────────────────────────────────────
+要現在開始修嗎？
+[A] 好，全部照順序修（建議）
+[B] 只修 🔴 致命問題（最快上線）
+[C] 我想先看完整報告
+```
+
+The user's answer routes to:
+- **[A]** → Interactive Fix Workflow with all failures, ordered CRITICAL → WARNING → INFO
+- **[B]** → Interactive Fix Workflow with CRITICAL failures only
+- **[C]** → Layer 3
+
+#### Layer 3 — Full technical report (only on [C], or when dashboard reporting is unavailable)
+
+This is the old 26-row table, grouped by category. Format:
 
 ```
 ## Portaly Sentry — Health Check Report
 Project: {project_name} | Scan: {ISO timestamp} | Mode: {manual|scheduled}
 
+### SIG — Signature Verification
 | # | Check | Severity | Status |
 |---|-------|----------|--------|
 | SIG-001 | Stable JSON sort order | CRITICAL | [PASS] |
-| SIG-002 | HMAC algorithm | CRITICAL | [PASS] |
 | ... | ... | ... | ... |
 
-Summary: X/26 passed | Y CRITICAL failures | Z warnings
+### SUB — Subscription Lifecycle
+| # | Check | Severity | Status |
+|---|-------|----------|--------|
+| ... | ... | ... | ... |
+
+(repeat for CBK / ENV / SEC / WEB / DEP / DATA)
+
+---
+
+Summary: X/26 passed | Y CRITICAL failures | Z warnings | W skipped
 
 ### Fix: {ID} — {Check Name}
 File: {file_path}:{line}
 {description of the issue}
 {code diff showing the fix}
+```
+
+### Step 10.5 — Interactive Fix Workflow (per-item confirmation)
+
+Enter this workflow only after the user explicitly picks **[A]** (fix all) or **[B]** (fix CRITICAL only) from Layer 2. For each failure, in order of severity (CRITICAL → WARNING → INFO), present exactly one item at a time and wait for confirmation before touching any file.
+
+#### Per-item template
+
+Render the block below for each failure. All plain-language copy comes from `references/fix-explanations.md` — do not paraphrase on the fly.
+
+```
+🔴 第 {n} 項，共 {m} 項       | 進度 {progress_bar} {percent}%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+修復：{白話標題}（{ID}）
+
+📍 會動哪個檔案？
+{file_path}（{summary of change: "新增 1 個 import、修改 3 行" etc.}）
+
+❓ 為什麼要改？
+{為什麼要改 from fix-explanations.md}
+
+🔧 修改預覽：
+{unified diff, - old / + new}
+
+✅ 會影響：{會影響 from fix-explanations.md}
+✅ 不會影響：{不會影響 from fix-explanations.md}
+─────────────────────────────────────
+要套用這個修改嗎？
+[Y] 好，修下去
+[N] 跳過這項
+[?] 我想先了解更多
+[STOP] 先停在這，我有事要處理
+```
+
+#### Rules
+
+- **One item at a time.** Never batch multiple fixes into one confirmation. Even if [B] has 3 CRITICAL items, ask Y/N for each.
+- **Match severity icon to the header:** 🔴 for CRITICAL, 🟡 for WARNING, ⚪ for INFO.
+- **Progress bar:** use `▓` filled and `░` empty, 7 blocks total. Example at 3/7: `▓▓▓░░░░`.
+- **Use the user's own code style in the diff.** Match their module system (ESM vs CommonJS), variable names, and framework idioms. Pull canonical fix patterns from `references/common-pitfalls.md` and `../portaly-payment/scripts/sign_callback.mjs`, then adapt to the user's style.
+- **Never show raw CRITICAL/WARNING/INFO in user-facing text** — use 🔴 致命 / 🟡 建議 / ⚪ 有空再做.
+
+#### Handling each response
+
+| User reply | Action |
+|---|---|
+| `[Y]` or "好" / "修" / "套用" | Apply the edit, confirm success in one line (`✅ 已套用 {ID}`), then move to item n+1. |
+| `[N]` or "跳過" | Do not modify the file. Mark as `⏭️ 已跳過 {ID}` and move to item n+1. |
+| `[?]` or "為什麼" / "了解更多" | Load the corresponding pitfall entry from `references/common-pitfalls.md` (wrong vs correct implementation with explanation). After explaining, re-prompt with the same Y/N/?/STOP choices — do not re-render the full template. |
+| `[STOP]` or "暫停" / "先停" | Stop immediately. Show a resume summary: `已完成 X 項 / 跳過 Y 項 / 剩 Z 項未處理。隨時說「繼續修復」我就從第 {n} 項接著做。` Do not proceed. |
+
+#### After the last item
+
+```
+🎉 修復流程結束
+✅ 已套用 {X} 項
+⏭️ 已跳過 {Y} 項
+─────────────────────────────────────
+建議下一步：
+1. 執行你平常的測試／預覽一下結帳流程
+2. 重跑一次 Sentry 健檢確認都通過
+3. 有 Portaly API Key 的話可以同步結果到 dashboard
 ```
 
 ### Step 11 — Report to Portaly (optional)
@@ -246,26 +413,25 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 
 ## Output Style
 
-- Lead with the checklist table — this is the primary deliverable.
-- Use `[PASS]`, `[FAIL]`, `[WARN]`, `[SKIP]` status indicators.
-- Group checks by category (SIG, SUB, CBK, ENV, SEC, WEB, DEP, DATA).
-- After the table, provide "Fix instructions" for each `[FAIL]` item:
-  - Show the file path and line number.
-  - Show a code diff with the fix.
-  - Explain why it matters in one sentence.
-- End with a summary line: "X/26 checks passed. Y critical issues found."
-- Do not modify code unless the user explicitly asks. This is a read-only audit.
+- **Lead with the plain-language summary (Layer 1), not the table.** The 26-row table is Layer 3, shown only on request.
+- Use the **白話標題** from `references/fix-explanations.md` when naming a failed check — never surface raw IDs like "SIG-004" as the headline. Put the ID in parentheses after the title.
+- Use `[PASS]`, `[FAIL]`, `[WARN]`, `[SKIP]` status indicators only inside Layer 3 tables.
+- Group Layer 3 checks by category (SIG, SUB, CBK, ENV, SEC, WEB, DEP, DATA).
+- Per-failure fix instructions belong in the Interactive Fix Workflow (one at a time, with explicit confirmation), not in a dumped list after the table.
+- Static analysis is read-only. Only enter fix mode after the user picks [A] or [B].
 
 ## Preferred Response Shape
 
-1. Summary line (e.g., "3 critical issues, 1 warning, 22 passed")
-2. Checklist table grouped by category
-3. Fix instructions for each FAIL (with code diffs)
+1. Plain-language summary with 🔴/🟡/⚪ counts, status line, TOP 3 failures, dashboard link (Layer 1)
+2. Fix mode choice prompt: [A] / [B] / [C] (Layer 2)
+3. Then one of:
+   - [A] or [B] → enter Interactive Fix Workflow (one failure at a time)
+   - [C] → show full Layer 3 report grouped by category
 4. Optional: report-to-Portaly confirmation
 
 ## Guardrails
 
-- **Read-only by default.** Never modify user code without explicit permission. This is an audit skill.
+- **Read-only until the user enters fix mode.** Discovery, scanning, and the Layer 1/3 reports must not touch user code. Only after the user picks `[A]` or `[B]` in Layer 2 may you enter the Interactive Fix Workflow, and within it only apply an edit after a `[Y]` for that specific item. Never batch-apply multiple fixes from a single confirmation.
 - **Mask secrets.** Never display full API keys or callback secrets in the checklist output. Use `***` masking.
 - **Cross-reference portaly-payment.** Load `../portaly-payment/references/api-contract.md` for the authoritative callback verification spec and subscription lifecycle contract.
 - **Do not assume the user's stack.** Check for Express, Next.js (App Router / Pages Router), Cloud Functions, Fastify, or vanilla Node.js before recommending fixes.
@@ -280,7 +446,9 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 - `references/health-check-contract.md`
   Use for the full checklist item definitions, severity levels, pass/fail criteria, and the report API contract.
 - `references/common-pitfalls.md`
-  Use for detailed descriptions of known bugs found in real integrations, with wrong vs correct implementations and detection methods.
+  Use for detailed descriptions of known bugs found in real integrations, with wrong vs correct implementations and detection methods. Load this when a user picks `[?] 我想先了解更多` in the Interactive Fix Workflow.
+- `references/fix-explanations.md`
+  Use for user-facing plain-language copy of all 26 checks: 白話標題, 為什麼要改, 會影響, 不會影響. Load during Layer 1 summary rendering and during each Interactive Fix Workflow item. Do not paraphrase on the fly — keep wording consistent across summary and per-item views.
 - `scripts/report.mjs`
   Use for fully automated CI/CD scanning — runs all 26 checks, prints a formatted report, and POSTs results to portaly.ai. Accepts `--fail-on critical` for CI exit code control.
 - `scripts/check_signature_sort.mjs`
