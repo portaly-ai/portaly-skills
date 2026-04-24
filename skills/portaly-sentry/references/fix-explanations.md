@@ -2,8 +2,8 @@
 
 ## Use This Reference For
 
-- rendering the "Top N issues to fix" list in the Layer 1 summary (Stage 2)
-- rendering the "Why it matters / Affects / Doesn't affect" block in the Interactive Fix Workflow (Stage 3)
+- rendering the "Top N things to fix" list in the Step 10 Layer 1 summary
+- rendering the "Why it matters / Affects / Doesn't affect" block in the Step 10.5 Interactive Fix Workflow
 - keeping user-facing wording consistent across summary and per-item views
 
 Each entry provides:

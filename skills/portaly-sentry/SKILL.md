@@ -24,7 +24,7 @@ All user-facing templates in this skill are written in English as the canonical 
 
 Before asking anything else, show the user this intro so they understand what Sentry actually does. Do not skip this step — the first-time user has no idea what "SIG" or "SUB" means.
 
-Template (translate to the user's language; keep emoji and category names):
+Template:
 
 ```
 Portaly Sentry checks your payment integration across 3 areas:
@@ -44,13 +44,13 @@ Template:
 Two things before I start:
 ① Which project should I scan? (e.g. ~/gratitude-app)
 ② Which standard do you want?
-   🚀 Pre-launch    — block on CRITICAL only; passes go live
-   🔧 Routine check — block on CRITICAL + WARNING
-   🏆 Gold standard — all 26 must pass (including INFO)
-   ⏰ Weekly auto   — set up a scheduled scan (don't scan now)
+   🚀 Pre-launch    — pass all CRITICAL
+   🔧 Routine check — pass all CRITICAL + WARNING
+   🏆 Gold standard — pass all 26 (including INFO)
+   ⏰ Weekly auto   — schedule a recurring scan instead of scanning now
 ```
 
-Standard → scope mapping (internal):
+Standard → scope mapping (agent-internal; do not show this table to the user):
 
 | User choice | Report includes | Blocking severity |
 |---|---|---|
@@ -231,9 +231,17 @@ Reference: `scripts/check_subscription_lifecycle.mjs` can automate this step.
 
 ### Step 10 — Present the summary first (not the full table)
 
-After running all checks, the first thing the user sees must be a plain-language summary, **not** a 26-row table. The full technical report lives on the dashboard — only show it locally when the user asks or when reporting to Portaly fails.
+After running all checks, the first thing the user sees must be a plain-language summary, **not** a 26-row table. The full technical report lives on the dashboard — only show it locally when the user picks `[C]` or dashboard reporting is unavailable.
 
-Output three layers, in this order:
+The output has one prep step followed by three layers, in this order:
+
+#### Pre-Layer — Offer dashboard sync (so Layer 1 can include the link)
+
+The Layer 1 summary wants to link to `https://portaly.ai/dashboard/sentry-scans/{scan_id}`, but the `scan_id` only exists after you POST results to Portaly (Step 11). Before rendering Layer 1:
+
+1. If the user has a `PORTALY_API_KEY` configured, briefly ask whether to sync this scan to their dashboard so you can show a shareable report link.
+2. On consent, run Step 11 immediately and capture the returned `scan_id`.
+3. If they decline, the API returns 404, or no key is available, skip the sync and render Layer 1 without the dashboard link. Do not block the summary on this.
 
 #### Layer 1 — Plain-language summary (always show)
 
@@ -266,7 +274,7 @@ https://portaly.ai/dashboard/sentry-scans/{scan_id}
 | 🔧 Routine check | 0 CRITICAL **and** 0 WARNING failures |
 | 🏆 Gold standard | 0 failures across all 26 checks |
 
-Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. If the user has not reported to Portaly yet (no `scan_id`), omit the dashboard link and show only local results.
+Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. If the Pre-Layer sync was skipped and there is no `scan_id`, drop the whole `🔗 Full report` block (both the label line and the URL line); do not show a broken or placeholder link.
 
 #### Layer 2 — Fix mode choice (always show right after summary)
 
@@ -287,7 +295,7 @@ The user's answer routes to:
 
 #### Layer 3 — Full technical report (only on [C], or when dashboard reporting is unavailable)
 
-This is the old 26-row table, grouped by category. Format:
+Render the full 26-row table, grouped by category. Format:
 
 ```
 ## Portaly Sentry — Health Check Report
