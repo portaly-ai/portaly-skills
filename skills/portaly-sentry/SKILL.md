@@ -9,18 +9,14 @@ Use this skill to run a comprehensive security and reliability health check on a
 
 This skill works alongside `portaly-payment`. It uses the same API contract as the canonical source of truth for what a correct integration looks like.
 
-## Language
-
-All user-facing templates in this skill are written in English as the canonical form. When speaking to a user, render each template in whatever language the user has been using in the conversation (e.g. Traditional Chinese, Simplified Chinese, Japanese, English). Keep IDs (`SIG-004`), code identifiers, file paths, URLs, and key-letter choices (`[Y]`, `[N]`, `[?]`, `[STOP]`, `[A]`, `[B]`, `[C]`) unchanged. Plain-language copy in `references/fix-explanations.md` follows the same rule — translate it at render time, don't paraphrase in place.
-
 ## Quick Start
 
-### Step 0 — Confirm integration exists
+### Step 1 — Confirm integration exists
 
 - Confirm the project has a Portaly Vibe payment integration (look for `portaly`, `callbackSecret`, `x-portaly-signature`, or checkout session creation code).
 - If no integration is found, tell the user and stop.
 
-### Step 0.1 — Introduce what Sentry checks, in plain language
+### Step 2 — Introduce what Sentry checks, in plain language
 
 Before asking anything else, show the user this intro so they understand what Sentry actually does. Do not skip this step — the first-time user has no idea what "SIG" or "SUB" means.
 
@@ -34,7 +30,7 @@ Portaly Sentry checks your payment integration across 3 areas:
 26 checks in total, graded by severity: CRITICAL / WARNING / INFO.
 ```
 
-### Step 0.2 — Ask which project and which scan standard
+### Step 3 — Ask which project and which scan standard
 
 Do **not** pick a default — ask the user both questions and wait for an answer. Phrase it as a checkpoint, not a suggestion.
 
@@ -57,15 +53,11 @@ Standard → scope mapping (agent-internal; do not show this table to the user):
 | 🚀 Pre-launch | all 26 checks | CRITICAL only |
 | 🔧 Routine check | all 26 checks | CRITICAL + WARNING |
 | 🏆 Gold standard | all 26 checks | all severities |
-| ⏰ Weekly auto | skip scan → jump to Step 12 | n/a |
+| ⏰ Weekly auto | skip scan → jump to Step 16 | n/a |
 
-All three non-scheduled standards still run all 26 checks. What changes is the pass/fail threshold used in the Layer 1 summary's "Status" line (see Step 10).
+All three non-scheduled standards still run all 26 checks. What changes is the pass/fail threshold used in the Layer 1 summary's "Status" line (see Step 14).
 
-### Step 0.3 — Advanced: scan a single category
-
-Only offer this if the user asks for it explicitly (e.g. "only scan signatures" or "re-run SIG"). Do not surface this as a main option — category codes overwhelm first-time users.
-
-- Single category — SIG, SUB, CBK, ENV, SEC, WEB, DEP, or DATA
+**Advanced.** If the user explicitly asks to scan only one category (e.g. "only scan signatures" or "re-run SIG"), accept that as a single-category mode using one of: SIG, SUB, CBK, ENV, SEC, WEB, DEP, DATA. Do not surface this as a main option — category codes overwhelm first-time users.
 
 ### Prerequisites
 
@@ -159,7 +151,7 @@ Checks for safe data handling practices.
 
 ## Workflow
 
-### Step 1 — Discover integration files
+### Step 4 — Discover integration files
 
 Search the project for files related to Portaly payment integration:
 
@@ -171,7 +163,7 @@ Search the project for files related to Portaly payment integration:
 
 Build a file inventory and map each file to the relevant check categories.
 
-### Step 2 — Run SIG checks
+### Step 5 — Run SIG checks
 
 For each signature-related file:
 
@@ -182,7 +174,7 @@ For each signature-related file:
 
 Reference: `scripts/check_signature_sort.mjs` can automate this step.
 
-### Step 3 — Run SUB checks
+### Step 6 — Run SUB checks
 
 Trace the subscription ID lifecycle:
 
@@ -192,19 +184,19 @@ Trace the subscription ID lifecycle:
 
 Reference: `scripts/check_subscription_lifecycle.mjs` can automate this step.
 
-### Step 4 — Run CBK checks
+### Step 7 — Run CBK checks
 
 1. Check if `callbackUrl` is constructed with `https://`.
 2. Check the signature verification failure branch — does it log diagnostic info (timestamp, payload hash, expected vs actual)?
 3. Check that the success branch returns an explicit `200` status.
 
-### Step 5 — Run ENV checks
+### Step 8 — Run ENV checks
 
 1. Read `.env` (or `.env.example`, `.env.local`) — check for `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET`.
 2. Read `.gitignore` — check that `.env` is listed.
 3. Grep source files (excluding `node_modules`, `.env`) for literal `pcs_live_`, `pcs_test_`, or any string that looks like a callback secret.
 
-### Step 6 — Run SEC checks
+### Step 9 — Run SEC checks
 
 1. Check for API key or callback secret in files under directories typically served to the browser (`src/`, `public/`, `app/`, `pages/` for client components). Watch for `NEXT_PUBLIC_` prefixed env vars containing secrets.
 2. Check if the raw callback body is saved to the database for auditing.
@@ -212,40 +204,40 @@ Reference: `scripts/check_subscription_lifecycle.mjs` can automate this step.
 4. Check for CORS middleware on the callback endpoint — flag `Access-Control-Allow-Origin: *`.
 5. Check for CSP headers on success/cancel redirect pages.
 
-### Step 7 — Run WEB checks
+### Step 10 — Run WEB checks
 
 1. Check if `successRedirectUrl` and `cancelRedirectUrl` are validated against an allowlist of trusted domains before being used in redirects.
 2. Check error handling in the callback route — ensure `catch` blocks do not send full error stacks in the response body.
 3. Check that the callback endpoint validates `Content-Type` header.
 4. Check for body parser size limits (e.g., `express.json({ limit: '1mb' })` or equivalent).
 
-### Step 8 — Run DEP checks
+### Step 11 — Run DEP checks
 
 1. If `package.json` exists, run `npm audit --json` or `pnpm audit --json` and parse the output for critical/high severity vulnerabilities.
 2. Check if `package-lock.json` or `pnpm-lock.yaml` exists and is not in `.gitignore`.
 
-### Step 9 — Run DATA checks
+### Step 12 — Run DATA checks
 
 1. Check if callback payload fields are validated before database writes (type checks, length limits, sanitization).
 2. Grep log statements (`console.log`, `console.error`, `logger.`) for potential secret or PII exposure — flag any that log the full callback payload, API key, or callback secret.
 
-### Step 10 — Present the summary first (not the full table)
+### Step 13 — Sync results to Portaly (optional)
 
-After running all checks, the first thing the user sees must be a plain-language summary, **not** a 26-row table. The full technical report lives on the dashboard — only show it locally when the user picks `[C]` or dashboard reporting is unavailable.
+After running all checks but before presenting the summary, offer to sync the scan to the user's Portaly dashboard. Doing this now means Step 14's Layer 1 summary can include a shareable report link.
 
-The output has one prep step followed by three layers, in this order:
+1. If the user has a `PORTALY_API_KEY` configured, briefly ask whether to sync this scan so you can show a shareable report link. Do not call the API without consent.
+2. On consent, POST to `https://portaly.ai/api/creator-subscription/health-check-reports` with `Authorization: Bearer {PORTALY_API_KEY}` and capture the returned `scan_id`. See `references/health-check-contract.md` for the full request/response schema.
+3. If the user declines, no key is available, or the API returns 404, skip the sync and continue to Step 14 without a dashboard link. Do not block the summary on this.
 
-#### Pre-Layer — Offer dashboard sync (so Layer 1 can include the link)
+### Step 14 — Present the summary (not the full table)
 
-The Layer 1 summary wants to link to `https://portaly.ai/dashboard/sentry-scans/{scan_id}`, but the `scan_id` only exists after you POST results to Portaly (Step 11). Before rendering Layer 1:
+The first thing the user sees must be a plain-language summary, **not** a 26-row table. The full technical report lives on the dashboard — only show it locally when the user picks `[C]` or dashboard reporting is unavailable.
 
-1. If the user has a `PORTALY_API_KEY` configured, briefly ask whether to sync this scan to their dashboard so you can show a shareable report link.
-2. On consent, run Step 11 immediately and capture the returned `scan_id`.
-3. If they decline, the API returns 404, or no key is available, skip the sync and render Layer 1 without the dashboard link. Do not block the summary on this.
+Output three layers, in this order:
 
 #### Layer 1 — Plain-language summary (always show)
 
-Load titles from `references/fix-explanations.md` — do not invent new phrasing. Translate the template into the user's conversation language at render time.
+Load titles from `references/fix-explanations.md` — do not invent new phrasing.
 
 Template:
 
@@ -266,7 +258,7 @@ Top {min(3, failures)} things to fix:
 https://portaly.ai/dashboard/sentry-scans/{scan_id}
 ```
 
-`{status_line}` is decided by the scan standard chosen in Step 0.2:
+`{status_line}` is decided by the scan standard chosen in Step 3:
 
 | Standard | Condition for "safe to launch" |
 |---|---|
@@ -274,7 +266,7 @@ https://portaly.ai/dashboard/sentry-scans/{scan_id}
 | 🔧 Routine check | 0 CRITICAL **and** 0 WARNING failures |
 | 🏆 Gold standard | 0 failures across all 26 checks |
 
-Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. If the Pre-Layer sync was skipped and there is no `scan_id`, drop the whole `🔗 Full report` block (both the label line and the URL line); do not show a broken or placeholder link.
+Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. If the Step 13 sync was skipped and there is no `scan_id`, drop the whole `🔗 Full report` block (both the label line and the URL line); do not show a broken or placeholder link.
 
 #### Layer 2 — Fix mode choice (always show right after summary)
 
@@ -324,13 +316,13 @@ File: {file_path}:{line}
 {code diff showing the fix}
 ```
 
-### Step 10.5 — Interactive Fix Workflow (per-item confirmation)
+### Step 15 — Interactive Fix Workflow (per-item confirmation)
 
 Enter this workflow only after the user explicitly picks **[A]** (fix all) or **[B]** (fix CRITICAL only) from Layer 2. For each failure, in order of severity (CRITICAL → WARNING → INFO), present exactly one item at a time and wait for confirmation before touching any file.
 
 #### Per-item template
 
-Render the block below for each failure. All plain-language copy comes from `references/fix-explanations.md` — do not paraphrase on the fly. Translate the template into the user's conversation language at render time, but keep IDs, file paths, code in the diff, and the `[Y]/[N]/[?]/[STOP]` keys unchanged.
+Render the block below for each failure. All plain-language copy comes from `references/fix-explanations.md` — do not paraphrase on the fly. Keep IDs, file paths, code in the diff, and the `[Y]/[N]/[?]/[STOP]` keys as-is.
 
 Template:
 
@@ -364,7 +356,7 @@ Apply this fix?
 - **Match severity icon to the header:** 🔴 for CRITICAL, 🟡 for WARNING, ⚪ for INFO.
 - **Progress bar:** use `▓` filled and `░` empty, 7 blocks total. Example at 3/7: `▓▓▓░░░░`.
 - **Use the user's own code style in the diff.** Match their module system (ESM vs CommonJS), variable names, and framework idioms. Pull canonical fix patterns from `references/common-pitfalls.md` and `../portaly-payment/scripts/sign_callback.mjs`, then adapt to the user's style.
-- **Never show raw CRITICAL/WARNING/INFO labels in user-facing text.** Translate each severity into natural phrasing in the user's conversation language (e.g. English uses "Critical / Should fix / Nice to have"). Keep the 🔴/🟡/⚪ icons to carry severity visually.
+- **Never show raw CRITICAL/WARNING/INFO labels in user-facing text.** Use natural phrasing like "Critical / Should fix / Nice to have", and let the 🔴/🟡/⚪ icons carry severity visually.
 
 #### Handling each response
 
@@ -376,8 +368,6 @@ Match the user's reply to intent rather than an exact string. The key-letter tri
 | Skip | `[N]` (or "skip" / "no" / equivalent) | Do not modify the file. Mark as `⏭️ Skipped {ID}` and move to item n+1. |
 | Explain | `[?]` (or "why" / "tell me more" / equivalent) | Load the corresponding pitfall entry from `references/common-pitfalls.md` (wrong vs correct implementation with explanation). After explaining, re-prompt with the same Y/N/?/STOP choices — do not re-render the full template. |
 | Stop | `[STOP]` (or "pause" / "later" / equivalent) | Stop immediately. Show a resume summary: `Applied X / Skipped Y / Remaining Z. Say "resume fixing" any time and I'll pick up at item {n}.` Do not proceed. |
-
-Translate all user-facing strings (confirmation lines, resume summary, template labels) into the user's conversation language.
 
 #### After the last item
 
@@ -394,16 +384,7 @@ Suggested next steps:
 3. If you have a Portaly API key, sync the results to your dashboard
 ```
 
-### Step 11 — Report to Portaly (optional)
-
-If the user wants to report results to Portaly:
-
-1. Confirm user consent before sending any data.
-2. POST to `https://portaly.ai/api/creator-subscription/health-check-reports` with `Authorization: Bearer {PORTALY_API_KEY}`.
-3. See `references/health-check-contract.md` for the full request/response schema.
-4. If the endpoint returns 404, it is not yet live — skip reporting and show results locally only.
-
-### Step 12 — Set up automated scanning (optional)
+### Step 16 — Set up automated scanning (optional)
 
 Three options, from simplest to most rigorous. Present all three and let the user choose.
 
@@ -476,7 +457,7 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 - `references/common-pitfalls.md`
   Use for detailed descriptions of known bugs found in real integrations, with wrong vs correct implementations and detection methods. Load this when a user picks `[?]` (explain more) in the Interactive Fix Workflow.
 - `references/fix-explanations.md`
-  Use for user-facing plain-language copy of all 26 checks: plain title, why it matters, affects, doesn't affect. Load during Layer 1 summary rendering and during each Interactive Fix Workflow item. Do not paraphrase on the fly — translate at render time but keep the canonical phrasing consistent across summary and per-item views.
+  Use for user-facing plain-language copy of all 26 checks: plain title, why it matters, affects, doesn't affect. Load during Layer 1 summary rendering and during each Interactive Fix Workflow item. Do not paraphrase on the fly — keep the canonical phrasing consistent across summary and per-item views.
 - `scripts/report.mjs`
   Use for fully automated CI/CD scanning — runs all 26 checks, prints a formatted report, and POSTs results to portaly.ai. Accepts `--fail-on critical` for CI exit code control.
 - `scripts/check_signature_sort.mjs`
