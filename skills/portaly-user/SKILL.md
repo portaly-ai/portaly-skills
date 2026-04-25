@@ -60,6 +60,7 @@ Help the vibe coder map their user fields to the Portaly schema.
 | `last_login_at` | ISO 8601 | No | Last login timestamp (e.g. `2026-04-15T08:30:00.000Z`) |
 | `created_at` | ISO 8601 | No | User registration timestamp in the vibe coder's system (e.g. `2026-01-10T12:00:00.000Z`) |
 | `metadata` | object | No | Arbitrary key-value data (max 10KB) |
+| `signup_ref_code` | string | No | Discount/referral code captured at registration (e.g. from `?ref=EARLY2026`). When this user later starts a checkout, Portaly auto-applies the matching rule once their email is verified, provided the code is still active and the per-customer cap has not been reached. **First-write-wins** — once recorded, subsequent syncs cannot overwrite. The code must already be created in Portaly via the `portaly-payment` skill **before** users register with it. |
 
 **How to map:** Read the vibe coder's user model, then match available fields to the Portaly schema. Only map fields that actually exist — skip any the system doesn't have. `email` is the only required field.
 
@@ -155,6 +156,7 @@ async function syncToPortaly(users: Array<{
   createdAt?: Date | null;    // → created_at (ISO 8601)
   status?: string;            // → status ('active' or 'deleted')
   metadata?: Record<string, unknown>;
+  signupRefCode?: string;     // → signup_ref_code (only on initial registration sync)
 }>) {
   const BATCH_SIZE = 100
   const results = { synced: 0, created: 0, updated: 0, errors: [] as any[] }
@@ -171,6 +173,7 @@ async function syncToPortaly(users: Array<{
       created_at: user.createdAt?.toISOString(),
       status: user.status || 'active',
       metadata: user.metadata,
+      signup_ref_code: user.signupRefCode,
     }))
 
     try {
@@ -237,7 +240,7 @@ await syncToPortaly([userData]) // if this fails, user registration fails too
 
 **Where to insert sync calls — pass all mapped fields available at each hook point:**
 
-- **User registration** — after successful signup, sync the new user with all available fields
+- **User registration** — after successful signup, sync the new user with all available fields. **If the registration form or URL captured a referral / promo parameter (e.g. `?ref=EARLY2026`), pass it as `signup_ref_code`** so Portaly can auto-apply the matching discount on this user's next eligible checkout. Common URL patterns to support: `?ref=`, `?code=`, `?promo=`, `?coupon=`. The code must already exist in Portaly (created via the `portaly-payment` skill); unknown codes are dropped silently with `errors: [{ reason: 'unknown_signup_ref_code' }]` — the user is still synced. **First-write-wins** — only the first successful sync records the code; later syncs that pass a different code are dropped with `errors: [{ reason: 'signup_ref_code_already_recorded' }]`.
 - **Profile update** — after successful save, sync updated fields
 - **Login** — call sync in the framework's auth hook (e.g. Payload `afterLogin`, NextAuth `events.signIn`, Supabase auth webhooks, Django `user_logged_in` signal, Flask-Login `user_logged_in` signal) and pass `last_login_at` set to the current time in ISO 8601 format. No need to store this in the vibe coder's own database — just generate the timestamp at call time and send it to Portaly.
 - **Account deletion** — sync with `status: "deleted"` to remove from Portaly

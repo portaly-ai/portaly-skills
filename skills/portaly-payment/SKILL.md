@@ -121,12 +121,31 @@ Payment site URLs to which buyers are redirected for checkout:
 - Treat the `checkoutUrl` returned by Portaly as authoritative. Do not reconstruct it from guessed domains.
 - After creating or updating a plan, check the response `name` and `description` for garbled text (mojibake). If corrupted, fix shell encoding and use `PUT /api/creator-subscription/plans/{planId}` to correct it. See the Windows encoding note in Guardrails.
 
+### 3.5 Create discount codes (optional)
+
+- Use the Discount Code APIs after at least one plan exists.
+- A code carries an array of **rules**; each rule can target a different set of plans with its own discount and duration. Example: code `EARLY2026` with two rules — 50% off for 3 cycles (= 3 months) on the monthly plan, and 20% off for 1 cycle (= 1 year) on the yearly plan.
+- Per rule, confirm with the human user:
+  - **Discount type**: `fixed` (TWD off) / `percent` (% off) / `free` (100% off).
+  - **Duration**: `repeating N cycles` (default 1) or `forever` (typically with `fixed`). One cycle equals one billing period — a month for a monthly plan, a year for a yearly plan.
+  - **appliesTo**: `all` (fallback for any plan not covered by a specific rule) or `specific` planIds (e.g. yearly plan only). At most one `all` rule per code; planIds may not appear in more than one rule.
+- Code-level params:
+  - **Custom code**: 3-40 chars, `[A-Z0-9_-]`. Stored and displayed in **UPPERCASE**; lookup is case-insensitive on input. Unique per profile. Immutable post-create.
+  - **Redemption window**: `redeemFrom` / `redeemBy`.
+  - **Caps**: `maxRedemptions` (total) / `maxRedemptionsPerCustomer` (per email).
+- Codes are shared across **live and test** modes (same as plans).
+- Codes also serve as **ref codes** — see the `portaly-user` skill for how to record `signupRefCode` at user registration. When a buyer with a recorded `signupRefCode` later checks out and verifies their email, Portaly auto-applies the matching rule, provided the code is still within its `redeemBy` window.
+- See `references/discount-code-examples.md` for example prompts and the parameter cheatsheet.
+- **Money-moving guard**: live-mode discount creation requires explicit user confirmation (same rule as live-mode plan creation).
+
 ### 4. Create the checkout session
 
 - Create a checkout session before the buyer initiates payment.
 - Call `POST /api/creator-subscription/checkout-sessions` with `Authorization: Bearer {api_key}`.
 - Send `planId` and optional `successRedirectUrl`, `cancelRedirectUrl`, `callbackUrl`, `merchantOrderNumber`, and string-keyed `metadata`.
+- **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`. When omitted, Portaly attempts to auto-apply a discount via the buyer's `signupRefCode` after their email is verified inside hosted checkout (no extra call needed from the merchant).
 - Persist `sessionId`, `checkoutToken`, `checkoutUrl`, and `expiresAt` on the third-party side.
+- The session response includes `appliedDiscount` when a discount was applied at session creation; `session.amount` is always the **post-discount** amount the buyer will be charged.
 - Redirect the buyer to `checkoutUrl`.
 
 ### 5. Let Portaly run hosted checkout
@@ -274,6 +293,8 @@ When using this skill, aim to return one or more of:
   Use for bearer auth, endpoint contract, callback headers, payload fields, and third-party implementation shape.
 - `references/checkout-and-renewal.md`
   Use only as optional background for the high-level checkout lifecycle and renewal behavior.
+- `references/discount-code-examples.md`
+  Example prompts, parameter cheatsheet, and ref-code usage for the Discount Code APIs.
 - `scripts/sign_callback.py`
   Use when you need a deterministic example of Portaly callback signing and verification.
 - `scripts/sign_callback.mjs`

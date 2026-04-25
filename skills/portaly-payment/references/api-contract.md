@@ -212,6 +212,159 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `data.file.publicURL`
   - `data.plan`
 
+## Discount Codes
+
+Use this when the human user wants to issue promotional codes for the plans on Portaly. Codes are owned by a profile, shared across live/test, and immutable post-create on the `code` string. Each code carries one or more **rules**; each rule maps a discount + duration to a set of plans.
+
+- Endpoints:
+  - `POST /api/creator-subscription/admin/discount-codes` — create
+  - `GET /api/creator-subscription/admin/discount-codes` — list (`?status=active|disabled&limit=&startAfter=`)
+  - `GET /api/creator-subscription/admin/discount-codes/{codeId}` — single
+  - `GET /api/creator-subscription/admin/discount-codes/lookup?code=X` — case-insensitive string lookup
+  - `PUT /api/creator-subscription/admin/discount-codes/{codeId}` — update (rejects `code` field with 400 `CODE_IMMUTABLE`)
+  - `DELETE /api/creator-subscription/admin/discount-codes/{codeId}` — soft delete (`status: disabled`)
+- Required headers:
+  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Content-Type: application/json`
+
+### Rule shape
+
+A **rule** is a discriminated union over three fields. The pipes below denote alternative variants — only one variant per field is sent on the wire.
+
+```jsonc
+{
+  "appliesTo":
+    | { "type": "all" }
+    | { "type": "specific", "planIds": ["plan_..."] },          // planIds: at least 1
+  "discount":
+    | { "type": "fixed",   "value": 100, "currency": "TWD" }    // value: positive integer
+    | { "type": "percent", "value": 20 }                         // value: 1..100
+    | { "type": "free" },                                         // equivalent to 100% off
+  "duration":
+    | { "type": "repeating", "cycles": 3 }                       // cycles: 1..60
+    | { "type": "forever" }
+}
+```
+
+Rule semantics:
+
+- `cycles` is **billing-period count**. Monthly plan + cycles 3 → discount applies to first 3 monthly charges. Yearly plan + cycles 1 → discount applies to first yearly charge.
+- `forever` is typically used with `fixed` (permanent low-price tier). It is also valid with `percent` or `free`, though those combinations are rarely what merchants want.
+- For a given checkout, the rule that targets the plan via `specific.planIds` wins; otherwise the `all` fallback applies (at most one per code).
+
+### `POST /api/creator-subscription/admin/discount-codes`
+
+Request fields:
+
+- `code`: required, 3-40 chars, `[A-Z0-9_-]`. Stored and displayed in UPPERCASE; lookup is case-insensitive on input. Unique per profile.
+- `rules`: required array, ≥ 1. Validation: at most one `all` rule; planIds may not appear in more than one rule.
+- `redeemFrom`, `redeemBy`: optional ISO datetime; `redeemBy` must be after `redeemFrom`.
+- `maxRedemptions`: optional positive integer (total cap).
+- `maxRedemptionsPerCustomer`: optional positive integer (per-email cap).
+- `status`: optional, `active` (default) | `disabled`.
+
+Response 201:
+
+```json
+{
+  "data": {
+    "id": "dc_abc123",
+    "profileId": "profile_xyz",
+    "code": "EARLY2026",
+    "status": "active",
+    "rules": [
+      {
+        "appliesTo": { "type": "specific", "planIds": ["plan_monthly_pro"] },
+        "discount": { "type": "percent", "value": 50 },
+        "duration": { "type": "repeating", "cycles": 3 }
+      },
+      {
+        "appliesTo": { "type": "specific", "planIds": ["plan_yearly_pro"] },
+        "discount": { "type": "percent", "value": 20 },
+        "duration": { "type": "repeating", "cycles": 1 }
+      }
+    ],
+    "redeemFrom": null,
+    "redeemBy": "2026-12-31T23:59:59.000Z",
+    "maxRedemptions": null,
+    "maxRedemptionsPerCustomer": 1,
+    "timesRedeemed": 0,
+    "createdAt": "2026-04-25T03:00:00.000Z",
+    "updatedAt": "2026-04-25T03:00:00.000Z"
+  }
+}
+```
+
+Error codes:
+
+- `400 Validation failed` — Zod failure (rules conflict, percent out of range, redeem window inverted, etc.).
+- `403 UPGRADE_REQUIRED` — profile lacks the entitlement to create discount codes (parity with plan creation).
+- `409 DUPLICATE_CODE` — same code already exists for this profile.
+
+### Single-rule examples
+
+Percent + repeating, scoped to yearly plan:
+
+```json
+{
+  "code": "BLACKFRIDAY",
+  "rules": [
+    {
+      "appliesTo": { "type": "specific", "planIds": ["plan_yearly_pro"] },
+      "discount": { "type": "percent", "value": 20 },
+      "duration": { "type": "repeating", "cycles": 1 }
+    }
+  ],
+  "redeemBy": "2026-12-31T23:59:59.000Z",
+  "maxRedemptions": 100,
+  "maxRedemptionsPerCustomer": 1
+}
+```
+
+Free first cycle, all plans:
+
+```json
+{
+  "code": "FREEMONTH",
+  "rules": [
+    {
+      "appliesTo": { "type": "all" },
+      "discount": { "type": "free" },
+      "duration": { "type": "repeating", "cycles": 1 }
+    }
+  ]
+}
+```
+
+Founder pricing (fixed forever, single plan):
+
+```json
+{
+  "code": "FOUNDER100",
+  "rules": [
+    {
+      "appliesTo": { "type": "specific", "planIds": ["plan_pro_yearly"] },
+      "discount": { "type": "fixed", "value": 100, "currency": "TWD" },
+      "duration": { "type": "forever" }
+    }
+  ]
+}
+```
+
+### Update / Disable
+
+`PUT /api/creator-subscription/admin/discount-codes/{codeId}` accepts any subset of `rules`, `redeemFrom`, `redeemBy`, `maxRedemptions`, `maxRedemptionsPerCustomer`, `status`. **Sending `code` returns 400 `CODE_IMMUTABLE`.** Rule changes do not retroactively affect already-redeemed subscriptions; their snapshot stays put.
+
+`DELETE /api/creator-subscription/admin/discount-codes/{codeId}` soft-deletes by flipping `status` to `disabled`. Disabled codes are excluded from default `GET` listings; pass `?status=disabled` to inspect them.
+
+### Ref-code Usage
+
+A discount code can also serve as a registration ref code. The vibe coder records the code via the `portaly-user` skill's `signupRefCode` field at user registration; once that buyer triggers a checkout and verifies their email, Portaly auto-applies the matching rule for the chosen plan. See the user-skill api-contract for `signupRefCode` semantics.
+
+### Rate limit
+
+Discount-code endpoints fall in the **write** group (20 requests/min); read endpoints share the 120/min budget.
+
 ## Session Creation
 
 Use this when the human user needs to send the buyer into Portaly hosted checkout.
@@ -229,6 +382,8 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `callbackUrl`: optional merchant callback endpoint
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context
+  - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied later via the buyer's `signupRefCode` once their email is verified inside hosted checkout.
+  - `customerEmail`: optional pre-known buyer email. Currently informational only — the buyer-confirmed email captured during hosted checkout is the one used to look up the buyer's `signupRefCode` and to enforce the per-customer cap.
 
 Request body (fixed pricing plan):
 
@@ -268,6 +423,8 @@ Request body (dynamic pricing plan):
   - `data.checkoutUrl`: URL the buyer should visit
   - `data.checkoutToken`: server-side token for provider routes or manual completion
   - `data.expiresAt`: session expiry timestamp
+  - `data.appliedDiscount?`: present when a manual `discountCode` was validated and applied at session creation. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. When the field is present, `session.amount` is the **post-discount** total (`finalAmount`).
+  - `data.pendingRefCodeLookup?`: `true` whenever no manual `discountCode` was passed. Portaly will attempt the `signupRefCode` lookup once the buyer's email is verified inside hosted checkout; on a hit the session is updated with `appliedDiscount` and `amount` becomes the post-discount total.
 
 ```json
 {
@@ -478,6 +635,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `paymentMethod`
   - `customerEmail`
   - `completedAt`
+  - `appliedDiscount?` — present when a discount was applied to this checkout. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. The payload's `amount` is the actually-charged (post-discount) amount.
 
 Payload example:
 

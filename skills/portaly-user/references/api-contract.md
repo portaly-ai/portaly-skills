@@ -41,7 +41,8 @@ Batch upsert users. Max 100 per call.
       "plan_name": "Pro",
       "last_login_at": "2026-04-15T08:30:00.000Z",
       "created_at": "2026-01-10T12:00:00.000Z",
-      "metadata": { "tier": "gold" }
+      "metadata": { "tier": "gold" },
+      "signup_ref_code": "EARLY2026"
     }
   ]
 }
@@ -58,6 +59,7 @@ Batch upsert users. Max 100 per call.
 | `last_login_at` | string | No | ISO 8601 datetime (e.g. `2026-04-15T08:30:00.000Z`) |
 | `created_at` | string | No | ISO 8601 datetime — user registration time in the vibe coder's system (e.g. `2026-01-10T12:00:00.000Z`) |
 | `metadata` | object | No | Arbitrary key-value, max 10KB serialized |
+| `signup_ref_code` | string | No | Discount code used as a referral at signup. 3-40 chars, `[A-Z0-9_-]` (case-insensitive on input; stored UPPERCASE). When this buyer later starts a checkout and verifies their email, Portaly auto-applies the matching rule for the chosen plan — provided the code is still within its `redeemBy` window and the per-customer cap (if any) has not been reached. **First-write-wins** per (profileId, email): once recorded, subsequent syncs cannot overwrite it. |
 
 **Response (200):**
 ```json
@@ -69,11 +71,20 @@ Batch upsert users. Max 100 per call.
     "deleted": 0,
     "errors": [
       { "email": "bad-email", "reason": "invalid email format" },
-      { "email": "huge@meta.data", "reason": "metadata exceeds 10KB" }
+      { "email": "huge@meta.data", "reason": "metadata exceeds 10KB" },
+      { "email": "carol@example.com", "reason": "unknown_signup_ref_code" },
+      { "email": "dave@example.com", "reason": "signup_ref_code_already_recorded" }
     ]
   }
 }
 ```
+
+**Notes on `signup_ref_code` errors:**
+
+- `unknown_signup_ref_code` — the code does not exist in Portaly, is `disabled`, or is past `redeemBy`. The user is still synced; the code is dropped (not persisted on the user row).
+- `signup_ref_code_already_recorded` — the user already has a different `signup_ref_code` recorded. The original is kept (first-write-wins); the new one is dropped.
+
+These errors do **not** block the sync — successful user upserts still happen.
 
 **Fire-and-forget pattern (required):**
 ```typescript
