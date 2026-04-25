@@ -2,8 +2,8 @@
 
 ## Use This Reference For
 
-- rendering the "Top N things to fix" list in the Step 10 Layer 1 summary
-- rendering the "Why it matters / Affects / Doesn't affect" block in the Step 10.5 Interactive Fix Workflow
+- rendering the "Top N things to fix" list in the Step 14 Layer 1 summary
+- rendering the "Why it matters / Affects / Doesn't affect" block in the Step 15 Interactive Fix Workflow
 - keeping user-facing wording consistent across summary and per-item views
 
 Each entry provides:
@@ -14,8 +14,6 @@ Each entry provides:
 - **Doesn't affect** — reassurance about what stays untouched
 
 Severity values match `SKILL.md`. When `SKILL.md` and `health-check-contract.md` disagree, use `SKILL.md` (the skill definition is canonical for the UX layer).
-
-**Language note:** All copy below is written in English. When speaking to a user, translate each field into whatever language the user is using in the conversation (e.g. Traditional Chinese, Simplified Chinese, Japanese). Keep IDs, code identifiers, and file paths unchanged.
 
 ---
 
