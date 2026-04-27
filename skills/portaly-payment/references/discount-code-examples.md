@@ -1,6 +1,6 @@
 # Discount Code Examples & Cheatsheet
 
-Reach for this when the human user asks the agent to "make a coupon", "build a discount code", "set up a promo", or describes a campaign in prose. The agent should turn the prose into a `POST /api/creator-subscription/admin/discount-codes` payload and confirm before calling in **live** mode.
+Reach for this when the human user asks the agent to "make a coupon", "build a discount code", "set up a promo", or describes a campaign in prose. The agent should turn the prose into a `POST /api/creator-subscription/discount-codes` payload and confirm before calling in **live** mode.
 
 ## Example prompts the agent should handle
 

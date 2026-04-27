@@ -217,12 +217,12 @@ Use this when the human user wants the Agent to create or maintain the product b
 Use this when the human user wants to issue promotional codes for the plans on Portaly. Codes are owned by a profile, shared across live/test, and immutable post-create on the `code` string. Each code carries one or more **rules**; each rule maps a discount + duration to a set of plans.
 
 - Endpoints:
-  - `POST /api/creator-subscription/admin/discount-codes` — create
-  - `GET /api/creator-subscription/admin/discount-codes` — list (`?status=active|disabled&limit=&startAfter=`)
-  - `GET /api/creator-subscription/admin/discount-codes/{codeId}` — single
-  - `GET /api/creator-subscription/admin/discount-codes/lookup?code=X` — case-insensitive string lookup
-  - `PUT /api/creator-subscription/admin/discount-codes/{codeId}` — update (rejects `code` field with 400 `CODE_IMMUTABLE`)
-  - `DELETE /api/creator-subscription/admin/discount-codes/{codeId}` — soft delete (`status: disabled`)
+  - `POST /api/creator-subscription/discount-codes` — create
+  - `GET /api/creator-subscription/discount-codes` — list (`?status=active|disabled&limit=&startAfter=`)
+  - `GET /api/creator-subscription/discount-codes/{codeId}` — single
+  - `GET /api/creator-subscription/discount-codes/lookup?code=X` — case-insensitive string lookup
+  - `PUT /api/creator-subscription/discount-codes/{codeId}` — update (rejects `code` field with 400 `CODE_IMMUTABLE`)
+  - `DELETE /api/creator-subscription/discount-codes/{codeId}` — soft delete (`status: disabled`)
 - Required headers:
   - `Authorization: Bearer {portaly_vibe_payment_api_key}`
   - `Content-Type: application/json`
@@ -252,7 +252,7 @@ Rule semantics:
 - `forever` is typically used with `fixed` (permanent low-price tier). It is also valid with `percent` or `free`, though those combinations are rarely what merchants want.
 - For a given checkout, the rule that targets the plan via `specific.planIds` wins; otherwise the `all` fallback applies (at most one per code).
 
-### `POST /api/creator-subscription/admin/discount-codes`
+### `POST /api/creator-subscription/discount-codes`
 
 Request fields:
 
@@ -353,9 +353,9 @@ Founder pricing (fixed forever, single plan):
 
 ### Update / Disable
 
-`PUT /api/creator-subscription/admin/discount-codes/{codeId}` accepts any subset of `rules`, `redeemFrom`, `redeemBy`, `maxRedemptions`, `maxRedemptionsPerCustomer`, `status`. **Sending `code` returns 400 `CODE_IMMUTABLE`.** Rule changes do not retroactively affect already-redeemed subscriptions; their snapshot stays put.
+`PUT /api/creator-subscription/discount-codes/{codeId}` accepts any subset of `rules`, `redeemFrom`, `redeemBy`, `maxRedemptions`, `maxRedemptionsPerCustomer`, `status`. **Sending `code` returns 400 `CODE_IMMUTABLE`.** Rule changes do not retroactively affect already-redeemed subscriptions; their snapshot stays put.
 
-`DELETE /api/creator-subscription/admin/discount-codes/{codeId}` soft-deletes by flipping `status` to `disabled`. Disabled codes are excluded from default `GET` listings; pass `?status=disabled` to inspect them.
+`DELETE /api/creator-subscription/discount-codes/{codeId}` soft-deletes by flipping `status` to `disabled`. Disabled codes are excluded from default `GET` listings; pass `?status=disabled` to inspect them.
 
 ### Ref-code Usage
 
