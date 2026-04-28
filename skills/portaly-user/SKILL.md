@@ -1,5 +1,6 @@
 ---
 name: portaly-user
+version: 0.1.0
 description: Help users sync and manage their application users in Portaly Vibe, including initial migration, incremental sync, and dashboard viewing. Trigger when the user mentions Portaly user sync, user management, user synchronization, member sync, or wants to push user data to Portaly.
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: portaly-analytics
+version: 0.1.0
 description: Help Portaly creators install Google Analytics 4 (GA4) on their websites, set up Portaly event tracking, and connect their GA4 account to Portaly for viewing analytics dashboards. Trigger when the user mentions Google Analytics, GA4, tracking, analytics, website traffic, event tracking, or wants to connect analytics to Portaly.
 ---
 
