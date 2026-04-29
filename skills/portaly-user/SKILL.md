@@ -103,6 +103,8 @@ Before adding any sync functionality, **thoroughly search** for existing pages w
 
 Add a **"Sync to Portaly"** button to the user dashboard. When clicked, it batch-syncs **all** users to Portaly.
 
+> **Heads up — Portaly may auto-send welcome emails on sync.** When `syncToPortaly` upserts a user, Portaly fires a `welcome_free` (or `welcome_paid` if the user has an active subscription) email by default. If the vibe coder's app already sends its own welcome flow, **disable the matching template before clicking the button**, or the first bulk sync will explode into one duplicate email per existing user. Use `PUT /api/creator-email/templates/welcome_free` with `{ "enabled": false }` — see the `portaly-email` skill for details.
+
 **Implementation:**
 
 1. Create an API route (e.g. `POST /api/admin/sync-to-portaly`) that:
@@ -239,6 +241,7 @@ await syncToPortaly([userData]) // if this fails, user registration fails too
 - **Profile update** — after successful save, sync updated fields
 - **Login** — call sync in the framework's auth hook (e.g. Payload `afterLogin`, NextAuth `events.signIn`, Supabase auth webhooks, Django `user_logged_in` signal, Flask-Login `user_logged_in` signal) and pass `last_login_at` set to the current time in ISO 8601 format. No need to store this in the vibe coder's own database — just generate the timestamp at call time and send it to Portaly.
 - **Account deletion** — sync with `status: "deleted"` to remove from Portaly
+- **Waitlist signup** — if the merchant uses the `portaly-email` skill in self-hosted mode (Mode B), the `/waitlist/[creatorSlug]` page receives a follower's email-and-name signup. Treat that as a new user and call `syncToPortaly([{ email, name, status: 'active' }])` after the POST to `/api/waitlist` succeeds, fire-and-forget
 
 ### Step 6 — Verify & Done
 

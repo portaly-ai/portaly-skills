@@ -32,6 +32,7 @@ npx skills update portaly-analytics
 | **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳` |
 | **portaly-user** | 用戶同步至 Portaly Vibe — 全量遷移、增量同步、Dashboard 查看 | `用戶同步`、`member sync`、`用戶管理` |
 | **portaly-sentry** | Portaly Vibe 支付串接的安全與可靠性健康檢查，可回報結果到 Vibe 儀表板 | `Portaly 健康檢查`、`sentry 掃描`、`金流安全審計` |
+| **portaly-email** | 將 Invitation Email 註冊連結導向 Portaly 託管 CTA（零設定）或 vibe coder 自架的 waitlist 落地頁 | `Invitation Email`、`Waitlist 落地頁`、`app base URL` |
 
 ## Portaly Analytics Integration
 
@@ -118,6 +119,27 @@ npx skills add portaly-ai/portaly-skills --skill portaly-sentry
 - 「掃描我的 Portaly callback 簽章驗證是否正確」
 - 「我的 Portaly 串接可以安心上線嗎？」
 - 「執行一次 Portaly sentry 掃描」
+
+## Portaly Invitation Email Integration
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-email
+```
+
+協助 vibe coder 把 Portaly Vibe 註冊邀請信件中的連結導向正確的落地頁 — 可選擇 Portaly 託管頁面（零開發）或在自己的網域上實作 `/waitlist/[creatorSlug]`（完全控制 UX）。
+
+- Mode A — 直接嵌入 `https://portaly.ai/waitlist/{creatorSlug}` CTA，不用寫任何後端
+- Mode B — 設定 `appBaseUrl` 並在自己的網域實作頁面；點擊追蹤仍走 Portaly
+- Mode B 提供 Next.js、React SPA、純 HTML 三種範本
+- 與 `portaly-user` 串接，把新訂閱者同步進創作者儀表板
+
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。Mode B 需要一個可公開存取的 HTTPS 網域。
+
+**Skill 觸發條件：**
+- 「註冊信件的連結會導去哪裡？」
+- 「我想把 waitlist 落地頁放在自己網站上」
+- 「在 Hero 區塊放一個 Portaly waitlist CTA」
+- 「設定 invitation email 的 app base URL」
 
 ## 從舊 Repo 遷移
 

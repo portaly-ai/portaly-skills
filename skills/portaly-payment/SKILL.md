@@ -155,6 +155,7 @@ Payment site URLs to which buyers are redirected for checkout:
 - If the callback payload does not include `subscriptionId`, persist `sessionId` as the recurring subscription identifier because the current implementation uses `sessionId` as `subscriptionId`.
 - **Use `sessionId` as an idempotency key** — if a callback with the same `sessionId` has already been processed, skip duplicate handling to avoid double fulfillment.
 - **`callbackUrl` must use HTTPS.** Serving over plain HTTP exposes the `callbackSecret` signature and payload in transit.
+- **Heads up — Portaly may auto-send a welcome/upgrade email when the callback fires.** A successful (`status: completed`) callback triggers Portaly's `welcome_paid` template by default. Symmetrically, a cancel call triggers `subscription_canceled`. If the vibe coder already sends their own purchase-confirmation or cancellation email, **disable the matching template** before going live with `PUT /api/creator-email/templates/welcome_paid` (or `subscription_canceled`) carrying `{ "enabled": false }`. See the `portaly-email` skill for the full list of email types and disable workflow.
 
 ### 8. Manage recurring subscriptions
 
@@ -206,6 +207,12 @@ What to persist for recurring lifecycle:
 - `status`
 - `cancelAtPeriodEnd`
 - `cancelEffectiveAt`
+
+### 8.5. Wire invitation email CTA (optional)
+
+If the merchant plans to use Portaly's invitation-email flow to recruit followers (waitlist signups, campaigns), the CTA in those emails redirects through `https://portaly.ai/r/{code}` to a waitlist landing page. By default the page is hosted by Portaly; the vibe coder can also host it themselves on their own domain by setting `appBaseUrl` on the merchant config.
+
+This is a separate concern from payment integration — for the full setup, install and follow the `portaly-email` skill: `npx skills add portaly-ai/portaly-skills --skill portaly-email`.
 
 ### 9. Enable subscriber self-service portal (optional)
 

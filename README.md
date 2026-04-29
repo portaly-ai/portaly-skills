@@ -32,6 +32,7 @@ npx skills update portaly-analytics
 | **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout` |
 | **portaly-user** | User sync to Portaly Vibe — migration, incremental sync, and dashboard viewing | `user sync`, `member sync`, `user management` |
 | **portaly-sentry** | Security & reliability health check for Portaly Vibe payment integrations, with report-back to the Vibe dashboard | `Portaly health check`, `sentry scan`, `payment security audit` |
+| **portaly-email** | Wire invitation-email registration links to either a Portaly-hosted CTA (zero setup) or a self-hosted waitlist landing page on the vibe coder's own domain | `invitation email`, `waitlist landing page`, `app base URL` |
 
 ## Portaly Analytics Integration
 
@@ -118,6 +119,27 @@ Runs a pre-deploy security and reliability audit on a Portaly Vibe payment integ
 - "Scan my Portaly callback for signature verification bugs"
 - "Is my Portaly integration safe to go live?"
 - "Run a Portaly sentry scan"
+
+## Portaly Invitation Email Integration
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-email
+```
+
+Helps vibe coders wire the registration link inside Portaly Vibe invitation emails to the right destination — either Portaly's hosted waitlist page (zero setup) or the vibe coder's own `/waitlist/[creatorSlug]` landing page (full UX control).
+
+- Mode A — embed `https://portaly.ai/waitlist/{creatorSlug}` as a CTA, no backend code
+- Mode B — register `appBaseUrl` and host the page yourself; click tracking still goes through Portaly
+- Templates for Next.js, React SPA, and plain HTML in Mode B
+- Cross-links to `portaly-user` for syncing the new signup back to the dashboard
+
+**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`). For Mode B, an HTTPS-reachable domain for the waitlist page.
+
+**Skill triggers:**
+- "Where does the registration email link land?"
+- "Set up a Portaly waitlist landing page on my own site"
+- "Embed a Portaly waitlist CTA in my hero section"
+- "Configure the app base URL for invitation emails"
 
 ## Migrating from Old Repos
 
