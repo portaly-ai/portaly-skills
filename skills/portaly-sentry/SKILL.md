@@ -1,6 +1,6 @@
 ---
 name: portaly-sentry
-version: 0.2.0
+version: 0.3.0
 description: Run a security and reliability health check on a Portaly Vibe payment integration before deployment. Trigger when the user mentions Portaly health check, payment security audit, pre-deploy check, sentry scan, callback verification audit, integration safety check, or wants to verify their Portaly payment integration is safe to go live.
 ---
 
@@ -44,19 +44,21 @@ Two things before I start:
    🚀 Pre-launch    — pass all CRITICAL
    🔧 Routine check — pass all CRITICAL + WARNING
    🏆 Gold standard — pass all 26 (including INFO)
+   📄 Report only   — scan and show the report, skip the fix workflow
    ⏰ Weekly auto   — schedule a recurring scan instead of scanning now
 ```
 
 Standard → scope mapping (agent-internal; do not show this table to the user):
 
-| User choice | Report includes | Blocking severity |
-|---|---|---|
-| 🚀 Pre-launch | all 26 checks | CRITICAL only |
-| 🔧 Routine check | all 26 checks | CRITICAL + WARNING |
-| 🏆 Gold standard | all 26 checks | all severities |
-| ⏰ Weekly auto | skip scan → jump to Step 16 | n/a |
+| User choice | Report includes | Blocking severity | Fix workflow |
+|---|---|---|---|
+| 🚀 Pre-launch | all 26 checks | CRITICAL only | offered |
+| 🔧 Routine check | all 26 checks | CRITICAL + WARNING | offered |
+| 🏆 Gold standard | all 26 checks | all severities | offered |
+| 📄 Report only | all 26 checks | n/a | **never offered** |
+| ⏰ Weekly auto | skip scan → jump to Step 16 | n/a | n/a |
 
-All three non-scheduled standards still run all 26 checks. What changes is the pass/fail threshold used in the Layer 1 summary's "Status" line (see Step 14).
+All four non-scheduled standards run all 26 checks. The first three differ only in the pass/fail threshold used in the Layer 1 summary's "Status" line (see Step 14). 📄 Report only runs the same scan but skips Layer 2 (the fix-mode prompt) and ends after Layer 3 — use it for audits, code-review handoffs, or when the user just wants to see results without committing to fixes now.
 
 **Advanced.** If the user explicitly asks to scan only one category (e.g. "only scan signatures" or "re-run SIG"), accept that as a single-category mode using one of: SIG, SUB, CBK, ENV, SEC, WEB, DEP, DATA. Do not surface this as a main option — category codes overwhelm first-time users.
 
@@ -239,9 +241,9 @@ Rules:
 
 ### Step 14 — Present the summary (not the full table)
 
-The first thing the user sees must be a plain-language summary, **not** a 26-row table. The full technical report lives on the dashboard — only show it locally when the user picks `[C]` or dashboard reporting is unavailable.
+The first thing the user sees must be a plain-language summary, **not** a 26-row table. The full technical report lives on the dashboard — only show it locally when the user picks `[C]`, when the user is in 📄 Report only mode, or when dashboard reporting is unavailable.
 
-Output three layers, in this order:
+Output up to three layers, in this order (📄 Report only mode emits Layer 1 + Layer 3 only — see below):
 
 #### Layer 1 — Plain-language summary (always show)
 
@@ -286,7 +288,11 @@ Score banding (must match the dashboard):
 
 Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. If the Step 13 sync was skipped and there is no `scan_id`, drop the whole `🔗 Full report` block (both the label line and the URL line); do not show a broken or placeholder link.
 
-#### Layer 2 — Fix mode choice (always show right after summary)
+For **📄 Report only**, omit the `Status:` line entirely (there is no launch gate in this mode) and replace it with `Mode: 📄 Report only — fix workflow disabled`. Everything else in Layer 1 stays the same.
+
+#### Layer 2 — Fix mode choice (show right after summary, **except in 📄 Report only**)
+
+In 📄 Report only mode, **skip Layer 2 entirely** and go straight to Layer 3. Do not render the `[A] / [B] / [C]` prompt — the user has already opted out of fixes.
 
 Template:
 
@@ -303,7 +309,7 @@ The user's answer routes to:
 - **[B]** → Interactive Fix Workflow with CRITICAL failures only
 - **[C]** → Layer 3
 
-#### Layer 3 — Full technical report (only on [C], or when dashboard reporting is unavailable)
+#### Layer 3 — Full technical report (on [C], in 📄 Report only mode, or when dashboard reporting is unavailable)
 
 Render the full 26-row table, grouped by category. Format:
 
@@ -337,6 +343,8 @@ File: {file_path}:{line}
 ### Step 15 — Interactive Fix Workflow (per-item confirmation)
 
 Enter this workflow only after the user explicitly picks **[A]** (fix all) or **[B]** (fix CRITICAL only) from Layer 2. For each failure, in order of severity (CRITICAL → WARNING → INFO), present exactly one item at a time and wait for confirmation before touching any file.
+
+In **📄 Report only** mode this step is unreachable by design — Layer 2 is never shown, so [A]/[B] are never picked. If the user later changes their mind and asks to start fixing, treat that as a new request and re-prompt with the Layer 2 choices before entering this workflow.
 
 #### Per-item template
 
@@ -450,6 +458,8 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 
 ## Preferred Response Shape
 
+**Standard modes (🚀 Pre-launch / 🔧 Routine check / 🏆 Gold standard):**
+
 1. Plain-language summary with 🔴/🟡/⚪ counts, status line, TOP 3 failures, dashboard link (Layer 1)
 2. Fix mode choice prompt: [A] / [B] / [C] (Layer 2)
 3. Then one of:
@@ -457,9 +467,17 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
    - [C] → show full Layer 3 report grouped by category
 4. Optional: report-to-Portaly confirmation
 
+**📄 Report only mode:**
+
+1. Plain-language summary (Layer 1, with `Mode:` line in place of `Status:`)
+2. Full Layer 3 report grouped by category
+3. Stop. Do not show Layer 2, do not enter the Interactive Fix Workflow.
+4. Optional: report-to-Portaly confirmation
+
 ## Guardrails
 
 - **Read-only until the user enters fix mode.** Discovery, scanning, and the Layer 1/3 reports must not touch user code. Only after the user picks `[A]` or `[B]` in Layer 2 may you enter the Interactive Fix Workflow, and within it only apply an edit after a `[Y]` for that specific item. Never batch-apply multiple fixes from a single confirmation.
+- **📄 Report only stays read-only, period.** When the user picks Report only in Step 3, do not show Layer 2 and do not enter the Interactive Fix Workflow — even if the report surfaces CRITICAL failures. If the user later asks to fix, treat that as a new request and re-prompt with [A]/[B]/[C] before applying anything.
 - **Don't surface secret values in your own output.** When generating example commands, headers, snippets, logs, PR/commit content, or anything else you write, refer to the credential by variable name only (`$PORTALY_API_KEY`) — never with a literal value like `pcs_live_...`. Prefer `scripts/report.mjs` or the MCP `vibe_report_health_check` tool over hand-rolling `curl`/`fetch` with the key in the header. If a check surfaces a secret found in the user's source, mask it as `***` before displaying. Helping the user when they explicitly provide a key (e.g. "save this to `.env`", "test this key") is fine — this rule is about what you generate on your own initiative.
 - **Cross-reference portaly-payment.** Load `../portaly-payment/references/api-contract.md` for the authoritative callback verification spec and subscription lifecycle contract.
 - **Do not assume the user's stack.** Check for Express, Next.js (App Router / Pages Router), Cloud Functions, Fastify, or vanilla Node.js before recommending fixes.
