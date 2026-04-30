@@ -29,7 +29,7 @@ npx skills update portaly-analytics
 | Skill | Description | Triggers |
 |-------|-------------|----------|
 | **portaly-analytics** | GA4 analytics setup, Portaly event tracking, and dashboard connection | `GA4`, `Google Analytics`, `event tracking` |
-| **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout` |
+| **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, discount codes, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout`, `discount code` |
 | **portaly-user** | User sync to Portaly Vibe — migration, incremental sync, and dashboard viewing | `user sync`, `member sync`, `user management` |
 | **portaly-sentry** | Security & reliability health check for Portaly Vibe payment integrations, with report-back to the Vibe dashboard | `Portaly health check`, `sentry scan`, `payment security audit` |
 | **portaly-email** | Wire invitation-email registration links to either a Portaly-hosted CTA (zero setup) or a self-hosted waitlist landing page on the vibe coder's own domain | `invitation email`, `waitlist landing page`, `app base URL` |
@@ -65,6 +65,7 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 
 - Merchant config and plan creation via API
 - Hosted checkout session flow
+- Discount codes — fixed / percent / free, repeating or forever, with ref-code auto-apply at checkout
 - HMAC-SHA256 callback signature verification
 - Recurring subscription management (cancel / resume)
 - Subscriber self-service portal
@@ -76,6 +77,7 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 - "Integrate Portaly Vibe payment into my app"
 - "I want to use the Portaly Vibe payment API"
 - "Help me integrate Portaly Vibe checkout"
+- "Create a discount code on Portaly Vibe"
 
 ## Portaly User Management
 
