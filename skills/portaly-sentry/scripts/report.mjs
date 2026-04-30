@@ -27,6 +27,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
 import { join, relative, dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
+import { computeHealthScore, healthBand, healthBandLabel } from './computeHealthScore.mjs'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
@@ -560,14 +562,27 @@ async function main() {
   const total = allChecks.length
   const criticalFails = allChecks.filter(c => c.status === 'fail' && c.severity === 'critical')
 
+  const score = computeHealthScore(allChecks)
+  const band = healthBand(score)
+  const scoreColor = band === 'healthy' ? GREEN : band === 'needs-attention' ? YELLOW : RED
+
   console.log(`\n${'─'.repeat(60)}`)
   console.log(
-    `${c('Summary:', BOLD)} ` +
-    `${c(`${passed}/${total} passed`, GREEN)} | ` +
-    `${c(`${failed} failed`, failed > 0 ? RED : DIM)} | ` +
-    `${c(`${warned} warned`, warned > 0 ? YELLOW : DIM)} | ` +
-    `${c(`${skipped} skipped`, DIM)}`
+    `${c('📊 Payment integration health check', BOLD)} — ${name}\n` +
+    `   ${c('Health score:', BOLD)} ${c(`${score}/100`, scoreColor)}  ${c(`(${healthBandLabel(band)})`, DIM)}\n`
   )
+  console.log(
+    `${c('🟢 Passing', GREEN)}   ${String(passed).padStart(2)} checks    looking good`
+  )
+  console.log(
+    `${c('🟡 Review', YELLOW)}    ${String(warned).padStart(2)} warnings  take a look this week`
+  )
+  console.log(
+    `${c('🔴 Critical', RED)}   ${String(failed).padStart(2)} blockers  must fix before launch`
+  )
+  if (skipped > 0) {
+    console.log(c(`   (${skipped} skipped)`, DIM))
+  }
 
   if (criticalFails.length > 0) {
     console.log(c(`\n⚠  ${criticalFails.length} critical issue(s) must be fixed before deploy.`, RED))

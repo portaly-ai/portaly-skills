@@ -15,6 +15,34 @@
 | WARNING | May cause issues under edge cases or degrade operational visibility. | Should fix before deploy. |
 | INFO | Best practice recommendation. | Fix when convenient. |
 
+## Health Score Formula
+
+The 0–100 health score is computed from per-check results. **This file is the canonical source** — both the skill (`scripts/computeHealthScore.mjs`) and the Vibe dashboard (`portaly-vibe/services/sentryScan/computeHealthScore.ts`) implement this exact formula. If you change weights here, update both implementations.
+
+```
+score = 100
+for each result r:
+  if r.status == 'fail':
+    if r.severity == 'critical': score -= 15
+    if r.severity == 'warning':  score -=  5
+    if r.severity == 'info':     score -=  1
+  elif r.status == 'warn':       score -=  2
+  // 'pass' and 'skip' do not affect the score
+score = clamp(score, 0, 100)
+```
+
+Score bands (used for UI tone — not for launch gating):
+
+| Score | Band | Visual |
+|---|---|---|
+| 90–100 | Healthy | Green |
+| 70–89 | Needs attention | Amber |
+| 0–69 | At risk | Rose |
+
+Notes:
+- Skipped checks do not affect the score.
+- Launch-gating decisions still use the standard threshold (Pre-launch / Routine / Gold), not the score band — a single CRITICAL fail (−15) drops to "Needs attention" but is still a launch blocker.
+
 ## Checklist Items
 
 ### SIG — Signature Verification
@@ -82,6 +110,56 @@
 |---|---|---|---|---|
 | DATA-001 | Input validation | INFO | Callback payload fields are validated (type, length, format) before being written to the database. At minimum: `sessionId` is a string, `status` is one of the expected values, `amount` is a positive number. Best verified by manual code review rather than static analysis. | Callback payload is written directly to the database without any validation. |
 | DATA-002 | Sensitive data logging | WARNING | Log statements in callback handler and payment flows do not output full API keys, callback secrets, or complete customer PII (full email, payment references). Logs use `sessionId` and `status` only, or mask sensitive fields. | Found `console.log(req.body)`, `console.log(payload)`, or similar that dumps the full callback payload including potential PII to logs. |
+
+## Reporting transports
+
+There are two ways to push scan results to the user's Vibe dashboard. Both write to the same backing storage and end up as one row in the same scan history.
+
+| Transport | When to use | Auth | Caller |
+|---|---|---|---|
+| MCP tool `vibe_report_health_check` | The agent is connected to Vibe MCP — preferred for skill runs | Agent's existing MCP bearer token | Claude Code / Cursor / Codex agent |
+| REST `POST /api/creator-subscription/health-check-reports` | CI/CD scripts, scheduled scans, or when MCP is unavailable | `Bearer {PORTALY_API_KEY}` | `scripts/report.mjs` and any HTTP client |
+
+Pick one per scan — never call both.
+
+## MCP reporting
+
+When the agent is connected to Vibe MCP, prefer this path. No `PORTALY_API_KEY` is needed; the agent's existing MCP connection is the auth.
+
+Tool: `vibe_report_health_check`
+
+Input (Zod-validated, identical shape to the REST body):
+
+```ts
+{
+  scanType: 'manual' | 'scheduled',
+  scanTimestamp: string,            // ISO-8601
+  projectName: string,              // 1-255 chars
+  results: CheckResult[],           // 1-100 entries
+  summary: {
+    total: number,
+    passed: number,
+    failed: number,
+    warned: number,
+    skipped: number,
+  },
+}
+```
+
+Result:
+
+```ts
+{
+  reportId: string,                 // use as {scan_id} in the dashboard URL
+  score: number,                    // 0-100, server-computed via the same formula
+  dashboardUrl: string,             // direct link to this report
+}
+```
+
+Errors:
+
+- `401 Invalid or inactive MCP connection token` — re-authenticate with Vibe.
+- `404 No Portaly profile linked to this agent connection` — user hasn't completed onboarding; surface and stop, do not retry.
 
 ## Report API Contract
 
