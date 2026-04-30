@@ -1,6 +1,6 @@
 ---
 name: portaly-sentry
-version: 0.1.0
+version: 0.2.0
 description: Run a security and reliability health check on a Portaly Vibe payment integration before deployment. Trigger when the user mentions Portaly health check, payment security audit, pre-deploy check, sentry scan, callback verification audit, integration safety check, or wants to verify their Portaly payment integration is safe to go live.
 ---
 
@@ -226,9 +226,16 @@ Reference: `scripts/check_subscription_lifecycle.mjs` can automate this step.
 
 After running all checks but before presenting the summary, offer to sync the scan to the user's Portaly dashboard. Doing this now means Step 14's Layer 1 summary can include a shareable report link.
 
-1. If the user has a `PORTALY_API_KEY` configured, briefly ask whether to sync this scan so you can show a shareable report link. Do not call the API without consent.
-2. On consent, POST to `https://portaly.ai/api/creator-subscription/health-check-reports` with `Authorization: Bearer {PORTALY_API_KEY}` and capture the returned `scan_id`. See `references/health-check-contract.md` for the full request/response schema.
-3. If the user declines, no key is available, or the API returns 404, skip the sync and continue to Step 14 without a dashboard link. Do not block the summary on this.
+There are two transports — prefer MCP when available:
+
+**Path A — MCP (preferred, zero extra config).** If the agent is connected to Vibe MCP, the `vibe_report_health_check` tool is available. It uses the agent's existing MCP connection — no `PORTALY_API_KEY` needed. Briefly ask consent, then call the tool with the scan payload. Capture `reportId` and `dashboardUrl` from the response and use `reportId` as `{scan_id}` in the Layer 1 dashboard link. See `references/health-check-contract.md` § "MCP reporting" for the input schema.
+
+**Path B — REST API (fallback).** When MCP is not connected and the user has a `PORTALY_API_KEY` configured, fall back to POSTing `https://portaly.ai/api/creator-subscription/health-check-reports` with `Authorization: Bearer {PORTALY_API_KEY}`. Capture the returned `reportId`. See `references/health-check-contract.md` § "Report API Contract" for the full request/response schema.
+
+Rules:
+- Do not call either path without explicit user consent.
+- If both paths are unavailable (no MCP, no key) or the call fails (e.g., 404 on REST), skip the sync silently and continue to Step 14 without a dashboard link. Do not block the summary on this.
+- Do not call both paths for the same scan — pick one.
 
 ### Step 14 — Present the summary (not the full table)
 
@@ -238,15 +245,17 @@ Output three layers, in this order:
 
 #### Layer 1 — Plain-language summary (always show)
 
-Load titles from `references/fix-explanations.md` — do not invent new phrasing.
+Load titles from `references/fix-explanations.md` — do not invent new phrasing. Compute the health score from the per-check results using the formula in `references/health-check-contract.md` § "Health Score Formula" — the same number the dashboard shows.
 
 Template:
 
 ```
-📊 Payment integration health check
-🔴 Critical issues  {N}   ← must fix before launch
-🟡 Should fix       {N}   ← take care of this week
-⚪ Nice to have     {N}   ← tackle when you have time
+📊 Payment integration health check — {projectName}
+   Health score: {score}/100  ({band: Healthy | Needs attention | At risk})
+
+🟢 Passing   {passedCount} checks    looking good
+🟡 Review    {warnedCount} warnings  take a look this week
+🔴 Critical  {failedCount} blockers  must fix before launch
 
 Status: {status_line}
 
@@ -259,7 +268,15 @@ Top {min(3, failures)} things to fix:
 https://portaly.ai/dashboard/sentry-scans/{scan_id}
 ```
 
-`{status_line}` is decided by the scan standard chosen in Step 3:
+Score banding (must match the dashboard):
+
+| Score | Band |
+|---|---|
+| 90–100 | Healthy |
+| 70–89 | Needs attention |
+| 0–69 | At risk |
+
+`{status_line}` is decided by the scan standard chosen in Step 3 (independent of score — the score is informational, the standard gates launch):
 
 | Standard | Condition for "safe to launch" |
 |---|---|
@@ -461,6 +478,8 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
   Use for user-facing plain-language copy of all 26 checks: plain title, why it matters, affects, doesn't affect. Load during Layer 1 summary rendering and during each Interactive Fix Workflow item. Do not paraphrase on the fly — keep the canonical phrasing consistent across summary and per-item views.
 - `scripts/report.mjs`
   Use for fully automated CI/CD scanning — runs all 26 checks, prints a formatted report, and POSTs results to portaly.ai. Accepts `--fail-on critical` for CI exit code control.
+- `scripts/computeHealthScore.mjs`
+  Canonical implementation of the 0–100 health score formula. Imported by `report.mjs` and mirrored by the Vibe dashboard so the skill terminal and the dashboard always show the same number.
 - `scripts/check_signature_sort.mjs`
   Use for automated signature sort pattern verification across project files. Called internally by `report.mjs`.
 - `scripts/check_subscription_lifecycle.mjs`

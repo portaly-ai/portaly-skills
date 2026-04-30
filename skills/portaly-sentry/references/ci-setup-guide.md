@@ -4,6 +4,11 @@ Use this guide to set up automated Portaly Sentry scans in your project.
 All three options (GitHub Actions, pre-push hook, npm script) use the same
 `scripts/report.mjs` runner and report results to the Portaly dashboard.
 
+> **CI uses REST, not MCP.** The MCP path (`vibe_report_health_check`) only
+> works inside an agent runtime that's connected to Vibe MCP. CI/CD jobs and
+> scheduled scans don't have that — they always go through `PORTALY_API_KEY`
+> and the REST endpoint. Both paths land in the same dashboard scan history.
+
 ---
 
 ## Prerequisites
