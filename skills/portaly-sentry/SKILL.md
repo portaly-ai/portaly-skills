@@ -230,7 +230,7 @@ There are two transports — prefer MCP when available:
 
 **Path A — MCP (preferred, zero extra config).** If the agent is connected to Vibe MCP, the `vibe_report_health_check` tool is available. It uses the agent's existing MCP connection — no `PORTALY_API_KEY` needed. Briefly ask consent, then call the tool with the scan payload. Capture `reportId` and `dashboardUrl` from the response and use `reportId` as `{scan_id}` in the Layer 1 dashboard link. See `references/health-check-contract.md` § "MCP reporting" for the input schema.
 
-**Path B — REST API (fallback).** When MCP is not connected and the user has a `PORTALY_API_KEY` configured, fall back to POSTing `https://portaly.ai/api/creator-subscription/health-check-reports` with `Authorization: Bearer {PORTALY_API_KEY}`. Capture the returned `reportId`. See `references/health-check-contract.md` § "Report API Contract" for the full request/response schema.
+**Path B — REST API (fallback).** When MCP is not connected and the user has `PORTALY_API_KEY` set in their environment, fall back to running `scripts/report.mjs` — it reads the key from `process.env.PORTALY_API_KEY` and POSTs to `https://portaly.ai/api/creator-subscription/health-check-reports` for you. Prefer this over hand-rolling a `curl` / `fetch` with the key inline. Capture `reportId` from the script's stdout. See `references/health-check-contract.md` § "Report API Contract" for the full request/response schema.
 
 Rules:
 - Do not call either path without explicit user consent.
@@ -427,9 +427,10 @@ chmod +x .git/hooks/pre-push
 
 **Option C — Automated script runner via `scripts/report.mjs`**
 
-For any CI system or scheduled task, point at the automation script directly:
+For any CI system or scheduled task, point at the automation script directly. The script reads `PORTALY_API_KEY` from the environment — set it through the CI's secret store, your shell profile, or a `.env` loader rather than inlining the value.
 ```bash
-PORTALY_API_KEY=pcs_live_... node .claude/skills/portaly-sentry/scripts/report.mjs \
+# PORTALY_API_KEY exported via CI secret / shell / .env
+node .claude/skills/portaly-sentry/scripts/report.mjs \
   --dir . --scan-type scheduled --fail-on critical
 ```
 
@@ -459,7 +460,7 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 ## Guardrails
 
 - **Read-only until the user enters fix mode.** Discovery, scanning, and the Layer 1/3 reports must not touch user code. Only after the user picks `[A]` or `[B]` in Layer 2 may you enter the Interactive Fix Workflow, and within it only apply an edit after a `[Y]` for that specific item. Never batch-apply multiple fixes from a single confirmation.
-- **Mask secrets.** Never display full API keys or callback secrets in the checklist output. Use `***` masking.
+- **Don't surface secret values in your own output.** When generating example commands, headers, snippets, logs, PR/commit content, or anything else you write, refer to the credential by variable name only (`$PORTALY_API_KEY`) — never with a literal value like `pcs_live_...`. Prefer `scripts/report.mjs` or the MCP `vibe_report_health_check` tool over hand-rolling `curl`/`fetch` with the key in the header. If a check surfaces a secret found in the user's source, mask it as `***` before displaying. Helping the user when they explicitly provide a key (e.g. "save this to `.env`", "test this key") is fine — this rule is about what you generate on your own initiative.
 - **Cross-reference portaly-payment.** Load `../portaly-payment/references/api-contract.md` for the authoritative callback verification spec and subscription lifecycle contract.
 - **Do not assume the user's stack.** Check for Express, Next.js (App Router / Pages Router), Cloud Functions, Fastify, or vanilla Node.js before recommending fixes.
 - **Match the user's code style.** When recommending fixes, generate code that matches the user's existing patterns, variable naming, and module system (ESM vs CommonJS).

@@ -130,10 +130,11 @@ Usage:
 npm run portaly:check
 
 # With reporting to dashboard
-PORTALY_API_KEY=pcs_live_... npm run portaly:check:report
+# PORTALY_API_KEY must already be set in your shell or .env — do not paste the value here
+npm run portaly:check:report
 
-# In any CI system
-PORTALY_API_KEY=$PORTALY_API_KEY npm run portaly:check:ci
+# In any CI system (PORTALY_API_KEY comes from the CI's secret store)
+npm run portaly:check:ci
 ```
 
 ---

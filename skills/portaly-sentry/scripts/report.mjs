@@ -8,7 +8,9 @@
  * Usage:
  *   node report.mjs --dir /path/to/project
  *   node report.mjs --dir . --project-name my-app --fail-on critical
- *   PORTALY_API_KEY=pcs_live_... node report.mjs --dir .
+ *   # To also report to portaly.ai, export PORTALY_API_KEY in the environment first
+ *   # (e.g. via your shell, .env loader, or CI secret store) — do NOT paste the key
+ *   # value into the command line.
  *
  * Flags:
  *   --dir <path>           Project root to scan (default: cwd)
