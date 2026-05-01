@@ -1,7 +1,7 @@
 ---
 name: portaly-email
-version: 0.1.1
-description: Help vibe coders integrate Portaly Vibe invitation emails — choose between a Portaly-hosted waitlist CTA (zero setup) or a self-hosted waitlist landing page (full UX control). Trigger when the user mentions Portaly invitation email, waitlist signup landing page, app base URL, embedding a Portaly waitlist CTA, or asks how the registration email link works / where it lands.
+version: 0.2.0
+description: Help Portaly creators run follower-email campaigns end-to-end — create a draft, send it via Vibe MCP, read post-send analytics — and wire up where the invitation email's CTA redirects (Portaly-hosted waitlist, or a self-hosted /waitlist/[slug] page). Trigger when the user mentions invitation emails, follower outreach campaigns, sending an email blast to followers, drafting an email campaign, waitlist signup landing page, app base URL, embedding a waitlist CTA, or asks how the registration email link works / where it lands.
 ---
 
 # Portaly Vibe Invitation Email Integration
@@ -156,6 +156,54 @@ syncToPortaly([{ email, name }]).catch((err) =>
 
 ---
 
+## Sending a Campaign (Vibe MCP)
+
+Independent of Mode A/B above. This workflow drives **outgoing follower-email campaigns** — drafting an invitation, queueing it to a recipient list, and reading back analytics. Available only when the agent is connected to the creator's Vibe MCP server (the install instructions for that are in the Vibe dashboard's onboarding flow). Authentication is the MCP Bearer token; no `PORTALY_API_KEY` involved.
+
+See `references/sending-campaigns.md` for a copy-pastable end-to-end run.
+
+### Tools
+
+| Tool | Purpose |
+|---|---|
+| `vibe_list_campaigns` | Inventory: drafts to act on, in-flight sends, completed history. Filter by `status`. |
+| `vibe_create_campaign` | Create a new campaign in `draft` status. Takes `name` (required, creator-facing only) plus optional `description` and `aiContext` (drafting hints). |
+| `vibe_send_campaign` | Persist `subject` + `bodyHtml` onto a draft, enqueue to all imported recipients, return one of four outcomes (see below). |
+| `vibe_get_campaign_analytics` | Funnel + event totals + 30-day timeseries for one campaign. |
+
+### Workflow
+
+1. **Confirm intent with the creator** — what's the campaign for? Is there an existing draft, or starting fresh? Call `vibe_list_campaigns` to check.
+2. **Create the draft** with `vibe_create_campaign`. Pass any context the creator gives (campaign angle, tone, must-mention deadline) into `aiContext`. The campaign starts empty — no subject, no body, no recipients.
+3. **Hand recipient import to the dashboard.** Tell the creator:
+   > Recipient import is in the Vibe dashboard's **Email → Outreach** tab. Open your campaign there, upload a CSV / Google Sheet / paste addresses, then come back and tell me when you're done.
+   Recipient management is intentionally not exposed via MCP — column-mapping a CSV in chat is fragile and the dashboard already has a preview UI.
+4. **Draft `subject` + `bodyHtml`** with the creator. Constraints:
+   - Subject ≤ 255 chars.
+   - Body is HTML, ≤ 100,000 chars.
+   - **Must include `{inviteUrl}`** somewhere in the body — that's the tracked invitation link the recipient clicks. Without it, you've shipped a CTA-less email.
+   - Always-available placeholders: `{customerName}`, `{merchantName}`, `{inviteUrl}`. Any extra column the creator imported is exposed as `{slug}` — confirm those slugs with the creator before referencing them.
+5. **Confirm with the creator before sending.** Sending is irreversible and burns from their monthly quota + purchased credits. Show the subject, the rendered body (or a preview link), the recipient count.
+6. **Call `vibe_send_campaign`** with `campaignId`, `subject`, `bodyHtml`. Switch on the `outcome`:
+
+| Outcome | Meaning | What to do |
+|---|---|---|
+| `enqueued` | Send is in flight | Tell the creator: enqueued N emails, M quota remaining. Optionally schedule a follow-up to call `vibe_get_campaign_analytics` after a few minutes. |
+| `campaign_not_found` | id is wrong / belongs to another merchant | Recheck `vibe_list_campaigns`. |
+| `no_recipients` | Imports are empty | Step 3 wasn't completed. Send the creator back to **Email → Outreach** to import their list. |
+| `quota_exceeded` | Recipients > remaining quota | Response includes `remainingQuota` and `needed`. Tell the creator how short they are and that they can top up email credits in **Email → Credits** in the dashboard. Do NOT retry without the creator topping up. |
+
+7. **Read analytics** with `vibe_get_campaign_analytics(campaignId)` once delivery has had time to register (a few minutes). The funnel goes `imported → enqueued → delivered → opened → clicked → bounced → complained → signedUp → converted`. `signedUp` only populates if the recipient hits the waitlist landing page (Mode A or B above); `converted` only fills if they later subscribe via `portaly-payment`.
+
+### Guardrails for sending
+
+- **Always include `{inviteUrl}`.** The whole point of the campaign is the click — without the placeholder, recipients see a wall of text with no CTA.
+- **Confirm the recipient count before sending.** A misplaced 0 in a CSV column or a stale draft can lead to mass-emailing the wrong list. Read it back to the creator: "About to send to N people imported on <date>. Proceed?"
+- **Do not call `vibe_send_campaign` repeatedly to "retry" a `quota_exceeded`.** That's a soft fail — the creator must top up first. Retrying without action just churns calls.
+- **Subject lines for follower outreach matter more than for transactional email.** Push back if the creator gives a generic "Update from {merchantName}" — suggest something tied to the campaign's angle.
+
+---
+
 ## Switching Modes
 
 | From | To | Action |
@@ -184,3 +232,4 @@ Switch propagates within ~60 seconds (Portaly's per-process cache TTL). In-fligh
 
 - `references/hosted-cta.md` — Mode A snippets and CTA placement examples.
 - `references/self-hosted-waitlist.md` — Mode B implementation templates for Next.js, React SPA, and plain HTML.
+- `references/sending-campaigns.md` — End-to-end campaign send via Vibe MCP, with body templates and outcome handling.
