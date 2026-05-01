@@ -110,7 +110,7 @@ Runs a pre-deploy security and reliability audit on a Portaly Vibe payment integ
 - 26 checks across 8 categories: signature verification, subscription lifecycle, callback endpoint, environment & credentials, security, web fundamentals, dependencies, and data handling
 - Static analysis only — no runtime access to the project required
 - Read-only audit — never modifies user code
-- Optionally reports results to the Vibe dashboard at `https://portaly.cc/dashboard/sentry-scans`
+- Optionally reports results to the Vibe dashboard at `https://portaly.ai/dashboard/sentry-scans`
 - Supports manual and weekly-scheduled scans
 
 **Prerequisites:** `portaly-payment` skill installed (used as the canonical reference). Optional: Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`) to report results to the Vibe dashboard.

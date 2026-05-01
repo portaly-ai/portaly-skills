@@ -110,7 +110,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-sentry
 - 8 大類、合計 26 項檢查：簽章驗證、訂閱生命週期、Callback 端點、環境憑證、安全最佳實踐、Web 安全、依賴安全、資料處理
 - 純靜態分析——不需要執行使用者的程式碼
 - Read-only audit——絕不修改使用者程式碼
-- 可選擇將掃描結果回報至 Vibe 儀表板 `https://portaly.cc/dashboard/sentry-scans`
+- 可選擇將掃描結果回報至 Vibe 儀表板 `https://portaly.ai/dashboard/sentry-scans`
 - 支援手動執行與每週排程掃描
 
 **前置條件：** 已安裝 `portaly-payment` skill（作為 canonical 參考）。選用：Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），用來把結果回報到 Vibe 儀表板。

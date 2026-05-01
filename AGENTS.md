@@ -49,7 +49,7 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - GA4 data has a 24–48 hour processing delay
 
 **Payment Skill:**
-- API host: `https://portaly.cc`, payment page: `https://portaly.ai`
+- API host and payment page: `https://portaly.ai`
 - Dual mode: live (`pcs_live_`) / test (`pcs_test_`), determined by API key
 - Plans are shared across modes — query existing plans before creating new ones
 - Core contract: `subscriptionId === checkoutSessionId === sessionId`
@@ -70,8 +70,8 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Three severity levels: `CRITICAL` (must fix before deploy), `WARNING` (should fix), `INFO` (fix when convenient)
 - Static analysis only — read-only audit, never modifies user code
 - Depends on `portaly-payment` skill's `references/api-contract.md` as the canonical reference for correct integration
-- Reporting API (optional): `POST /api/creator-subscription/health-check-reports` on host `https://portaly.cc`, authenticated with `Authorization: Bearer {PORTALY_API_KEY}` — same key as the payment skill. May return 404 if not yet live; in that case skip reporting and show results locally only.
-- Results flow into the creator's Vibe dashboard at `https://portaly.cc/dashboard/sentry-scans`
+- Reporting API (optional): `POST /api/creator-subscription/health-check-reports` on host `https://portaly.ai`, authenticated with `Authorization: Bearer {PORTALY_API_KEY}` — same key as the payment skill. May return 404 if not yet live; in that case skip reporting and show results locally only.
+- Results flow into the creator's Vibe dashboard at `https://portaly.ai/dashboard/sentry-scans`
 
 ## End-User Installation
 

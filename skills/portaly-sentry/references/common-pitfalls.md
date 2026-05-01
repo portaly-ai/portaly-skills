@@ -128,7 +128,7 @@ async function cancelSubscription(userId) {
   const user = await db.collection('users').doc(userId).get();
   const orderId = user.data().orderId;  // <-- this is a local order ID, not Portaly's subscriptionId
 
-  await fetch(`https://portaly.cc/api/creator-subscription/subscriptions/${orderId}/cancel`, {
+  await fetch(`https://portaly.ai/api/creator-subscription/subscriptions/${orderId}/cancel`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason: 'customer_requested' }),
@@ -145,7 +145,7 @@ async function cancelSubscription(userId) {
   const { subscriptionId } = subscriber.data();  // <-- same field callback persisted
 
   const res = await fetch(
-    `https://portaly.cc/api/creator-subscription/subscriptions/${subscriptionId}/cancel`,
+    `https://portaly.ai/api/creator-subscription/subscriptions/${subscriptionId}/cancel`,
     {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
