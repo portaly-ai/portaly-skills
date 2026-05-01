@@ -55,9 +55,11 @@ const REPORT_URL = 'https://portaly.ai/api/creator-subscription/health-check-rep
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.jsx']
+// `lib/` is intentionally NOT skipped — many TS projects keep their source there.
+// Build output (dist/build/.next/out/.vercel) is still skipped.
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', 'out',
-  'coverage', '.firebase', '.vercel', 'lib', '__pycache__',
+  'coverage', '.firebase', '.vercel', '__pycache__',
 ])
 const PORTALY_MARKERS = [
   'x-portaly-signature', 'x-portaly-timestamp',
@@ -413,9 +415,11 @@ function runDepChecks() {
     try {
       const json = JSON.parse(audit.stdout)
       const vulns = json.vulnerabilities ?? json.advisories ?? {}
-      const prodVulns = Object.values(vulns).filter(v => !v.isDirect === false || v.nodes?.length > 0 || true)
-      const critical = prodVulns.filter(v => v.severity === 'critical').length
-      const high = prodVulns.filter(v => v.severity === 'high').length
+      // --omit=dev above already restricts npm's output to production deps,
+      // so we can count severities directly without a second prod-vs-dev filter.
+      const vulnList = Object.values(vulns)
+      const critical = vulnList.filter(v => v.severity === 'critical').length
+      const high = vulnList.filter(v => v.severity === 'high').length
       if (critical > 0) {
         depResult = chk('DEP-001', 'dependency', 'Known vulnerability scan', 'critical', 'fail',
           `${critical} critical CVE(s) in production dependencies — run: npm audit fix`)

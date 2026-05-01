@@ -31,10 +31,11 @@ const RELEVANT_MARKERS = [
   "verifyPortalyCallback",
 ];
 
+// Pattern descriptions are deliberately worded so this file does not match its own regexes when scanned.
 const WRONG_PATTERNS = [
-  // Object.keys(...).sort() without localeCompare
+  // Naive object-keys sort with no comparator (missing locale-aware compare).
   /Object\.keys\s*\([^)]*\)\s*\.sort\s*\(\s*\)/,
-  // Object.keys(...).sort((a, b) => ...) without localeCompare
+  // Object-keys sort using a subtract or lexical comparator instead of locale-aware compare.
   /Object\.keys\s*\([^)]*\)\s*\.sort\s*\(\s*\(\s*\w+\s*,\s*\w+\s*\)\s*=>\s*\w+\s*[<>-]\s*\w+\s*\)/,
 ];
 
@@ -45,6 +46,8 @@ const CORRECT_PATTERNS = [
   /\.sort\s*\(\s*\(\s*\w+\s*,\s*\w+\s*\)\s*=>\s*\w+\.localeCompare\s*\(\s*\w+\s*\)\s*\)/,
 ];
 
+// `lib/` is intentionally NOT skipped — many TS projects keep callback source under lib/portaly/.
+// Build output lives under dist/build/.next/out, which we still skip.
 const SKIP_DIRS = new Set([
   "node_modules",
   ".git",
@@ -54,7 +57,6 @@ const SKIP_DIRS = new Set([
   "out",
   "coverage",
   ".firebase",
-  "lib",
 ]);
 
 const SCAN_EXTENSIONS = new Set([
@@ -103,7 +105,8 @@ async function walkDir(dir) {
     const fullPath = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) {
+      // Skip dot-dirs (.git, .next, .claude, .venv, etc.) — match report.mjs walker behavior.
+      if (!SKIP_DIRS.has(entry.name) && !entry.name.startsWith(".")) {
         const subFiles = await walkDir(fullPath);
         files.push(...subFiles);
       }
@@ -143,7 +146,7 @@ function scanFile(filePath, content, verbose) {
         status: "fail",
         line,
         message:
-          "Uses Object.keys().sort() without localeCompare — should use Object.entries().sort(([a],[b]) => a.localeCompare(b))",
+          "Object key sort is missing locale-aware compare — see references/common-pitfalls.md (SIG-001) for the canonical fix.",
         ...(verbose ? { matchedPattern: pattern.source } : {}),
       };
     }

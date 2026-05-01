@@ -1,6 +1,6 @@
 ---
 name: portaly-sentry
-version: 0.3.0
+version: 0.3.1
 description: Run a security and reliability health check on a Portaly Vibe payment integration before deployment. Trigger when the user mentions Portaly health check, payment security audit, pre-deploy check, sentry scan, callback verification audit, integration safety check, or wants to verify their Portaly payment integration is safe to go live.
 ---
 

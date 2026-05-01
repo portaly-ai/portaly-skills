@@ -21,6 +21,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
 
+// `lib/` is intentionally NOT skipped — many TS projects keep callback/subscription source under lib/portaly/.
 const SKIP_DIRS = new Set([
   "node_modules",
   ".git",
@@ -30,7 +31,6 @@ const SKIP_DIRS = new Set([
   "out",
   "coverage",
   ".firebase",
-  "lib",
 ]);
 
 const SCAN_EXTENSIONS = new Set([
@@ -98,7 +98,7 @@ async function walkDir(dir) {
     const fullPath = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) {
+      if (!SKIP_DIRS.has(entry.name) && !entry.name.startsWith(".")) {
         const subFiles = await walkDir(fullPath);
         files.push(...subFiles);
       }
