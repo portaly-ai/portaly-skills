@@ -107,6 +107,7 @@ Payment site URLs to which buyers are redirected for checkout:
 - Use the Config APIs when the human user needs to set merchant branding before any product goes live.
 - AI Agent should ask the human user to provide a `merchantLogo` image asset, use the config image upload API to upload image to Portaly. The merchant logo is optional — if the user does not have one ready, skip this step and proceed with plan creation.
 - Use `PUT /api/creator-subscription/config` and `POST /api/creator-subscription/config/images` to set up merchant branding with the Portaly Vibe Payment API key.
+- **Vibe MCP shortcut:** If the agent is connected to Vibe MCP (i.e. `vibe_update_brand` is available), use it to set `merchantName`, `appBaseUrl`, and `brandDescription` instead of the REST call — no `PORTALY_API_KEY` needed. Only pass fields that are currently blank or need updating; omit the rest.
 
 ### 3. Create a valid subscription plan
 
@@ -193,6 +194,11 @@ Recurring management APIs:
 Order query API:
 
 - `GET /api/creator-subscription/orders` — list payment/order records with pagination
+
+**Vibe MCP shortcuts (preferred when available):**
+
+- `vibe_list_orders` — list orders without a `PORTALY_API_KEY`; uses the MCP Bearer token and the connection's configured API mode. Available once the `portaly-payment` skill is installed and the MCP session is restarted.
+- `vibe_list_members` — list subscription members by the same token. Available once the `portaly-member` skill is installed.
 
 Recurring management rules:
 

@@ -79,7 +79,9 @@ See `references/hosted-cta.md` for full snippets.
 
 What to do:
 
-1. **Confirm `appBaseUrl` is empty** (it is by default). If the merchant previously enabled Mode B, clear it via `PUT /api/creator-subscription/config` with `{ "appBaseUrl": "" }`.
+1. **Confirm `appBaseUrl` is empty** (it is by default). If the merchant previously enabled Mode B, clear it:
+   - **Vibe MCP (preferred):** call `vibe_update_brand` with `{ "appBaseUrl": "" }` — no API key needed.
+   - **REST fallback:** `PUT /api/creator-subscription/config` with `{ "appBaseUrl": "" }`.
 2. **Find the creator's slug** — `GET /api/creator-subscription/config` returns the merchant config. The slug also appears in the Portaly Vibe Dashboard.
 3. **Embed the CTA URL** in the vibe coder's app, email signature, social bio, etc.:
    ```
@@ -97,6 +99,9 @@ See `references/self-hosted-waitlist.md` for complete code templates (Next.js, R
 
 #### Step B1 — Register `appBaseUrl`
 
+**Vibe MCP (preferred):** call `vibe_update_brand` with `{ "appBaseUrl": "https://your-app.example.com" }` — no `PORTALY_API_KEY` needed.
+
+**REST fallback:**
 ```bash
 curl -X PUT https://portaly.ai/api/creator-subscription/admin/config \
   -H "Authorization: Bearer ${PORTALY_API_KEY}" \
