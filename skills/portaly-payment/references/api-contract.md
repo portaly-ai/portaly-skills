@@ -60,7 +60,7 @@ Mode behavior:
 Use this when the human user needs to set or update merchant branding for Portaly Vibe Payment.
 
 - Read endpoint:
-  - `GET /api/creator-subscription/config?profileId={profileId}`
+  - `GET /api/creator-subscription/config`
 - Setup endpoints:
   - `PUT /api/creator-subscription/config`
   - `POST /api/creator-subscription/config/images`
@@ -69,15 +69,20 @@ Use this when the human user needs to set or update merchant branding for Portal
 
 `PUT /api/creator-subscription/config`
 
-- Update endpoint for merchant profile config, currently only supports `merchantName`. Image should upload via `/api/creator-subscription/config/images`.
+- Update endpoint for merchant profile config. All fields are optional — only the keys present in the body are updated; omitted keys keep their current value. Image upload goes through `/api/creator-subscription/config/images` (returns the storage URL to set on `merchantLogo`).
 
 - Request fields:
-  - `merchantName`: optional string value
+  - `merchantName`: optional string
+  - `merchantLogo`: optional string (URL returned by the images endpoint, or `""` to clear)
+  - `appBaseUrl`: optional, must start with `https://` (max 255 chars; trailing slash stripped). Pass `""` to clear.
+  - `brandDescription`: optional, free-form text for AI context (max 4000 chars). Pass `""` to clear.
 
 - Request body:
 ```json
 {
   "merchantName": "Example Merchant",
+  "appBaseUrl": "https://example.com",
+  "brandDescription": "Subscription box for indie ceramics."
 }
 ```
 
@@ -85,7 +90,10 @@ Use this when the human user needs to set or update merchant branding for Portal
   - `data.profileId`
   - `data.merchantName`
   - `data.merchantLogo`
+  - `data.appBaseUrl`
+  - `data.brandDescription`
   - `data.updatedAt`
+  - `data.updatedBy`
 
 `POST /api/creator-subscription/config/images`
 
@@ -113,7 +121,7 @@ Use this when the human user wants the Agent to create or maintain the product b
 
 - **Plans belong to the `profileId` and are shared across live and test modes.** Always query existing plans before creating a new one to avoid duplicates.
 - Read endpoints:
-  - `GET /api/creator-subscription/plans?profileId={profileId}`
+  - `GET /api/creator-subscription/plans`
   - `GET /api/creator-subscription/plans/{planId}`
 - Setup endpoints:
   - `POST /api/creator-subscription/plans`
@@ -169,12 +177,15 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `data.id`
   - `data.profileId`
   - `data.name`
+  - `data.description`
   - `data.amount`
   - `data.currency`
   - `data.billingPeriod`
   - `data.pricingType`
   - `data.status`
+  - `data.merchantPlanId`
   - `data.image`
+  - `data.externalInformationUrl`
   - `data.createdAt`
   - `data.updatedAt`
 - **Encoding note:** On Windows, if `data.name` or `data.description` contains garbled text, fix the shell encoding and use `PUT /api/creator-subscription/plans/{planId}` to correct it.
@@ -182,7 +193,6 @@ Use this when the human user wants the Agent to create or maintain the product b
 `PUT /api/creator-subscription/plans/{planId}`
 
 - Request fields:
-  - `profileId`: required and must match the plan owner
   - `name`: optional
   - `description`: optional
   - `amount`: optional positive number (must be non-negative for dynamic pricing plans)

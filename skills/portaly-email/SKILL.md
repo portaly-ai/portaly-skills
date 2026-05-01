@@ -1,6 +1,6 @@
 ---
 name: portaly-email
-version: 0.1.0
+version: 0.1.1
 description: Help vibe coders integrate Portaly Vibe invitation emails — choose between a Portaly-hosted waitlist CTA (zero setup) or a self-hosted waitlist landing page (full UX control). Trigger when the user mentions Portaly invitation email, waitlist signup landing page, app base URL, embedding a Portaly waitlist CTA, or asks how the registration email link works / where it lands.
 ---
 
@@ -103,7 +103,7 @@ See `references/self-hosted-waitlist.md` for complete code templates (Next.js, R
 
 **REST fallback:**
 ```bash
-curl -X PUT https://portaly.ai/api/creator-subscription/admin/config \
+curl -X PUT https://portaly.ai/api/creator-subscription/config \
   -H "Authorization: Bearer ${PORTALY_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{ "appBaseUrl": "https://your-app.example.com" }'
@@ -160,8 +160,8 @@ syncToPortaly([{ email, name }]).catch((err) =>
 
 | From | To | Action |
 |---|---|---|
-| Mode A → Mode B | Set `appBaseUrl` via `PUT /admin/config` |
-| Mode B → Mode A | Set `appBaseUrl` to `""` via `PUT /admin/config` |
+| Mode A → Mode B | Set `appBaseUrl` via `PUT /api/creator-subscription/config` |
+| Mode B → Mode A | Set `appBaseUrl` to `""` via `PUT /api/creator-subscription/config` |
 
 Switch propagates within ~60 seconds (Portaly's per-process cache TTL). In-flight emails immediately pick up the new mode on the next click — Portaly resolves the redirect target at click time, not at send time.
 

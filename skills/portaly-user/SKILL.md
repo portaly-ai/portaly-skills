@@ -1,6 +1,6 @@
 ---
 name: portaly-user
-version: 0.2.0
+version: 0.2.1
 description: Help users sync and manage their application users in Portaly Vibe, including initial migration, incremental sync, and dashboard viewing. Trigger when the user mentions Portaly user sync, user management, user synchronization, member sync, or wants to push user data to Portaly.
 ---
 
@@ -12,7 +12,7 @@ Use this skill to help a human user integrate Portaly Vibe's User Management API
 
 - **Source of truth**: The user's data lives in the vibe coder's system. Portaly Vibe is a read-only mirror + subscription status overlay.
 - **Sync API**: Push-based. The vibe coder calls `POST /api/creator-subscription/admin/users/sync` to send user data to Portaly Vibe.
-- **Dashboard**: Creators view users at `https://portaly.ai/dashboard/users`. It is **read-only** — all changes come from the Sync API.
+- **Dashboard**: Creators view users at `https://portaly.ai/dashboard/members`. It is **read-only** — all changes come from the Sync API.
 - **Subscription enrichment**: Each user's row shows their Portaly subscription status (if any) as an attribute. No subscription = "Free".
 
 ## API Host
@@ -104,7 +104,7 @@ Before adding any sync functionality, **thoroughly search** for existing pages w
 
 Add a **"Sync to Portaly"** button to the user dashboard. When clicked, it batch-syncs **all** users to Portaly.
 
-> **Heads up — Portaly may auto-send welcome emails on sync.** When `syncToPortaly` upserts a user, Portaly fires a `welcome_free` (or `welcome_paid` if the user has an active subscription) email by default. If the vibe coder's app already sends its own welcome flow, **disable the matching template before clicking the button**, or the first bulk sync will explode into one duplicate email per existing user. Use `PUT /api/creator-email/templates/welcome_free` with `{ "enabled": false }` — see the `portaly-email` skill for details.
+> **Heads up — Portaly may auto-send welcome emails on sync.** When `syncToPortaly` upserts a user, Portaly fires a `welcome_free` (or `welcome_paid` if the user has an active subscription) email by default. If the vibe coder's app already sends its own welcome flow, **disable the matching template before clicking the button**, or the first bulk sync will explode into one duplicate email per existing user. To disable: `GET /api/creator-email/templates/welcome_free` to fetch the current template, then `PUT` the same payload back with `enabled: false` (the endpoint validates `subject`, `greeting`, and `body` as required non-empty strings — you cannot send `{ enabled: false }` alone). Same flow for `welcome_paid`. See the `portaly-email` skill for details.
 
 **Implementation:**
 
@@ -120,9 +120,9 @@ Add a **"Sync to Portaly"** button to the user dashboard. When clicked, it batch
    - Label: "Sync to Portaly"
    - **Helper text next to the button** (required) — render this as visible UI copy so the user understands they only need to click once. Use the vibe coder's existing typography (e.g. a small `<p>`, tooltip, or description element next to the button):
 
-     > Click once to sync all existing users to Portaly. After that, new registrations, logins, profile updates, and deletions are synced automatically in real time. Click again only if data gets out of sync. [View members on Portaly Vibe](https://portaly.ai/dashboard/users)
+     > Click once to sync all existing users to Portaly. After that, new registrations, logins, profile updates, and deletions are synced automatically in real time. Click again only if data gets out of sync. [View members on Portaly Vibe](https://portaly.ai/dashboard/members)
 
-     The "View members on Portaly Vibe" text must be a clickable link pointing to `https://portaly.ai/dashboard/users` (open in a new tab, e.g. `target="_blank" rel="noopener noreferrer"`). Translate the helper copy into the dashboard's primary language if the rest of the UI is not in English — but keep the link destination unchanged.
+     The "View members on Portaly Vibe" text must be a clickable link pointing to `https://portaly.ai/dashboard/members` (open in a new tab, e.g. `target="_blank" rel="noopener noreferrer"`). Translate the helper copy into the dashboard's primary language if the rest of the UI is not in English — but keep the link destination unchanged.
    - Show loading state while syncing
    - Show result summary (created / updated / errors) after completion
    - If there are errors, display them to the user
@@ -292,7 +292,7 @@ Tell the user the integration is complete, then present **exactly** the followin
 
 Then explain: after the first sync, **no manual sync is needed for daily use.** When users register, log in, update their profile, or delete their account, the system automatically syncs to Portaly in real time. The user only needs to click "Sync to Portaly" again if data is out of sync (e.g. a previous sync failed, or the database was manually modified).
 
-Finally, point the user to the Portaly Dashboard to verify: `https://portaly.ai/dashboard/users`
+Finally, point the user to the Portaly Dashboard to verify: `https://portaly.ai/dashboard/members`
 
 Replace `{user dashboard path}` with the actual path where the button was added.
 

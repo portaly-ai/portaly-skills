@@ -307,7 +307,7 @@ syncToPortaly([{ email, name, status: 'active' }]).catch((err) =>
 
 ## Common Mistakes
 
-- **Using `http://` for `appBaseUrl`** — Portaly rejects with 400 at `PUT /admin/config`. Always HTTPS.
+- **Using `http://` for `appBaseUrl`** — Portaly rejects with 400 at `PUT /api/creator-subscription/config`. Always HTTPS.
 - **Forgetting to forward `ref`** on the form POST — the campaign click is logged but the signup isn't attributed to the recipient.
 - **Putting `appBaseUrl` behind authentication** — the page must be publicly reachable. Anyone with a valid invitation link can land on it.
 - **Renaming the path** — Portaly's redirect uses the literal `/waitlist/{slug}`. Aliasing to `/signup/{slug}` produces 404s.
