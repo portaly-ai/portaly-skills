@@ -1,6 +1,6 @@
 ---
 name: portaly-user
-version: 0.2.1
+version: 0.3.0
 description: Help users sync and manage their application users in Portaly Vibe, including initial migration, incremental sync, and dashboard viewing. Trigger when the user mentions Portaly user sync, user management, user synchronization, member sync, or wants to push user data to Portaly.
 ---
 
@@ -36,8 +36,8 @@ Before doing anything, the AI agent **must ask the human user** for explicit con
 >
 > This involves modifying your codebase:
 > 1. Reading your user model to map fields to Portaly's schema
-> 2. Creating a user dashboard (if you don't have one) with a "Sync to Portaly" button
-> 3. Adding automatic sync hooks to your registration, login, update, and deletion flows
+> 2. Adding automatic sync hooks to your registration, login, update, and deletion flows
+> 3. Running a one-time backfill of your existing users — done either by me directly or via a one-off script you run after deploy, no UI button needed
 >
 > Would you like to proceed?
 
@@ -67,78 +67,38 @@ Help the vibe coder map their user fields to the Portaly schema.
 - Fields that don't fit core schema → put in `metadata`
 - To delete a user: sync with `status: "deleted"` (the record is removed from Portaly)
 
-### Step 3 — Find Existing User Dashboard
+### Step 3 — Confirm API Key & Pick Initial Sync Approach
 
-Before adding any sync functionality, **thoroughly search** for existing pages where the user can already view all users. Many frameworks ship a built-in admin UI — do NOT build a new page if one already exists.
+Before writing any code, settle two things with the human user. Do not proceed to Step 4 until both are resolved.
 
-**Where to look:**
+#### 3a — Confirm `PORTALY_API_KEY` is available
 
-1. **Framework built-in admin UI** — these are often auto-generated and not visible in the codebase as explicit page files:
-   - Payload CMS: `/admin/collections/users` (auto-generated from the Users collection)
-   - Django: `/admin/auth/user/` (Django admin)
-   - Strapi: `/admin/content-manager/collection-types/plugin::users-permissions.user`
-   - WordPress: `/wp-admin/users.php`
-   - Directus: `/admin/content/directus_users`
-2. **Custom-built admin pages** — search the codebase for routes like `/admin/users`, `/dashboard/users`, or pages that query the users table/collection
-3. **Any other page that lists users** — even a simple table view counts
+The skill needs `PORTALY_API_KEY` to call the Sync API — both the incremental hooks (Step 4) and the initial backfill (Step 5) depend on it.
 
-**Then tell the user what you found and what you will do:**
+1. Check the user's local env files (`.env`, `.env.local`, `.env.development`, or the framework's env config) for an existing key.
+2. If found, confirm it with the user: is this the right key for the environment you want to sync to? `pcs_test_*` keys go to Portaly's test environment; `pcs_live_*` go to production.
+3. If not found, ask the user to grab it from `https://portaly.ai/dashboard` and paste it. Save it to the appropriate local env file once provided.
 
-- **If an existing user page was found** → tell the user you will add the "Sync to Portaly" button to that page, then proceed to Step 4. Example:
+**Stop here if the key isn't available.** The skill cannot do its job without it. Tell the user to re-run the skill once they have the key.
 
-  > I found that your app already has a user list at `/admin/collections/users` (Payload CMS built-in). I'll add the "Sync to Portaly" button there.
+#### 3b — Pick the initial sync path
 
-- **If no user page exists** → tell the user you will build a minimal one, then proceed to Step 4. Example:
+Ask the user where their real users live. The answer determines how the one-time backfill runs. Use this prompt verbatim (translate to the conversation's language):
 
-  > I didn't find an existing page that lists all users. I'll create a simple user dashboard page so we have a place for the "Sync to Portaly" button.
+> The initial sync needs to push every existing user to Portaly once. I can do this in one of two ways:
+>
+> - **Option A — I run it now from your local environment.** I read users from the database your local code is connected to and call the Portaly API directly. Pick this if your local DB has the users you want synced (e.g. you develop directly against production, or you've already loaded prod data locally).
+> - **Option B — I generate a one-time script you run on production after deploy.** I create `scripts/sync-portaly-once.mjs` (or `.ts`). After you deploy with `PORTALY_API_KEY` set, you run the script once on the production environment. Pick this if your dev DB and prod DB are separate.
+>
+> Which one fits your setup?
 
-  Build a minimal page:
-  - A page (e.g. `/admin/users` or `/dashboard/users`) that lists all users from the database
-  - Use the framework and UI library the vibe coder already uses
-  - Show at minimum: email, display name, role, status
-  - Support pagination if user count could be large
+**Wait for the user's choice before continuing.** Step 5 branches on this answer.
 
-**Do NOT create a new page if one already exists.** The goal is to reuse what the framework provides.
+### Step 4 — Add Sync Helper & Incremental Hooks
 
-### Step 4 — Add "Sync to Portaly" Button
+Add the `syncToPortaly` helper, then wire it into the framework's user lifecycle hooks. The same helper is reused by the initial sync in Step 5.
 
-Add a **"Sync to Portaly"** button to the user dashboard. When clicked, it batch-syncs **all** users to Portaly.
-
-> **Heads up — Portaly may auto-send welcome emails on sync.** When `syncToPortaly` upserts a user, Portaly fires a `welcome_free` (or `welcome_paid` if the user has an active subscription) email by default. If the vibe coder's app already sends its own welcome flow, **disable the matching template before clicking the button**, or the first bulk sync will explode into one duplicate email per existing user. To disable: `GET /api/creator-email/templates/welcome_free` to fetch the current template, then `PUT` the same payload back with `enabled: false` (the endpoint validates `subject`, `greeting`, and `body` as required non-empty strings — you cannot send `{ enabled: false }` alone). Same flow for `welcome_paid`. See the `portaly-email` skill for details.
-
-**Implementation:**
-
-1. Create an API route (e.g. `POST /api/admin/sync-to-portaly`) that:
-   - Reads all users from the database using the framework's ORM/Local API
-   - Maps each user to Portaly schema (using the mapping from Step 2)
-   - Batches into groups of 100
-   - Calls `POST /api/creator-subscription/admin/users/sync` for each batch
-   - Handles 429 with exponential backoff
-   - Returns a summary: `{ synced, created, updated, errors }`
-
-2. Add the button to the user dashboard page:
-   - Label: "Sync to Portaly"
-   - **Helper text next to the button** (required) — render this as visible UI copy so the user understands they only need to click once. Use the vibe coder's existing typography (e.g. a small `<p>`, tooltip, or description element next to the button):
-
-     > Click once to sync all existing users to Portaly. After that, new registrations, logins, profile updates, and deletions are synced automatically in real time. Click again only if data gets out of sync. [View members on Portaly Vibe](https://portaly.ai/dashboard/members)
-
-     The "View members on Portaly Vibe" text must be a clickable link pointing to `https://portaly.ai/dashboard/members` (open in a new tab, e.g. `target="_blank" rel="noopener noreferrer"`). Translate the helper copy into the dashboard's primary language if the rest of the UI is not in English — but keep the link destination unchanged.
-   - Show loading state while syncing
-   - Show result summary (created / updated / errors) after completion
-   - If there are errors, display them to the user
-
-**Key rules:**
-- Read users using the framework's Local API or ORM that directly queries the database
-- **Do NOT** call the app's own HTTP/REST API (e.g. `fetch('/api/users')`)
-- **Do NOT** install raw DB drivers (e.g. `pg`, `mysql2`) — use what the framework already provides
-- Framework examples:
-  - Payload CMS: `const payload = await getPayload({ config }); const { docs } = await payload.find({ collection: 'users', limit: 10000 })`
-  - Prisma: `const users = await prisma.user.findMany()`
-  - Supabase: `const { data } = await supabase.from('users').select()`
-  - Mongoose: `const users = await User.find()`
-  - Drizzle: `const users = await db.select().from(users)`
-
-**Batch sync helper (used by both the button and incremental sync):**
+**Batch sync helper:**
 
 Generate a `syncToPortaly` function based on the mapping from Step 2. Only include fields that the vibe coder's system actually has. Below is a full example — remove any fields that don't apply:
 
@@ -215,9 +175,9 @@ async function syncToPortaly(users: Array<{
 }
 ```
 
-For single-user incremental sync (used in Step 5), the same helper works — just pass an array with one user.
+**Place this helper in a shared module** — e.g. `lib/portaly-user-sync.ts` (adapt to the project's conventions) — exporting `syncToPortaly`. The same module is imported by both the incremental hooks below and the initial-sync entry point in Step 5. The helper handles single-user calls (pass an array of one) and bulk batches the same way.
 
-### Step 5 — Insert Incremental Sync Hooks
+**Insert incremental hooks:**
 
 Use the framework's **hooks / event system** (e.g. Payload `afterChange`, Prisma middleware, Mongoose post-save). The sync helper only calls the **Portaly external API** — it should never call the app's own API.
 
@@ -245,6 +205,48 @@ await syncToPortaly([userData]) // if this fails, user registration fails too
 - **Login** — call sync in the framework's auth hook (e.g. Payload `afterLogin`, NextAuth `events.signIn`, Supabase auth webhooks, Django `user_logged_in` signal, Flask-Login `user_logged_in` signal) and pass `last_login_at` set to the current time in ISO 8601 format. No need to store this in the vibe coder's own database — just generate the timestamp at call time and send it to Portaly.
 - **Account deletion** — sync with `status: "deleted"` to remove from Portaly
 - **Waitlist signup** — if the merchant uses the `portaly-email` skill in self-hosted mode (Mode B), the `/waitlist/[creatorSlug]` page receives a follower's email-and-name signup. Treat that as a new user and call `syncToPortaly([{ email, name, status: 'active' }])` after the POST to `/api/waitlist` succeeds, fire-and-forget
+
+### Step 5 — Run Initial Sync
+
+> **Heads up — Portaly may auto-send welcome emails on this sync.** When `syncToPortaly` upserts a user, Portaly fires a `welcome_free` (or `welcome_paid` if the user has an active subscription) email by default. If the vibe coder's app already sends its own welcome flow, **disable the matching template before running the initial sync**, or the backfill will explode into one duplicate email per existing user. To disable: `GET /api/creator-email/templates/welcome_free` to fetch the current template, then `PUT` the same payload back with `enabled: false` (the endpoint validates `subject`, `greeting`, and `body` as required non-empty strings — you cannot send `{ enabled: false }` alone). Same flow for `welcome_paid`. See the `portaly-email` skill for details.
+
+Branch on the path picked in Step 3b.
+
+#### Option A — Run from local now
+
+The agent does the backfill directly. No UI, no button, no extra route.
+
+1. Read all users from the database using the framework's Local API or ORM (see examples below). **Do NOT** call the app's own HTTP API. **Do NOT** install raw DB drivers — use what the framework already provides.
+2. Map each user to the Portaly schema using the mapping from Step 2.
+3. Import `syncToPortaly` from the shared module created in Step 4 and call it with the mapped users — the helper handles batching, 429 backoff, and error reporting.
+4. Print the result `{ synced, created, updated, errors }` for the human user. If `errors` is non-empty, surface them and offer to retry.
+
+Framework read examples:
+- Payload CMS: `const payload = await getPayload({ config }); const { docs } = await payload.find({ collection: 'users', limit: 10000 })`
+- Prisma: `const users = await prisma.user.findMany()`
+- Supabase: `const { data } = await supabase.from('users').select()`
+- Mongoose: `const users = await User.find()`
+- Drizzle: `const users = await db.select().from(users)`
+
+Run via `node`, `tsx`, or whatever ad-hoc runner the project already uses. For very large datasets (tens of thousands of users) warn the user the run may take a while — see **Guardrails** below for pacing recommendations.
+
+#### Option B — Generate a one-time script
+
+Create `scripts/sync-portaly-once.mjs` (or `.ts` if the project is TypeScript-first). The script must:
+
+- Import `syncToPortaly` from the shared module created in Step 4 (do not duplicate the helper inline — keeping one source of truth avoids drift)
+- Read all users via the same framework ORM/Local API used in Option A's examples
+- Map per Step 2 and call `syncToPortaly(users)`
+- Print the result `{ synced, created, updated, errors }` and exit non-zero if `errors` is non-empty
+- Read `PORTALY_API_KEY` and `PORTALY_API_HOST` from the environment (do not hardcode)
+
+Then tell the user, verbatim (translate to the conversation's language):
+
+> The script is at `scripts/sync-portaly-once.mjs`. After you set `PORTALY_API_KEY` in production and deploy, run it once on the production environment:
+>
+>     PORTALY_API_KEY=pcs_live_xxx node scripts/sync-portaly-once.mjs
+>
+> You only need to run it once. After that, the incremental hooks added in Step 4 keep Portaly in sync automatically. Re-run only if data drifts (e.g. a previous sync failed, or the DB was modified outside the app).
 
 ### Step 6 — Verify & Done
 
@@ -274,9 +276,9 @@ Rules:
 
 #### 6b — Next Steps & Done
 
-Tell the user the integration is complete, then present **exactly** the following action items. These are things the user must do themselves. **You MUST include all three environment variables — do NOT omit `PORTALY_CALLBACK_SECRET`.**
+Tell the user the integration is complete, then present the following action items — these are things the user must do themselves. **You MUST include all three environment variables — do NOT omit `PORTALY_CALLBACK_SECRET`.** Item 3 only applies to users who picked Option B in Step 3b — omit it entirely for Option A (the initial sync already happened in Step 5).
 
-**Action items to present (output all of these):**
+**Action items:**
 
 1. **Set environment variables** in your production/staging environment. Get them at `https://portaly.ai/dashboard`. All three are required:
    ```
@@ -286,15 +288,16 @@ Tell the user the integration is complete, then present **exactly** the followin
    ```
    `pcs_test_*` keys sync to Portaly's test environment; `pcs_live_*` keys sync to production.
 
-2. **Deploy your application** — the sync hooks and "Sync to Portaly" button only work after deployment.
+2. **Deploy your application** — the incremental sync hooks only fire after deployment.
 
-3. **Click "Sync to Portaly"** at `{user dashboard path}` to sync all existing users to Portaly.
+3. **Run the one-time backfill** on production after deploy:
+   ```
+   PORTALY_API_KEY=pcs_live_xxx node scripts/sync-portaly-once.mjs
+   ```
 
-Then explain: after the first sync, **no manual sync is needed for daily use.** When users register, log in, update their profile, or delete their account, the system automatically syncs to Portaly in real time. The user only needs to click "Sync to Portaly" again if data is out of sync (e.g. a previous sync failed, or the database was manually modified).
+Then explain: after the initial sync, **no manual action is needed for daily use.** When users register, log in, update their profile, or delete their account, the system automatically syncs to Portaly in real time. Re-run the script (Option B) or re-trigger the skill's initial sync (Option A) only if data drifts — e.g. a previous sync failed, or the database was modified outside the app.
 
 Finally, point the user to the Portaly Dashboard to verify: `https://portaly.ai/dashboard/members`
-
-Replace `{user dashboard path}` with the actual path where the button was added.
 
 ## Guardrails
 

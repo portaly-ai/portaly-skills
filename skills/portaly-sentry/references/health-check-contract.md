@@ -74,8 +74,8 @@ Notes:
 
 | ID | Check | Severity | Pass Criteria | Fail Criteria |
 |---|---|---|---|---|
-| ENV-001 | Required env vars | CRITICAL | `.env` (or `.env.example`, `.env.local`) contains both `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET`. | One or both are missing. |
-| ENV-002 | Gitignore covers .env | CRITICAL | `.gitignore` includes `.env` (or `.env*` pattern). | `.env` is not in `.gitignore`, risking credential leak via version control. |
+| ENV-001 | Required env vars | CRITICAL | Both `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` are referenced by name — either in a `.env*` file or in source code. A name appearing in source proves the key is wired via some mechanism (`.env`, secret manager, runtime env, shell — the check is platform-agnostic). | One or both keys are not referenced anywhere. |
+| ENV-002 | Gitignore covers .env | CRITICAL | Every sensitive `.env` file (i.e. excluding `.env.example`) is gitignored — verified via `git check-ignore`, so hierarchical patterns like `**/.env` in the root `.gitignore` count. Also passes when no sensitive `.env` file exists, or the project is not a git repository. | A sensitive `.env` file is tracked by git and risks credential leak. |
 | ENV-003 | No hardcoded secrets | CRITICAL | No source file (excluding `node_modules`, `.env`) contains literal strings matching `pcs_live_`, `pcs_test_`, or callback secret patterns. | Found literal API key or secret string in source files. |
 
 ### SEC — Security Best Practices
@@ -150,9 +150,9 @@ Result:
 
 ```ts
 {
-  reportId: string,                 // use as {scan_id} in the dashboard URL
+  reportId: string,                 // server-side report id (for logging)
   score: number,                    // 0-100, server-computed via the same formula
-  dashboardUrl: string,             // direct link to this report
+  dashboardUrl: string,             // dashboard link to show the user
 }
 ```
 

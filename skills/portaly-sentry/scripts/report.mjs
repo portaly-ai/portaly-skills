@@ -287,32 +287,73 @@ function runCbkChecks(portaSet) {
 
 // ── ENV — Environment & Credentials ──────────────────────────────────────────
 
-function runEnvChecks(allFiles) {
-  // ENV-001: required env vars
-  const envFiles = ['.env', '.env.local', '.env.example', '.env.development']
-    .map(f => join(projectDir, f)).filter(existsSync)
+const ENV_FILE_NAMES = ['.env', '.env.local', '.env.example', '.env.development', '.env.production']
+
+// Look for .env files anywhere in the tree (root, functions/, apps/*, packages/*, etc.) — not just root.
+function findEnvFiles(allFiles) {
+  const dirs = new Set([projectDir])
+  for (const f of allFiles) dirs.add(dirname(f))
+  const found = []
+  for (const d of dirs) {
+    for (const name of ENV_FILE_NAMES) {
+      const p = join(d, name)
+      if (existsSync(p)) found.push(p)
+    }
+  }
+  return found
+}
+
+function runEnvChecks(allFiles, portaSet) {
+  const envFiles = findEnvFiles(allFiles)
+  const envCombined = envFiles.map(readFile).join('\n')
+  const portaCombined = portaSet.map(readFile).join('\n')
+  const referenceText = envCombined + '\n' + portaCombined
+
+  // ENV-001: required keys must be referenced somewhere — .env files OR source code.
+  // A name appearing in source proves the key is wired up via some mechanism; the script
+  // is platform-agnostic and does not care which. Both keys are always required —
+  // CALLBACK_SECRET is needed to verify every payment-result callback.
+  const required = ['PORTALY_API_KEY', 'PORTALY_CALLBACK_SECRET']
+  const missing = required.filter(k => !referenceText.includes(k))
+
   let envResult
-  if (envFiles.length === 0) {
-    envResult = chk('ENV-001', 'environment', 'Required env vars', 'critical', 'fail', 'No .env file found')
+  if (missing.length > 0) {
+    envResult = chk('ENV-001', 'environment', 'Required env vars', 'critical', 'fail',
+      `Missing: ${missing.join(', ')} — define in .env or your secret manager`)
   } else {
-    const combined = envFiles.map(readFile).join('\n')
-    const missing = [
-      !combined.includes('PORTALY_API_KEY') && 'PORTALY_API_KEY',
-      !combined.includes('PORTALY_CALLBACK_SECRET') && 'PORTALY_CALLBACK_SECRET',
-    ].filter(Boolean)
-    envResult = missing.length === 0
-      ? chk('ENV-001', 'environment', 'Required env vars', 'critical', 'pass')
-      : chk('ENV-001', 'environment', 'Required env vars', 'critical', 'fail', `Missing: ${missing.join(', ')}`)
+    const detail = envFiles.length === 0
+      ? 'Required keys referenced in source — assumed wired via your secret manager or runtime env'
+      : null
+    envResult = chk('ENV-001', 'environment', 'Required env vars', 'critical', 'pass', detail)
   }
 
-  // ENV-002: .gitignore
-  const gi = join(projectDir, '.gitignore')
-  const giResult = !existsSync(gi)
-    ? chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'fail', '.gitignore not found')
-    : /^\.env/m.test(readFile(gi))
+  // ENV-002: ensure sensitive .env files are gitignored. .env.example is excluded —
+  // it is a placeholder template that is meant to be committed.
+  const sensitiveEnvFiles = envFiles.filter(f => !f.endsWith('.env.example'))
+  const isGitRepo = existsSync(join(projectDir, '.git'))
+
+  let giResult
+  if (sensitiveEnvFiles.length === 0) {
+    giResult = chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass',
+      envFiles.length === 0 ? 'No .env files in project' : 'Only .env.example present (safe to commit)')
+  } else if (!isGitRepo) {
+    giResult = chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass',
+      'Not a git repository — gitignore not applicable')
+  } else {
+    // Use `git check-ignore` — the canonical answer to "is this file ignored".
+    // It respects all ancestor .gitignore files, local exclude, and global excludes,
+    // so monorepo patterns like `**/.env` in the root .gitignore work correctly.
+    const uncovered = sensitiveEnvFiles.filter(f => {
+      const res = spawnSync('git', ['check-ignore', '-q', f], {
+        cwd: projectDir, timeout: 5_000,
+      })
+      return res.status !== 0
+    })
+    giResult = uncovered.length === 0
       ? chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass')
       : chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'fail',
-        '.env is not covered in .gitignore — risk of credential leak in version control')
+        `Not gitignored: ${uncovered.map(rel).join(', ')} — risk of credential leak`)
+  }
 
   // ENV-003: no hardcoded secrets in source
   const srcFiles = allFiles.filter(f => !f.includes('.env'))
@@ -552,7 +593,7 @@ async function main() {
     ...runSigChecks(portaSet),
     ...runSubChecks(),
     ...runCbkChecks(portaSet),
-    ...runEnvChecks(allFiles),
+    ...runEnvChecks(allFiles, portaSet),
     ...runSecChecks(portaSet, allFiles),
     ...runWebChecks(portaSet),
     ...runDepChecks(),

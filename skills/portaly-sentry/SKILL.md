@@ -1,6 +1,6 @@
 ---
 name: portaly-sentry
-version: 0.3.1
+version: 0.3.2
 description: Run a security and reliability health check on a Portaly Vibe payment integration before deployment. Trigger when the user mentions Portaly health check, payment security audit, pre-deploy check, sentry scan, callback verification audit, integration safety check, or wants to verify their Portaly payment integration is safe to go live.
 ---
 
@@ -107,8 +107,8 @@ Checks credential management and environment configuration.
 
 | ID | Check | Severity |
 |---|---|---|
-| ENV-001 | `.env` contains `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` | CRITICAL |
-| ENV-002 | `.gitignore` covers `.env` | CRITICAL |
+| ENV-001 | `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` are referenced in `.env` files or in source code (proves the keys are wired via some mechanism — `.env`, secret manager, runtime env, etc.) | CRITICAL |
+| ENV-002 | Sensitive `.env` files are gitignored (verified via `git check-ignore`; `.env.example` is excluded — it is a template meant to be committed) | CRITICAL |
 | ENV-003 | No API key or callback secret hardcoded in source files | CRITICAL |
 
 ### SEC — Security Best Practices
@@ -195,9 +195,10 @@ Reference: `scripts/check_subscription_lifecycle.mjs` can automate this step.
 
 ### Step 8 — Run ENV checks
 
-1. Read `.env` (or `.env.example`, `.env.local`) — check for `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET`.
-2. Read `.gitignore` — check that `.env` is listed.
-3. Grep source files (excluding `node_modules`, `.env`) for literal `pcs_live_`, `pcs_test_`, or any string that looks like a callback secret.
+1. Look for `.env*` files anywhere in the tree (root, `functions/`, `apps/*`, `packages/*`, etc.).
+2. ENV-001 passes when both `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` are referenced — either in `.env` files or by name in source code. A name appearing in code (e.g. `process.env.PORTALY_API_KEY`, `defineSecret('PORTALY_API_KEY')`, or any other usage) means the project has wired the key via some mechanism (`.env`, a secret manager, runtime env, shell exports, etc.) — the script does not need to know which platform is in use. Both keys are always required: `PORTALY_API_KEY` for outbound calls and `PORTALY_CALLBACK_SECRET` for verifying payment results.
+3. ENV-002: verify each sensitive `.env` file is gitignored. Use `git check-ignore` so that hierarchical patterns are respected (e.g. `**/.env` in the root `.gitignore` covers `functions/.env`). Skip `.env.example` — it is a placeholder template that is meant to be committed. If no sensitive `.env` files exist, or the project is not a git repository, the check passes (nothing can leak).
+4. ENV-003: grep source files (excluding `node_modules`, `.env`) for literal `pcs_live_`, `pcs_test_`, or any string that looks like a callback secret.
 
 ### Step 9 — Run SEC checks
 
@@ -230,9 +231,9 @@ After running all checks but before presenting the summary, offer to sync the sc
 
 There are two transports — prefer MCP when available:
 
-**Path A — MCP (preferred, zero extra config).** If the agent is connected to Vibe MCP, the `vibe_report_health_check` tool is available. It uses the agent's existing MCP connection — no `PORTALY_API_KEY` needed. Briefly ask consent, then call the tool with the scan payload. Capture `reportId` and `dashboardUrl` from the response and use `reportId` as `{scan_id}` in the Layer 1 dashboard link. See `references/health-check-contract.md` § "MCP reporting" for the input schema.
+**Path A — MCP (preferred, zero extra config).** If the agent is connected to Vibe MCP, the `vibe_report_health_check` tool is available. It uses the agent's existing MCP connection — no `PORTALY_API_KEY` needed. Briefly ask consent, then call the tool with the scan payload. Use the `dashboardUrl` from the response as the Layer 1 dashboard link. See `references/health-check-contract.md` § "MCP reporting" for the input schema.
 
-**Path B — REST API (fallback).** When MCP is not connected and the user has `PORTALY_API_KEY` set in their environment, fall back to running `scripts/report.mjs` — it reads the key from `process.env.PORTALY_API_KEY` and POSTs to `https://portaly.ai/api/creator-subscription/health-check-reports` for you. Prefer this over hand-rolling a `curl` / `fetch` with the key inline. Capture `reportId` from the script's stdout. See `references/health-check-contract.md` § "Report API Contract" for the full request/response schema.
+**Path B — REST API (fallback).** When MCP is not connected and the user has `PORTALY_API_KEY` set in their environment, fall back to running `scripts/report.mjs` — it reads the key from `process.env.PORTALY_API_KEY` and POSTs to `https://portaly.ai/api/creator-subscription/health-check-reports` for you. Prefer this over hand-rolling a `curl` / `fetch` with the key inline. Use the `dashboardUrl` from the script's stdout (line `Dashboard: <url>`) as the Layer 1 dashboard link. See `references/health-check-contract.md` § "Report API Contract" for the full request/response schema.
 
 Rules:
 - Do not call either path without explicit user consent.
@@ -267,7 +268,7 @@ Top {min(3, failures)} things to fix:
 3. ...
 
 🔗 Full report (all 26 checks, fix guidance, history)
-https://portaly.ai/dashboard/sentry-scans/{scan_id}
+{dashboard_url}
 ```
 
 Score banding (must match the dashboard):
@@ -286,7 +287,7 @@ Score banding (must match the dashboard):
 | 🔧 Routine check | 0 CRITICAL **and** 0 WARNING failures |
 | 🏆 Gold standard | 0 failures across all 26 checks |
 
-Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. If the Step 13 sync was skipped and there is no `scan_id`, drop the whole `🔗 Full report` block (both the label line and the URL line); do not show a broken or placeholder link.
+Use `✅ Safe to launch` or `❌ Not safe to launch yet` — nothing in between. `{dashboard_url}` is the `dashboardUrl` returned by Step 13. If Step 13 was skipped or did not return one, drop the whole `🔗 Full report` block (both the label line and the URL line).
 
 For **📄 Report only**, omit the `Status:` line entirely (there is no launch gate in this mode) and replace it with `Mode: 📄 Report only — fix workflow disabled`. Everything else in Layer 1 stays the same.
 

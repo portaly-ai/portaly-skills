@@ -92,15 +92,15 @@ Severity values match `SKILL.md`. When `SKILL.md` and `health-check-contract.md`
 ## ENV — Environment & Credentials
 
 ### ENV-001 · CRITICAL
-- **Plain title**: Missing required env vars in .env
-- **Why it matters**: Either `PORTALY_API_KEY` or `PORTALY_CALLBACK_SECRET` is missing. In production, your checkout or callback-verification code crashes the moment it runs.
-- **Affects**: `.env` (or `.env.example` / `.env.local`)
+- **Plain title**: Missing required env vars
+- **Why it matters**: Either `PORTALY_API_KEY` or `PORTALY_CALLBACK_SECRET` is not referenced anywhere — neither in `.env` nor in source code. In production, your checkout or callback-verification code crashes the moment it runs.
+- **Affects**: `.env`, or wherever your project loads secrets from (secret manager, runtime env, etc.)
 - **Doesn't affect**: Source code, database
 
 ### ENV-002 · CRITICAL
 - **Plain title**: .env is not in .gitignore
-- **Why it matters**: `.env` holds your merchant secrets. Once committed to GitHub, the key lives in every commit of history — deleting it later doesn't help because bots continuously scrape GitHub for leaked credentials.
-- **Affects**: `.gitignore`
+- **Why it matters**: `.env` holds your merchant secrets. Once committed to GitHub, the key lives in every commit of history — deleting it later doesn't help because bots continuously scrape GitHub for leaked credentials. (If you don't keep secrets in a `.env` file at all, this check passes automatically — there's nothing to leak.)
+- **Affects**: `.gitignore` in each directory that contains a `.env` file
 - **Doesn't affect**: Source code, database, frontend
 
 ### ENV-003 · CRITICAL
