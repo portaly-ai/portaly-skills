@@ -50,7 +50,7 @@ The body is HTML. Keep it simple — most email clients strip aggressive CSS and
 ```html
 <p>Hi {customerName},</p>
 
-<p>{merchantName} here. <!-- one-paragraph hook tied to the campaign angle --></p>
+<p>{productName} here. <!-- one-paragraph hook tied to the campaign angle --></p>
 
 <p>
   <a href="{inviteUrl}" style="display:inline-block;padding:10px 18px;background:#0f172a;color:#fff;text-decoration:none;border-radius:6px;">
@@ -58,7 +58,7 @@ The body is HTML. Keep it simple — most email clients strip aggressive CSS and
   </a>
 </p>
 
-<p>— {merchantName}</p>
+<p>— {productName}</p>
 ```
 
 Rules:

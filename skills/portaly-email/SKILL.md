@@ -246,7 +246,7 @@ The dashboard step order is **Email content → Recipients → Send**. The MCP f
 2. **Draft `subject` + `bodyHtml`** with the creator. Constraints:
    - Subject ≤ 255 chars; body is HTML, ≤ 100,000 chars.
    - Body must include `{inviteUrl}` — the tracked invitation link the recipient clicks.
-   - Built-in placeholders: `{customerName}`, `{merchantName}`, `{inviteUrl}`. Any column the creator imported is exposed as `{slug}` — confirm slugs with the creator before referencing them.
+   - Built-in placeholders: `{customerName}`, `{productName}`, `{inviteUrl}`. Any column the creator imported is exposed as `{slug}` — confirm slugs with the creator before referencing them.
 3. **Create the draft** with `vibe_create_campaign({ name, subject, bodyHtml, aiContext? })`. Subject + body are saved on the draft so the dashboard preview matches the chat.
 4. **Send the creator to import recipients** in the dashboard's **Recipients** tab (CSV / Google Sheet / paste). There is no MCP tool for import.
 5. **Revise copy** by calling `vibe_update_campaign({ campaignId, subject?, bodyHtml? })`. `vibe_send_campaign` does not accept subject/body, so revisions go here.
