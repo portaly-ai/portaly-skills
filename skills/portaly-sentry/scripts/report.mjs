@@ -303,6 +303,37 @@ function findEnvFiles(allFiles) {
   return found
 }
 
+// ENV-002 is universally useful — sensitive .env files should be gitignored
+// regardless of whether a Portaly integration is wired up. Extracted so the
+// "no Portaly integration" path can still run it.
+function runEnv002Check(allFiles) {
+  const envFiles = findEnvFiles(allFiles)
+  const sensitiveEnvFiles = envFiles.filter(f => !f.endsWith('.env.example'))
+  const isGitRepo = existsSync(join(projectDir, '.git'))
+
+  if (sensitiveEnvFiles.length === 0) {
+    return chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass',
+      envFiles.length === 0 ? 'No .env files in project' : 'Only .env.example present (safe to commit)')
+  }
+  if (!isGitRepo) {
+    return chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass',
+      'Not a git repository — gitignore not applicable')
+  }
+  // Use `git check-ignore` — the canonical answer to "is this file ignored".
+  // It respects all ancestor .gitignore files, local exclude, and global excludes,
+  // so monorepo patterns like `**/.env` in the root .gitignore work correctly.
+  const uncovered = sensitiveEnvFiles.filter(f => {
+    const res = spawnSync('git', ['check-ignore', '-q', f], {
+      cwd: projectDir, timeout: 5_000,
+    })
+    return res.status !== 0
+  })
+  return uncovered.length === 0
+    ? chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass')
+    : chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'fail',
+      `Not gitignored: ${uncovered.map(rel).join(', ')} — risk of credential leak`)
+}
+
 function runEnvChecks(allFiles, portaSet) {
   const envFiles = findEnvFiles(allFiles)
   const envCombined = envFiles.map(readFile).join('\n')
@@ -327,33 +358,7 @@ function runEnvChecks(allFiles, portaSet) {
     envResult = chk('ENV-001', 'environment', 'Required env vars', 'critical', 'pass', detail)
   }
 
-  // ENV-002: ensure sensitive .env files are gitignored. .env.example is excluded —
-  // it is a placeholder template that is meant to be committed.
-  const sensitiveEnvFiles = envFiles.filter(f => !f.endsWith('.env.example'))
-  const isGitRepo = existsSync(join(projectDir, '.git'))
-
-  let giResult
-  if (sensitiveEnvFiles.length === 0) {
-    giResult = chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass',
-      envFiles.length === 0 ? 'No .env files in project' : 'Only .env.example present (safe to commit)')
-  } else if (!isGitRepo) {
-    giResult = chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass',
-      'Not a git repository — gitignore not applicable')
-  } else {
-    // Use `git check-ignore` — the canonical answer to "is this file ignored".
-    // It respects all ancestor .gitignore files, local exclude, and global excludes,
-    // so monorepo patterns like `**/.env` in the root .gitignore work correctly.
-    const uncovered = sensitiveEnvFiles.filter(f => {
-      const res = spawnSync('git', ['check-ignore', '-q', f], {
-        cwd: projectDir, timeout: 5_000,
-      })
-      return res.status !== 0
-    })
-    giResult = uncovered.length === 0
-      ? chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'pass')
-      : chk('ENV-002', 'environment', 'Gitignore covers .env', 'critical', 'fail',
-        `Not gitignored: ${uncovered.map(rel).join(', ')} — risk of credential leak`)
-  }
+  const giResult = runEnv002Check(allFiles)
 
   // ENV-003: no hardcoded secrets in source
   const srcFiles = allFiles.filter(f => !f.includes('.env'))
@@ -364,6 +369,38 @@ function runEnvChecks(allFiles, portaSet) {
     : chk('ENV-003', 'environment', 'No hardcoded secrets', 'critical', 'pass')
 
   return [envResult, giResult, hcResult]
+}
+
+// Build skip results for all payment-specific checks. Used when no Portaly integration
+// is detected — we still want to run universally useful checks (DEP, ENV-002), so
+// rather than aborting, we mark everything payment-specific as "skip" with a clear reason.
+function noIntegrationSkips(reason) {
+  const items = [
+    ['SIG-001', 'signature',    'Stable JSON sort order',           'critical'],
+    ['SIG-002', 'signature',    'HMAC algorithm',                   'critical'],
+    ['SIG-003', 'signature',    'Timestamp replay protection',      'warning'],
+    ['SIG-004', 'signature',    'Timing-safe comparison',           'critical'],
+    ['SUB-001', 'subscription', 'Subscription ID persistence',      'critical'],
+    ['SUB-002', 'subscription', 'Idempotency key',                  'warning'],
+    ['SUB-003', 'subscription', 'Subscription ID in cancel/resume', 'critical'],
+    ['CBK-001', 'callback',     'HTTPS callback URL',               'critical'],
+    ['CBK-002', 'callback',     'Callback error handling',          'warning'],
+    ['CBK-003', 'callback',     'Callback response code',           'info'],
+    ['ENV-001', 'environment',  'Required env vars',                'critical'],
+    ['ENV-003', 'environment',  'No hardcoded secrets',             'critical'],
+    ['SEC-001', 'security',     'No client-side exposure',          'critical'],
+    ['SEC-002', 'security',     'Callback audit trail',             'info'],
+    ['SEC-003', 'security',     'Secret rotation readiness',        'info'],
+    ['SEC-004', 'security',     'CORS configuration',               'warning'],
+    ['SEC-005', 'security',     'CSP headers',                      'info'],
+    ['WEB-001', 'web',          'Open redirect protection',         'warning'],
+    ['WEB-002', 'web',          'Error info leakage',               'warning'],
+    ['WEB-003', 'web',          'Content-Type validation',          'info'],
+    ['WEB-004', 'web',          'Body size limit',                  'info'],
+    ['DATA-001', 'data',        'Input validation',                 'info'],
+    ['DATA-002', 'data',        'Sensitive data logging',           'warning'],
+  ]
+  return items.map(([id, cat, name, sev]) => chk(id, cat, name, sev, 'skip', reason))
 }
 
 // ── SEC — Security Best Practices ────────────────────────────────────────────
@@ -576,29 +613,36 @@ async function main() {
 
   const allFiles = listFiles(projectDir)
   const portaSet = findPortalyFiles(allFiles)
+  const hasIntegration = portaSet.length > 0
 
-  if (portaSet.length === 0) {
-    console.log('\n' + c('No Portaly payment integration found.', YELLOW))
-    console.log('Use portaly-payment skill to set up the integration first.')
-    process.exit(0)
+  if (!hasIntegration) {
+    console.log('\n' + c('No Portaly payment integration found — skipping payment-specific checks.', YELLOW))
+    console.log(c('Running general checks only (dependency security, .env gitignore).', DIM))
+    console.log(c('Tip: use the portaly-payment skill to set up an integration.', DIM))
+  } else {
+    console.log(`${c('Found:', DIM)} ${portaSet.length} Portaly file(s)`)
+    if (verbose) portaSet.forEach(f => console.log(`  ${c(rel(f), DIM)}`))
   }
-
-  console.log(`${c('Found:', DIM)} ${portaSet.length} Portaly file(s)`)
-  if (verbose) portaSet.forEach(f => console.log(`  ${c(rel(f), DIM)}`))
 
   const name = resolveProjectName()
   const scanTimestamp = new Date().toISOString()
 
-  const allChecks = [
-    ...runSigChecks(portaSet),
-    ...runSubChecks(),
-    ...runCbkChecks(portaSet),
-    ...runEnvChecks(allFiles, portaSet),
-    ...runSecChecks(portaSet, allFiles),
-    ...runWebChecks(portaSet),
-    ...runDepChecks(),
-    ...runDataChecks(portaSet),
-  ]
+  const allChecks = hasIntegration
+    ? [
+        ...runSigChecks(portaSet),
+        ...runSubChecks(),
+        ...runCbkChecks(portaSet),
+        ...runEnvChecks(allFiles, portaSet),
+        ...runSecChecks(portaSet, allFiles),
+        ...runWebChecks(portaSet),
+        ...runDepChecks(),
+        ...runDataChecks(portaSet),
+      ]
+    : [
+        ...noIntegrationSkips('No Portaly payment integration detected'),
+        runEnv002Check(allFiles),
+        ...runDepChecks(),
+      ]
 
   printResults(allChecks)
 

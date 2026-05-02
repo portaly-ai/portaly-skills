@@ -1,6 +1,6 @@
 ---
 name: portaly-sentry
-version: 0.3.2
+version: 0.3.3
 description: Run a security and reliability health check on a Portaly Vibe payment integration before deployment. Trigger when the user mentions Portaly health check, payment security audit, pre-deploy check, sentry scan, callback verification audit, integration safety check, or wants to verify their Portaly payment integration is safe to go live.
 ---
 
@@ -15,7 +15,7 @@ This skill works alongside `portaly-payment`. It uses the same API contract as t
 ### Step 1 — Confirm integration exists
 
 - Confirm the project has a Portaly Vibe payment integration (look for `portaly`, `callbackSecret`, `x-portaly-signature`, or checkout session creation code).
-- If no integration is found, tell the user and stop.
+- If no integration is found, mention it and continue — payment-specific checks are skipped automatically; general checks (DEP, ENV-002) still run.
 
 ### Step 2 — Introduce what Sentry checks, in plain language
 
@@ -483,7 +483,7 @@ See `references/ci-setup-guide.md` for the full CLI reference and setup instruct
 - **Cross-reference portaly-payment.** Load `../portaly-payment/references/api-contract.md` for the authoritative callback verification spec and subscription lifecycle contract.
 - **Do not assume the user's stack.** Check for Express, Next.js (App Router / Pages Router), Cloud Functions, Fastify, or vanilla Node.js before recommending fixes.
 - **Match the user's code style.** When recommending fixes, generate code that matches the user's existing patterns, variable naming, and module system (ESM vs CommonJS).
-- **If no integration is found, stop.** Tell the user the project does not appear to have a Portaly payment integration and ask if they want to set one up using `portaly-payment`.
+- **If no integration is found, continue the scan.** Payment-specific checks are marked `[SKIP]`; DEP and ENV-002 still run.
 - **Report API is optional.** Do not call the health-check report API without user consent. If the API returns 404, skip silently and show results locally.
 - **DEP checks require package.json.** If no `package.json` exists, skip DEP checks and mark them as `[SKIP]`.
 - **Windows encoding.** On Windows, run `chcp 65001` before any API calls containing non-ASCII text.
