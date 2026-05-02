@@ -1,7 +1,7 @@
 ---
 name: portaly-email
-version: 0.2.0
-description: Help Portaly creators run follower-email campaigns end-to-end — create a draft, send it via Vibe MCP, read post-send analytics — and wire up where the invitation email's CTA redirects (Portaly-hosted waitlist, or a self-hosted /waitlist/[slug] page). Trigger when the user mentions invitation emails, follower outreach campaigns, sending an email blast to followers, drafting an email campaign, waitlist signup landing page, app base URL, embedding a waitlist CTA, or asks how the registration email link works / where it lands.
+version: 0.3.0
+description: Help Portaly creators run follower-email campaigns end-to-end — create a draft, save and iterate on subject + HTML body, send it via Vibe MCP, read post-send analytics — and wire up where the invitation email's CTA redirects (Portaly-hosted waitlist, self-hosted /waitlist/[slug], or directly into the creator's existing register flow). Trigger when the user mentions invitation emails, follower outreach campaigns, sending an email blast to followers, drafting an email campaign, waitlist signup landing page, app base URL, embedding a waitlist CTA, skipping the waitlist when a member system already exists, or asks how the registration email link works / where it lands.
 ---
 
 # Portaly Vibe Invitation Email Integration
@@ -10,43 +10,51 @@ Use this skill to help a human user wire up the registration link from Portaly V
 
 ## Concept
 
-When a creator's follower clicks the CTA in a Portaly invitation email, the request always hits Portaly first at `https://portaly.ai/r/{referralCode}` — that endpoint is the **central click tracker** (rate limit, click-event log, attribution). Portaly then **302-redirects** the user to a waitlist landing page.
+When a follower clicks the CTA in a Portaly invitation email, the request always hits `https://portaly.ai/r/{referralCode}` first — that endpoint is the central click tracker (rate limit, click-event log, attribution). Portaly then 302-redirects to a landing page; three modes pick where:
 
-Two modes decide where that redirect lands:
-
-| Mode | Where the user lands | Setup |
+| Mode | Landing URL | `creatorSubscriptionConfig` |
 |---|---|---|
-| **A. Hosted (default)** | `https://portaly.ai/waitlist/{creatorSlug}` — Portaly-hosted page | None |
-| **B. Self-hosted** | `https://{vibe-coder-app}/waitlist/{creatorSlug}` — your app | Set `appBaseUrl` + implement the page |
+| **A. Hosted waitlist** (default) | `https://portaly.ai/waitlist/{creatorSlug}` | `appBaseUrl` empty |
+| **B. Self-hosted waitlist** | `https://{appBaseUrl}/waitlist/{creatorSlug}` | `appBaseUrl` set, `inviteRedirectPath` empty |
+| **C. Direct register** | `https://{appBaseUrl}{inviteRedirectPath}` | both set (e.g. `inviteRedirectPath: "/signup"`) |
 
-Mode is per-merchant, decided by whether `creatorSubscriptionConfig.appBaseUrl` is set. Toggling mode takes effect within ~60 seconds (Portaly's edge cache TTL) and applies to every email already in flight.
+`?ref` / `utm_source=invitation` / `utm_campaign` / `utm_content` are appended in all three modes — attribution survives. Toggling propagates within ~60 seconds (Portaly's per-process cache TTL) and applies to every email already in flight.
+
+**Mode C trade-off:** recipients bypass the Portaly waitlist. To get the new follower into the creator's user list and stamp the `signedUp` funnel stage, the register flow must call `syncToPortaly` (see `portaly-user`) with `signupRefCode` set. Without that call, the creator never sees the user and the campaign analytics' `signedUp` and `converted` both stay at 0 — `converted` only stamps for recipients whose `signedUp` has already been recorded.
 
 ## Email Types Reference
 
-Portaly Vibe sends five email types on the merchant's behalf. Only the bottom two contain a registration link and use the Mode A/B redirect logic above — the rest are pure transactional notifications.
+Portaly Vibe ships two distinct email categories:
 
-| Template type | Triggered by | Contains a link? | Common reason to disable |
-|---|---|---|---|
-| `welcome_free` | `POST /admin/users/sync` upserts a user with no active subscription | No | The vibe coder's app already sends its own welcome email |
-| `welcome_paid` | Payment callback (status `completed`), or sync that adds an active subscription | No | The vibe coder customizes the upgrade email in their own product |
-| `subscription_canceled` | `POST /subscriptions/{id}/cancel`, or self-service portal cancel | No | The vibe coder wants control over cancellation timing/copy |
-| `follower_invitation` | `POST /api/creator-email/campaigns/{id}/send` | **Yes** (Mode A/B) | Rarely disabled — this is the campaign feature itself |
-| `waitlist_onboarding` | `POST /api/waitlist/{slug}` | **Yes** (Mode A/B) | Rarely disabled — confirms the signup |
+### 1. Built-in system emails (3)
 
-### Disabling a template
+Auto-fired on subscription-lifecycle events. One shared template per merchant — the creator edits subject/body or toggles `enabled` via `vibe_update_template`.
 
-Per merchant, per type:
+| Template type | Triggered by | Common reason to disable |
+|---|---|---|
+| `welcome_free` | `POST /admin/users/sync` upserts a user with no active subscription | The vibe coder's app already sends its own welcome email |
+| `welcome_paid` | Payment callback (status `completed`), or sync that adds an active subscription | The vibe coder customizes the upgrade email in their own product |
+| `subscription_canceled` | `POST /subscriptions/{id}/cancel`, or self-service portal cancel | The vibe coder wants control over cancellation timing/copy |
 
+Disable from the dashboard or via REST:
 ```bash
 curl -X PUT https://portaly.ai/api/creator-email/templates/welcome_free \
   -H "Authorization: Bearer ${PORTALY_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{ "enabled": false }'
 ```
+Disabling takes effect immediately for new triggers; already-enqueued outbox rows still send.
 
-Re-enable by sending `{ "enabled": true }`. Disabling takes effect immediately for new triggers — already-enqueued outbox rows still send.
+> **Avoiding double emails.** If the vibe coder has their own welcome / upgrade / cancellation flow, disable the matching template *before* wiring `syncToPortaly` (see `portaly-user`) or the payment callback handler (see `portaly-payment`). Otherwise the first bulk sync sends a Portaly `welcome_free` to every existing user, and every successful checkout sends a `welcome_paid` on top of the vibe coder's own message.
 
-> **Avoiding double emails.** If the vibe coder has their own welcome / upgrade / cancellation flow, **disable the matching template before** wiring `syncToPortaly` (see `portaly-user`) or the payment callback handler (see `portaly-payment`). Otherwise every existing user the first bulk sync touches gets one Portaly `welcome_free`, and every successful checkout gets one Portaly `welcome_paid` on top of the vibe coder's own message.
+### 2. Follower-flow emails
+
+Tied to the invitation / waitlist loop. Body source differs:
+
+| Template type | When it sends | Where the body comes from | Mode |
+|---|---|---|---|
+| `follower_invitation` | When `vibe_send_campaign` dispatches a campaign | **Per-campaign** — saved on the campaign record by `vibe_create_campaign` / `vibe_update_campaign`. A `follower_invitation` template also exists in `vibe_list_templates`, but it's only used to seed the very first "Invitation" campaign at brand onboarding — editing it later has no effect on subsequent campaigns. | A / B / C |
+| `waitlist_onboarding` | When a follower POSTs to `/api/waitlist/{slug}` after clicking an invitation | Per-merchant template (editable via `vibe_update_template`, like the system emails above) | A / B only — Mode C skips this endpoint |
 
 ## API Host
 
@@ -60,16 +68,17 @@ Same Creator Subscription API Key (`pcs_live_*` / `pcs_test_*`) used by `portaly
 
 ### Step 1 — Choose Mode
 
-Before writing any code, **ask the human user which mode they want** and wait for an explicit answer:
+Before writing any code, **ask the human user which mode they want** and wait for an explicit answer. If the project already has a register / signup flow, surface Mode C — they almost certainly want it.
 
-> Portaly Vibe sends invitation emails on behalf of creators. The CTA in those emails goes through Portaly for click tracking, then redirects to a waitlist landing page. You have two options:
+> Portaly Vibe sends invitation emails on behalf of creators. The CTA in those emails goes through Portaly for click tracking, then redirects somewhere on the recipient side. You have three options:
 >
-> - **A. Hosted (recommended for fastest launch)** — Use Portaly's hosted waitlist page. No server-side work. The page is generic but functional. Best when you don't have a brand reason to host it yourself.
-> - **B. Self-hosted (recommended for brand consistency)** — Host `/waitlist/[creatorSlug]` on your own domain. Full control over UI, copy, and post-signup flow. Requires implementing the page and registering your `appBaseUrl` with Portaly.
+> - **A. Hosted waitlist (fastest launch)** — Use Portaly's hosted waitlist page. No server-side work. Best when you don't have a brand reason to host it yourself.
+> - **B. Self-hosted waitlist (brand consistency)** — Host `/waitlist/[creatorSlug]` on your own domain. Full control over UI / copy. Requires implementing the page and registering your `appBaseUrl` with Portaly.
+> - **C. Direct register (skip the waitlist)** — Recommended when your app already has a member system. Clicks land directly on your existing register / signup path (e.g. `/signup`). Requires `appBaseUrl` + `inviteRedirectPath`. You'll need to call `syncToPortaly` after signup so campaign analytics' `signedUp` count populates.
 >
 > Which would you like? You can switch later.
 
-If the user picks **A**, jump to *Mode A — Hosted CTA*. If **B**, jump to *Mode B — Self-hosted Waitlist*.
+Jump to *Mode A — Hosted CTA*, *Mode B — Self-hosted Waitlist*, or *Mode C — Direct Register* based on the answer.
 
 ---
 
@@ -156,76 +165,125 @@ syncToPortaly([{ email, name }]).catch((err) =>
 
 ---
 
+### Mode C — Direct Register
+
+Use when the project already has its own register / signup flow.
+
+#### Step C1 — Set `appBaseUrl` and `inviteRedirectPath`
+
+**Vibe MCP (preferred):** call `vibe_update_brand` with both fields:
+```
+{ "appBaseUrl": "https://your-app.example.com", "inviteRedirectPath": "/signup" }
+```
+
+**REST fallback:**
+```bash
+curl -X PUT https://portaly.ai/api/creator-subscription/config \
+  -H "Authorization: Bearer ${PORTALY_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{ "appBaseUrl": "https://your-app.example.com", "inviteRedirectPath": "/signup" }'
+```
+
+`inviteRedirectPath` constraints:
+- Starts with `/`. Allowed chars: letters, digits, `-`, `_`, `/` (no `?` or `#` — Portaly appends its own query string).
+- Max 200 chars; trailing slashes stripped.
+- Empty string clears it — the merchant falls back to Mode B (or Mode A if `appBaseUrl` is also empty).
+
+#### Step C2 — Read attribution params on the register page
+
+Portaly appends:
+
+| Param | Purpose |
+|---|---|
+| `ref` | Referral code; pass back to `syncToPortaly` so the signup attributes to the campaign |
+| `utm_source` | Always `invitation` |
+| `utm_campaign` | Campaign id |
+| `utm_content` | Outbox id (per-recipient identifier) |
+
+Read these on first hit and stash them (cookie / localStorage / hidden form field) so they survive multi-step signup.
+
+#### Step C3 — Wire `syncToPortaly` after register
+
+After register completes, call `syncToPortaly` (see `portaly-user`) with the new user's email + name + `signupRefCode` set to the URL's `utm_content` (preferred — the per-recipient outbox UUID) or `ref` as fallback.
+
+```ts
+const signupRefCode = utm_content || ref
+syncToPortaly([{ email, name, signupRefCode }]).catch((err) =>
+  console.error('[Portaly Sync]', err)
+)
+```
+
+`converted` stamps automatically when the recipient later subscribes via `portaly-payment` — Portaly matches the buyer's checkout email against this campaign's import list.
+
+#### Step C4 — Verify
+
+1. Send a test invitation email from the dashboard.
+2. Click the CTA. The browser should redirect through `portaly.ai/r/...` and land on `https://your-app.example.com{inviteRedirectPath}?ref=...&utm_source=invitation&...`.
+3. Complete signup. Confirm the new user appears in the Portaly Dashboard's user list (= `syncToPortaly` ran).
+4. A few minutes later, call `vibe_get_campaign_analytics` and check `signedUp ≥ 1`.
+
+---
+
 ## Sending a Campaign (Vibe MCP)
 
-Independent of Mode A/B above. This workflow drives **outgoing follower-email campaigns** — drafting an invitation, queueing it to a recipient list, and reading back analytics. Available only when the agent is connected to the creator's Vibe MCP server (the install instructions for that are in the Vibe dashboard's onboarding flow). Authentication is the MCP Bearer token; no `PORTALY_API_KEY` involved.
-
-See `references/sending-campaigns.md` for a copy-pastable end-to-end run.
+Sends an invitation campaign to a follower list and reads back analytics. Independent of Mode A/B. Requires Vibe MCP connection; auth is the MCP Bearer token. See `references/sending-campaigns.md` for an end-to-end run.
 
 ### Tools
 
 | Tool | Purpose |
 |---|---|
-| `vibe_list_campaigns` | Inventory: drafts to act on, in-flight sends, completed history. Filter by `status`. |
-| `vibe_create_campaign` | Create a new campaign in `draft` status. Takes `name` (required, creator-facing only) plus optional `description` and `aiContext` (drafting hints). |
-| `vibe_send_campaign` | Persist `subject` + `bodyHtml` onto a draft, enqueue to all imported recipients, return one of four outcomes (see below). |
+| `vibe_list_campaigns` | List drafts, in-flight sends, and completed history. Filter by `status`. |
+| `vibe_create_campaign` | Create a draft. Takes `name` plus `subject` / `bodyHtml` / `description` / `aiContext`. |
+| `vibe_update_campaign` | Edit a draft's `name`, `description`, `aiContext`, `subject`, or `bodyHtml`. |
+| `vibe_send_campaign` | Dispatch the saved draft. Takes only `campaignId`. Returns one of five outcomes (see below). |
 | `vibe_get_campaign_analytics` | Funnel + event totals + 30-day timeseries for one campaign. |
 
 ### Workflow
 
-1. **Confirm intent with the creator** — what's the campaign for? Is there an existing draft, or starting fresh? Call `vibe_list_campaigns` to check.
-2. **Create the draft** with `vibe_create_campaign`. Pass any context the creator gives (campaign angle, tone, must-mention deadline) into `aiContext`. The campaign starts empty — no subject, no body, no recipients.
-3. **Hand recipient import to the dashboard.** Tell the creator:
-   > Recipient import is in the Vibe dashboard's **Email → Outreach** tab. Open your campaign there, upload a CSV / Google Sheet / paste addresses, then come back and tell me when you're done.
-   Recipient management is intentionally not exposed via MCP — column-mapping a CSV in chat is fragile and the dashboard already has a preview UI.
-4. **Draft `subject` + `bodyHtml`** with the creator. Constraints:
-   - Subject ≤ 255 chars.
-   - Body is HTML, ≤ 100,000 chars.
-   - **Must include `{inviteUrl}`** somewhere in the body — that's the tracked invitation link the recipient clicks. Without it, you've shipped a CTA-less email.
-   - Always-available placeholders: `{customerName}`, `{merchantName}`, `{inviteUrl}`. Any extra column the creator imported is exposed as `{slug}` — confirm those slugs with the creator before referencing them.
-5. **Confirm with the creator before sending.** Sending is irreversible and burns from their monthly quota + purchased credits. Show the subject, the rendered body (or a preview link), the recipient count.
-6. **Call `vibe_send_campaign`** with `campaignId`, `subject`, `bodyHtml`. Switch on the `outcome`:
+The dashboard step order is **Email content → Recipients → Send**. The MCP flow follows the same order.
+
+1. **Check for an existing draft** with `vibe_list_campaigns`.
+2. **Draft `subject` + `bodyHtml`** with the creator. Constraints:
+   - Subject ≤ 255 chars; body is HTML, ≤ 100,000 chars.
+   - Body must include `{inviteUrl}` — the tracked invitation link the recipient clicks.
+   - Built-in placeholders: `{customerName}`, `{merchantName}`, `{inviteUrl}`. Any column the creator imported is exposed as `{slug}` — confirm slugs with the creator before referencing them.
+3. **Create the draft** with `vibe_create_campaign({ name, subject, bodyHtml, aiContext? })`. Subject + body are saved on the draft so the dashboard preview matches the chat.
+4. **Send the creator to import recipients** in the dashboard's **Recipients** tab (CSV / Google Sheet / paste). There is no MCP tool for import.
+5. **Revise copy** by calling `vibe_update_campaign({ campaignId, subject?, bodyHtml? })`. `vibe_send_campaign` does not accept subject/body, so revisions go here.
+6. **Confirm with the creator before sending** — read back the saved subject, a body excerpt, and the recipient count. Sending is irreversible and burns quota.
+7. **Call `vibe_send_campaign({ campaignId })`**. Switch on the `outcome`:
 
 | Outcome | Meaning | What to do |
 |---|---|---|
-| `enqueued` | Send is in flight | Tell the creator: enqueued N emails, M quota remaining. Optionally schedule a follow-up to call `vibe_get_campaign_analytics` after a few minutes. |
-| `campaign_not_found` | id is wrong / belongs to another merchant | Recheck `vibe_list_campaigns`. |
-| `no_recipients` | Imports are empty | Step 3 wasn't completed. Send the creator back to **Email → Outreach** to import their list. |
-| `quota_exceeded` | Recipients > remaining quota | Response includes `remainingQuota` and `needed`. Tell the creator how short they are and that they can top up email credits in **Email → Credits** in the dashboard. Do NOT retry without the creator topping up. |
+| `enqueued` | Send is in flight | Report `enqueuedCount` and `remainingQuota`. Optionally call `vibe_get_campaign_analytics` after a few minutes. |
+| `campaign_not_found` | Wrong id, or belongs to another merchant | Recheck `vibe_list_campaigns`. |
+| `no_recipients` | Recipients tab is empty for this campaign | Send the creator back to import. |
+| `missing_content` | Draft has no saved subject or body | Call `vibe_update_campaign` with the missing fields, then retry. |
+| `quota_exceeded` | Recipients > remaining quota | Response includes `remainingQuota` and `needed`. Tell the creator the shortfall and point at **Email → Credits** to top up. |
 
-7. **Read analytics** with `vibe_get_campaign_analytics(campaignId)` once delivery has had time to register (a few minutes). The funnel goes `imported → enqueued → delivered → opened → clicked → bounced → complained → signedUp → converted`. `signedUp` only populates if the recipient hits the waitlist landing page (Mode A or B above); `converted` only fills if they later subscribe via `portaly-payment`.
+8. **Read analytics** with `vibe_get_campaign_analytics(campaignId)` after a few minutes. The funnel: `imported → enqueued → delivered → opened → clicked → bounced → complained → signedUp → converted`. `signedUp` stamps when the recipient submits the waitlist form (Mode A/B) or when `syncToPortaly` runs in Mode C — both paths require the per-recipient `outboxId` (URL `utm_content`) to pin the right row; campaign-level refcodes alone don't pin. `converted` stamps when the recipient later subscribes via `portaly-payment` and the checkout email matches the imported email on a row that already has `signedUp` set.
 
 ### Guardrails for sending
 
-- **Always include `{inviteUrl}`.** The whole point of the campaign is the click — without the placeholder, recipients see a wall of text with no CTA.
-- **Confirm the recipient count before sending.** A misplaced 0 in a CSV column or a stale draft can lead to mass-emailing the wrong list. Read it back to the creator: "About to send to N people imported on <date>. Proceed?"
-- **Do not call `vibe_send_campaign` repeatedly to "retry" a `quota_exceeded`.** That's a soft fail — the creator must top up first. Retrying without action just churns calls.
-- **Subject lines for follower outreach matter more than for transactional email.** Push back if the creator gives a generic "Update from {merchantName}" — suggest something tied to the campaign's angle.
+- Body must include `{inviteUrl}`.
+- Read the recipient count back to the creator before sending — a stale draft can mass-email the wrong list.
+- `quota_exceeded` requires a top-up before retrying.
 
 ---
 
-## Switching Modes
-
-| From | To | Action |
-|---|---|---|
-| Mode A → Mode B | Set `appBaseUrl` via `PUT /api/creator-subscription/config` |
-| Mode B → Mode A | Set `appBaseUrl` to `""` via `PUT /api/creator-subscription/config` |
-
-Switch propagates within ~60 seconds (Portaly's per-process cache TTL). In-flight emails immediately pick up the new mode on the next click — Portaly resolves the redirect target at click time, not at send time.
-
 ## Guardrails
 
-- **HTTPS only** for `appBaseUrl`. `http://` is rejected by Portaly. `localhost` cannot be used in production — for local dev use ngrok / Cloudflare Tunnel.
-- **Path is fixed**: `/waitlist/{creatorSlug}` exactly. Do not alias to `/signup`, `/join`, etc. — Portaly redirects to the literal `/waitlist/{slug}` path.
-- **Click tracking always runs through Portaly.** Do not try to point the email CTA directly at your own domain to "skip" `/r/{code}` — you'll lose click analytics and rate limiting.
-- **Preserve UTM and `ref` query params** on the POST body in Mode B. Dropping them breaks campaign attribution on Portaly's side.
-- **Do not skip user sync.** A signup that's only stored on Portaly's waitlist row but missing from the creator's user list creates support pain when the creator wonders why a known follower doesn't show up in their dashboard.
+- `appBaseUrl` must be HTTPS. `localhost` cannot be used in production — for local dev use ngrok / Cloudflare Tunnel.
+- Click tracking always runs through `portaly.ai/r/{code}`. Pointing the email CTA directly at the creator's domain loses click tracking and rate limiting.
+- Mode B: include the `ref` query param in the POST body to `/api/waitlist/{slug}` — the waitlist row inherits it as `referralCode`, which is how Portaly links the signup back to the original campaign. The waitlist endpoint ignores `utm_*` (they're for the creator's own analytics if they want them).
+- Mode C: call `syncToPortaly` after a successful register, otherwise the new follower never appears in the creator's user list on the dashboard.
 
 ## Output Preferences
 
-- Always confirm Mode A vs Mode B with the human user before doing setup work.
+- Always confirm A vs B vs C with the user before doing setup work. If the project already has a register flow, surface C first.
 - For Mode A, prefer one short paragraph + the CTA URL. No code templates needed.
 - For Mode B, lean on `references/self-hosted-waitlist.md` instead of inlining all the code.
+- For Mode C, no new page is needed — focus on the `inviteRedirectPath` config and the `syncToPortaly` wiring.
 - Keep secrets (API keys) out of chat — write `.env` instructions instead.
 
 ## Reference Documents

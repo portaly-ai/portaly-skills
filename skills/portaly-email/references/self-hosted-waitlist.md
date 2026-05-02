@@ -13,7 +13,7 @@ Portaly redirects from `https://portaly.ai/r/{code}` → `https://{your-domain}/
 | `utm_campaign` | If present | Campaign id |
 | `utm_content` | If present | Outbox id (per-recipient identifier) |
 
-When the user submits the form, **POST these back to Portaly** so attribution is preserved:
+When the user submits the form, **POST `ref` and `utm_content` back to Portaly** so attribution is preserved:
 
 ```
 POST https://portaly.ai/api/waitlist/{creatorSlug}
@@ -23,9 +23,12 @@ Content-Type: application/json
   "email": "follower@example.com",
   "name": "Optional Display Name",
   "source": "creator-app-hero",   // optional, your own tag
-  "ref": "<the ref param from the URL>"
+  "ref": "<the ref param from the URL>",
+  "outboxId": "<the utm_content param from the URL>"
 }
 ```
+
+`outboxId` is the per-recipient identifier; without it, modern campaigns (which share one campaign-level refcode across every recipient) can't pin the signup to a specific row, and the `signedUp` funnel stage in `vibe_get_campaign_analytics` stays at 0 for that signup.
 
 Response:
 
@@ -129,7 +132,7 @@ type Props = {
 const PORTALY_API_HOST =
   process.env.NEXT_PUBLIC_PORTALY_API_HOST ?? 'https://portaly.ai'
 
-export default function WaitlistForm({ creatorSlug, ref }: Props) {
+export default function WaitlistForm({ creatorSlug, ref, utm }: Props) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>(
@@ -150,6 +153,7 @@ export default function WaitlistForm({ creatorSlug, ref }: Props) {
             email,
             name: name || undefined,
             ref: ref || undefined,
+            outboxId: utm.content || undefined,
             source: 'self-hosted',
           }),
         }
@@ -282,6 +286,7 @@ Add the route: `<Route path="/waitlist/:creatorSlug" element={<WaitlistPage />} 
           body: JSON.stringify({
             email,
             ref: search.get('ref') || undefined,
+            outboxId: search.get('utm_content') || undefined,
           }),
         }).then(() => {
           document.body.innerHTML = '<p>You\'re on the list — check your email.</p>'
@@ -308,7 +313,7 @@ syncToPortaly([{ email, name, status: 'active' }]).catch((err) =>
 ## Common Mistakes
 
 - **Using `http://` for `appBaseUrl`** — Portaly rejects with 400 at `PUT /api/creator-subscription/config`. Always HTTPS.
-- **Forgetting to forward `ref`** on the form POST — the campaign click is logged but the signup isn't attributed to the recipient.
+- **Forgetting to forward `ref` and `outboxId`** on the form POST — the campaign click is logged but the signup can't be pinned to a specific recipient, so the `signedUp` funnel stage stays at 0 for that signup. `outboxId` (= URL `utm_content`) is what does the per-recipient pinning.
 - **Putting `appBaseUrl` behind authentication** — the page must be publicly reachable. Anyone with a valid invitation link can land on it.
 - **Renaming the path** — Portaly's redirect uses the literal `/waitlist/{slug}`. Aliasing to `/signup/{slug}` produces 404s.
 - **Calling `POST /api/waitlist` with the API key** — that endpoint is public, no key required. Including the key works, but exposes a key in client-side code if you forget to remove it later.
