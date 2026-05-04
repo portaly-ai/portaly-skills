@@ -38,8 +38,18 @@ export async function syncUser(user) {
           external_user_id: user.external_user_id,
           display_name: user.display_name,
           status: user.status || 'active',
+          role: user.role,
           plan_name: user.plan_name,
+          last_login_at:
+            user.last_login_at instanceof Date
+              ? user.last_login_at.toISOString()
+              : user.last_login_at,
+          created_at:
+            user.created_at instanceof Date
+              ? user.created_at.toISOString()
+              : user.created_at,
           metadata: user.metadata,
+          signup_ref_code: user.signup_ref_code,
         },
       ],
     }),
