@@ -17,7 +17,15 @@ Use this skill to help a human user integrate Portaly Vibe's User Management API
 
 ## API Host
 
-`https://portaly.ai`
+`https://portaly.ai` (default; overridable via the `PORTALY_API_HOST` environment variable).
+
+When generating code that calls the Portaly API, prefer this pattern over hardcoding the URL:
+
+```ts
+const PORTALY_API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'
+```
+
+The example helper in `scripts/sync_user.mjs` already follows this pattern. See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 ## Authentication
 

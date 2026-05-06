@@ -777,16 +777,18 @@ Use this when the human user needs to list all subscriptions for a profile, with
 Pagination example:
 
 ```js
+const PORTALY_API_HOST = process.env.PORTALY_API_HOST || "https://portaly.ai";
+
 // First page
 const page1 = await fetch(
-  "https://portaly.ai/api/creator-subscription/subscriptions?limit=20",
+  `${PORTALY_API_HOST}/api/creator-subscription/subscriptions?limit=20`,
   { headers: { authorization: `Bearer ${apiKey}` } }
 ).then(r => r.json());
 
 // Next page (if hasMore)
 if (page1.pagination.hasMore) {
   const page2 = await fetch(
-    `https://portaly.ai/api/creator-subscription/subscriptions?limit=20&startAfter=${page1.pagination.nextCursor}`,
+    `${PORTALY_API_HOST}/api/creator-subscription/subscriptions?limit=20&startAfter=${page1.pagination.nextCursor}`,
     { headers: { authorization: `Bearer ${apiKey}` } }
   ).then(r => r.json());
 }
@@ -956,9 +958,11 @@ Request body (by subscription — scoped to one subscription):
 Node.js example:
 
 ```js
+const PORTALY_API_HOST = process.env.PORTALY_API_HOST || "https://portaly.ai";
+
 // Server-side: create portal session and redirect subscriber
 const response = await fetch(
-  "https://portaly.ai/api/creator-subscription/portal-sessions",
+  `${PORTALY_API_HOST}/api/creator-subscription/portal-sessions`,
   {
     method: "POST",
     headers: {
@@ -980,10 +984,12 @@ res.redirect(result.data.portalUrl);
 Express route example:
 
 ```js
+const PORTALY_API_HOST = process.env.PORTALY_API_HOST || "https://portaly.ai";
+
 app.get("/manage-subscription", async (req, res) => {
   // req.user is the authenticated subscriber on the merchant's side
   const response = await fetch(
-    "https://portaly.ai/api/creator-subscription/portal-sessions",
+    `${PORTALY_API_HOST}/api/creator-subscription/portal-sessions`,
     {
       method: "POST",
       headers: {

@@ -16,7 +16,15 @@ Portaly Vibe Payment supports two modes per API key: **live** and **test**.
 
 Both the API host and the payment site (where buyers are redirected for checkout) live on the same unified domain for both modes:
 
-- `https://portaly.ai`
+- `https://portaly.ai` (default)
+
+The host is overridable via the `PORTALY_API_HOST` environment variable. When generating code that calls the Portaly API, prefer this pattern over hardcoding the URL:
+
+```ts
+const PORTALY_API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'
+```
+
+See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 ### Mode behavior
 

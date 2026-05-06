@@ -73,6 +73,16 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Reporting API (optional): `POST /api/creator-subscription/health-check-reports` on host `https://portaly.ai`, authenticated with `Authorization: Bearer {PORTALY_API_KEY}` — same key as the payment skill. May return 404 if not yet live; in that case skip reporting and show results locally only.
 - Results flow into the creator's Vibe dashboard at `https://portaly.ai/dashboard/sentry-scans`
 
+## Provider Abstraction
+
+API host defaults to `https://portaly.ai`, overridable via `PORTALY_API_HOST`. See `PROVIDER.md` for the backend compatibility contract.
+
+When editing skill content:
+
+- **Scripts** (`.mjs` in `scripts/`) must read the host via `process.env.PORTALY_API_HOST || 'https://portaly.ai'`. Never hardcode it.
+- **`SKILL.md` / `references/`** keep the literal `https://portaly.ai` as the documented default. Example code in these docs should use the env-var pattern.
+- **Dashboard URLs and brand strings** are intentionally hardcoded today — forks rebrand via find/replace.
+
 ## End-User Installation
 
 ```bash

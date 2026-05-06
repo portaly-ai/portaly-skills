@@ -6,6 +6,8 @@
 https://portaly.ai
 ```
 
+Default; overridable via `PORTALY_API_HOST`. See `PROVIDER.md` at the repo root.
+
 ## Authentication
 
 All endpoints require a Bearer token in the `Authorization` header:

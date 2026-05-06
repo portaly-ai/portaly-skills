@@ -216,7 +216,8 @@ export default function WaitlistForm({ creatorSlug, ref, utm }: Props) {
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
-const PORTALY_API_HOST = 'https://portaly.ai'
+const PORTALY_API_HOST =
+  import.meta.env.VITE_PORTALY_API_HOST ?? 'https://portaly.ai'
 
 export function WaitlistPage() {
   const { creatorSlug = '' } = useParams()
@@ -267,10 +268,12 @@ Add the route: `<Route path="/waitlist/:creatorSlug" element={<WaitlistPage />} 
       <button type="submit">Join</button>
     </form>
     <script>
+      // Swap PORTALY_API_HOST if running against a forked or self-hosted backend.
+      const PORTALY_API_HOST = 'https://portaly.ai'
       const slug = location.pathname.split('/').pop()
       const search = new URLSearchParams(location.search)
 
-      fetch(`https://portaly.ai/api/waitlist/${slug}`)
+      fetch(`${PORTALY_API_HOST}/api/waitlist/${slug}`)
         .then((r) => r.json())
         .then(({ data }) => {
           document.getElementById('headline').textContent =
@@ -280,7 +283,7 @@ Add the route: `<Route path="/waitlist/:creatorSlug" element={<WaitlistPage />} 
       document.getElementById('waitlist-form').addEventListener('submit', (e) => {
         e.preventDefault()
         const email = e.target.email.value
-        fetch(`https://portaly.ai/api/waitlist/${slug}`, {
+        fetch(`${PORTALY_API_HOST}/api/waitlist/${slug}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

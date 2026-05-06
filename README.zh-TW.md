@@ -143,6 +143,16 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email
 - 「在 Hero 區塊放一個 Portaly waitlist CTA」
 - 「設定 invitation email 的 app base URL」
 
+## 串接到自己的 Server
+
+這些 skill 預設指向 `https://portaly.ai`，直接安裝者不用設定。若 fork 後要串自架或相容後端，設定 `PORTALY_API_HOST` 即可——內建 script 與 Agent 產出的程式碼都會讀：
+
+```bash
+PORTALY_API_HOST=https://your-backend.example.com
+```
+
+後端相容契約見 [PROVIDER.md](./PROVIDER.md)。
+
 ## 從舊 Repo 遷移
 
 如果你之前從獨立的 repository 安裝過 skill：

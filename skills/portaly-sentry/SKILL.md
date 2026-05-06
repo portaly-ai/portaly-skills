@@ -68,6 +68,10 @@ All four non-scheduled standards run all 26 checks. The first three differ only 
 - For DEP checks, the project must have a `package.json`.
 - For reporting results to Portaly, the user needs a `PORTALY_API_KEY`.
 
+### Provider configuration
+
+The reporting endpoint defaults to `https://portaly.ai/api/creator-subscription/health-check-reports`. Override the host via `PORTALY_API_HOST` (already honored by `scripts/report.mjs`). See `PROVIDER.md` at the repo root.
+
 ## Health Check Categories
 
 ### SIG — Signature Verification

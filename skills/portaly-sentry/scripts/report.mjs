@@ -50,7 +50,8 @@ const dryRun = flag('--dry-run')
 const verbose = flag('--verbose')
 
 const API_KEY = process.env.PORTALY_API_KEY
-const REPORT_URL = 'https://portaly.ai/api/creator-subscription/health-check-reports'
+const API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'
+const REPORT_URL = `${API_HOST}/api/creator-subscription/health-check-reports`
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

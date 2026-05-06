@@ -143,6 +143,16 @@ Helps vibe coders wire the registration link inside Portaly Vibe invitation emai
 - "Embed a Portaly waitlist CTA in my hero section"
 - "Configure the app base URL for invitation emails"
 
+## Using a Different Backend
+
+These skills default to `https://portaly.ai` — direct installers need no setup. To run a fork against a self-hosted or compatible backend, set `PORTALY_API_HOST`; both the bundled scripts and agent-generated code honor it:
+
+```bash
+PORTALY_API_HOST=https://your-backend.example.com
+```
+
+See [PROVIDER.md](./PROVIDER.md) for the backend compatibility contract.
+
 ## Migrating from Old Repos
 
 If you previously installed skills from the individual repositories:

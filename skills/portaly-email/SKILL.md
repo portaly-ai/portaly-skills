@@ -58,7 +58,15 @@ Tied to the invitation / waitlist loop. Body source differs:
 
 ## API Host
 
-`https://portaly.ai`
+`https://portaly.ai` (default; overridable via the `PORTALY_API_HOST` environment variable).
+
+When generating code that calls the Portaly API, prefer this pattern over hardcoding the URL:
+
+```ts
+const PORTALY_API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'
+```
+
+Note: invitation-email click tracking (`/r/{code}`) and the hosted waitlist page live on the same host, so the override applies to those too. See `PROVIDER.md` at the repo root.
 
 ## Authentication
 
