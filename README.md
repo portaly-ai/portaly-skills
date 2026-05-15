@@ -29,7 +29,7 @@ npx skills update portaly-analytics
 | Skill | Description | Triggers |
 |-------|-------------|----------|
 | **portaly-analytics** | GA4 analytics setup, Portaly event tracking, and dashboard connection | `GA4`, `Google Analytics`, `event tracking` |
-| **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, discount codes, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout`, `discount code` |
+| **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, dynamic / one-time pricing, discount codes, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout`, `discount code`, `one-time`, `dynamic pricing` |
 | **portaly-user** | User sync to Portaly Vibe — migration, incremental sync, and dashboard viewing | `user sync`, `member sync`, `user management` |
 | **portaly-sentry** | Security & reliability health check for Portaly Vibe payment integrations, with report-back to the Vibe dashboard | `Portaly health check`, `sentry scan`, `payment security audit` |
 | **portaly-email** | Wire invitation-email registration links to either a Portaly-hosted CTA (zero setup) or a self-hosted waitlist landing page on the vibe coder's own domain | `invitation email`, `waitlist landing page`, `app base URL` |
@@ -65,6 +65,7 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 
 - Merchant config and plan creation via API
 - Hosted checkout session flow
+- Fixed plans for subscriptions (`monthly` / `yearly`) and **dynamic plans** for one-time purchases, donations, tip jars, or any buyer-specified amount — the amount is set per checkout session
 - Discount codes — fixed / percent / free, repeating or forever, with ref-code auto-apply at checkout
 - HMAC-SHA256 callback signature verification
 - Recurring subscription management (cancel / resume)
@@ -78,6 +79,8 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 - "I want to use the Portaly Vibe payment API"
 - "Help me integrate Portaly Vibe checkout"
 - "Create a discount code on Portaly Vibe"
+- "Add a one-time purchase or pay-what-you-want flow with Portaly"
+- "Set up a tip jar / donation checkout with Portaly Vibe"
 
 ## Portaly User Management
 

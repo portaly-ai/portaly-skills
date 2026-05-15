@@ -29,7 +29,7 @@ npx skills update portaly-analytics
 | Skill | 說明 | 觸發關鍵字 |
 |-------|------|-----------|
 | **portaly-analytics** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
-| **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、優惠碼、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳`、`優惠碼` |
+| **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、單次購買、動態金額定價、優惠碼、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳`、`優惠碼`、`單次購買`、`動態定價`、`贊助` |
 | **portaly-user** | 用戶同步至 Portaly Vibe — 全量遷移、增量同步、Dashboard 查看 | `用戶同步`、`member sync`、`用戶管理` |
 | **portaly-sentry** | Portaly Vibe 支付串接的安全與可靠性健康檢查，可回報結果到 Vibe 儀表板 | `Portaly 健康檢查`、`sentry 掃描`、`金流安全審計` |
 | **portaly-email** | 將 Invitation Email 註冊連結導向 Portaly 託管 CTA（零設定）或 vibe coder 自架的 waitlist 落地頁 | `Invitation Email`、`Waitlist 落地頁`、`app base URL` |
@@ -65,6 +65,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 
 - 透過 API 建立商家設定與訂閱方案
 - 託管結帳 session 流程
+- 固定價格方案（`monthly` / `yearly` 訂閱）與**動態定價方案（dynamic plan）**：適用於單次購買、贊助，或任何金額需要由買家或系統動態決定的場景；實際金額於每次建立結帳 session 時傳入
 - 優惠碼（Discount Code）— 支援定額／折扣百分比／免費，可重複 N 期或永久，亦可作為註冊推薦碼於結帳時自動套用
 - HMAC-SHA256 callback 簽章驗證
 - 訂閱生命週期管理（取消 / 恢復）
@@ -78,6 +79,8 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 「我要使用 Portaly Vibe 的支付 API」
 - 「請協助我整合 Portaly Vibe 的支付功能」
 - 「幫我在 Portaly Vibe 建立優惠碼」
+- 「在 Portaly Vibe 加上單次購買或自訂金額的結帳流程」
+- 「在 Portaly Vibe 加上贊助功能」
 
 ## Portaly User Management
 
