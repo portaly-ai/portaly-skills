@@ -30,6 +30,7 @@ npx skills update portaly-analytics
 |-------|------|-----------|
 | **portaly-analytics** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
 | **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、單次購買、動態金額定價、優惠碼、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳`、`優惠碼`、`單次購買`、`動態定價`、`贊助` |
+| **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
 | **portaly-user** | 用戶同步至 Portaly Vibe — 全量遷移、增量同步、Dashboard 查看 | `用戶同步`、`member sync`、`用戶管理` |
 | **portaly-sentry** | Portaly Vibe 支付串接的安全與可靠性健康檢查，可回報結果到 Vibe 儀表板 | `Portaly 健康檢查`、`sentry 掃描`、`金流安全審計` |
 | **portaly-email** | 將 Invitation Email 註冊連結導向 Portaly 託管 CTA（零設定）或 vibe coder 自架的 waitlist 落地頁 | `Invitation Email`、`Waitlist 落地頁`、`app base URL` |

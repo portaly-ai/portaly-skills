@@ -28,6 +28,10 @@ skills/
     SKILL.md                  # Skill definition (entry point)
     references/               # Health check contract (26 checks), common pitfalls
     scripts/                  # Static analyzers (.mjs) — signature sort, subscription lifecycle
+  portaly-product/            # Portaly digital products integration
+    SKILL.md                  # Skill definition (entry point)
+    references/               # API contract, bundle pricing algorithm
+    scripts/                  # Callback verification examples (.mjs, .py)
 ```
 
 ## Skill Architecture

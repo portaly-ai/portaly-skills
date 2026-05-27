@@ -30,6 +30,7 @@ npx skills update portaly-analytics
 |-------|-------------|----------|
 | **portaly-analytics** | GA4 analytics setup, Portaly event tracking, and dashboard connection | `GA4`, `Google Analytics`, `event tracking` |
 | **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, dynamic / one-time pricing, discount codes, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout`, `discount code`, `one-time`, `dynamic pricing` |
+| **portaly-product** | Sell a creator's Portaly digital products from your own vibe-coded site — list products, build single or bundle checkout sessions, hosted payment + email, signed webhooks | `Portaly digital products`, `bundle checkout`, `digital downloads`, `creator product API` |
 | **portaly-user** | User sync to Portaly Vibe — migration, incremental sync, and dashboard viewing | `user sync`, `member sync`, `user management` |
 | **portaly-sentry** | Security & reliability health check for Portaly Vibe payment integrations, with report-back to the Vibe dashboard | `Portaly health check`, `sentry scan`, `payment security audit` |
 | **portaly-email** | Wire invitation-email registration links to either a Portaly-hosted CTA (zero setup) or a self-hosted waitlist landing page on the vibe coder's own domain | `invitation email`, `waitlist landing page`, `app base URL` |
