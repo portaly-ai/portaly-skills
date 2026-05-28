@@ -83,6 +83,30 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 - "Add a one-time purchase or pay-what-you-want flow with Portaly"
 - "Set up a tip jar / donation checkout with Portaly Vibe"
 
+## Portaly Digital Products Integration
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-product
+```
+
+Helps vibe coders sell a creator's Portaly digital products from their own site — they own the product display UI, Portaly owns checkout, payment, email, and the post-purchase deliverables page.
+
+- List a creator's products via API and render them in your own UI (always price from `effectivePrice`)
+- Single-item or custom bundle checkout sessions via Portaly's hosted page
+- Bundle pricing with proportional split — each item becomes its own order in Portaly
+- HMAC-SHA256 webhook signature verification (5-minute timestamp window)
+- Per-order events: `digital_product.checkout.completed` and `digital_product.order.refunded`
+- Hosted confirmation emails — one per paid order, free items skip email
+
+**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`) — shared with the payment skill. Apply at [Portaly Vibe Dashboard](https://portaly.ai/dashboard).
+
+**Skill triggers:**
+- "Sell Portaly digital products from my own site"
+- "Build a bundle checkout for Portaly products"
+- "List a creator's downloads / templates / courses on my site"
+- "Add a 'powered by Portaly' storefront"
+- "Set up Portaly digital product webhooks"
+
 ## Portaly User Management
 
 ```bash

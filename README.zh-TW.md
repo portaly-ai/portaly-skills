@@ -83,6 +83,30 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 「在 Portaly Vibe 加上單次購買或自訂金額的結帳流程」
 - 「在 Portaly Vibe 加上贊助功能」
 
+## Portaly Digital Products Integration
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-product
+```
+
+協助 vibe coder 在自家網站上販售創作者的 Portaly 數位商品 — 商品展示 UI 由你掌控，Portaly 負責結帳、金流、寄信與訂單成功頁。
+
+- 透過 API 取得創作者商品並在自家網站渲染（價格一律讀 `effectivePrice`）
+- 單品或自訂 bundle checkout session，跳轉到 Portaly 託管結帳頁
+- Bundle 採原價比例拆價，每筆商品在 Portaly 端各自獨立成單
+- HMAC-SHA256 webhook 簽章驗證（timestamp 5 分鐘有效）
+- Per-order 事件：`digital_product.checkout.completed`、`digital_product.order.refunded`
+- 託管寄信 — 每筆付費訂單一封確認信，免費商品跳過
+
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），與 payment skill 共用。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard) 申請。
+
+**Skill 觸發條件：**
+- 「在我自己的網站上賣 Portaly 數位商品」
+- 「幫我做 Portaly 商品的 bundle 結帳」
+- 「在我的網站上列出創作者的下載/模板/課程」
+- 「打造一個 powered by Portaly 的商店」
+- 「設定 Portaly 數位商品的 webhook」
+
 ## Portaly User Management
 
 ```bash
