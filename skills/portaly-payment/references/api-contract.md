@@ -137,7 +137,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `description`: optional
   - `amount`: required positive number for fixed pricing; omit or set to `0` for dynamic pricing
   - `currency`: optional, defaults to `TWD`
-  - `billingPeriod`: required, `monthly` or `yearly`, `one-time` is a single-payment plan that does not auto-renew
+  - `billingPeriod`: required, `monthly` or `one-time` (`one-time` is a single-payment plan that does not auto-renew)
   - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
@@ -197,7 +197,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `description`: optional
   - `amount`: optional positive number (must be non-negative for dynamic pricing plans)
   - `currency`: optional
-  - `billingPeriod`: optional, `monthly` or `yearly`, `one-time` is a single-payment plan that does not auto-renew
+  - `billingPeriod`: optional, `monthly` or `one-time` (`one-time` is a single-payment plan that does not auto-renew)
   - `pricingType`: optional, `fixed` or `dynamic`
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
@@ -258,7 +258,7 @@ A **rule** is a discriminated union over three fields. The pipes below denote al
 
 Rule semantics:
 
-- `cycles` is **billing-period count**. Monthly plan + cycles 3 → discount applies to first 3 monthly charges. Yearly plan + cycles 1 → discount applies to first yearly charge.
+- `cycles` is **billing-period count**. Monthly plan + cycles 3 → discount applies to first 3 monthly charges.
 - `forever` is typically used with `fixed` (permanent low-price tier). It is also valid with `percent` or `free`, though those combinations are rarely what merchants want.
 - For a given checkout, the rule that targets the plan via `specific.planIds` wins; otherwise the `all` fallback applies (at most one per code).
 
@@ -280,7 +280,7 @@ Response 201:
   "data": {
     "id": "dc_abc123",
     "profileId": "profile_xyz",
-    "code": "EARLY2026",
+    "code": "EARLYBIRD",
     "status": "active",
     "rules": [
       {
@@ -289,8 +289,8 @@ Response 201:
         "duration": { "type": "repeating", "cycles": 3 }
       },
       {
-        "appliesTo": { "type": "specific", "planIds": ["plan_yearly_pro"] },
-        "discount": { "type": "percent", "value": 20 },
+        "appliesTo": { "type": "specific", "planIds": ["plan_lifetime_pro"] },
+        "discount": { "type": "fixed", "value": 200, "currency": "TWD" },
         "duration": { "type": "repeating", "cycles": 1 }
       }
     ],
@@ -313,16 +313,16 @@ Error codes:
 
 ### Single-rule examples
 
-Percent + repeating, scoped to yearly plan:
+Percent + repeating, scoped to the monthly plan:
 
 ```json
 {
   "code": "BLACKFRIDAY",
   "rules": [
     {
-      "appliesTo": { "type": "specific", "planIds": ["plan_yearly_pro"] },
+      "appliesTo": { "type": "specific", "planIds": ["plan_monthly_pro"] },
       "discount": { "type": "percent", "value": 20 },
-      "duration": { "type": "repeating", "cycles": 1 }
+      "duration": { "type": "repeating", "cycles": 3 }
     }
   ],
   "redeemBy": "2026-12-31T23:59:59.000Z",
@@ -353,7 +353,7 @@ Founder pricing (fixed forever, single plan):
   "code": "FOUNDER100",
   "rules": [
     {
-      "appliesTo": { "type": "specific", "planIds": ["plan_pro_yearly"] },
+      "appliesTo": { "type": "specific", "planIds": ["plan_pro_monthly"] },
       "discount": { "type": "fixed", "value": 100, "currency": "TWD" },
       "duration": { "type": "forever" }
     }
@@ -541,7 +541,6 @@ Current identifier contract:
 
 - Supported only for recurring subscriptions:
   - `billingPeriod = monthly`
-  - `billingPeriod = yearly`
 - Behavior:
   - stops the next recurring charge
   - does not issue a refund

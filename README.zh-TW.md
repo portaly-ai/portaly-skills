@@ -66,7 +66,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 
 - 透過 API 建立商家設定與訂閱方案
 - 託管結帳 session 流程
-- 固定價格方案（`monthly` / `yearly` 訂閱）與**動態定價方案（dynamic plan）**：適用於單次購買、贊助，或任何金額需要由買家或系統動態決定的場景；實際金額於每次建立結帳 session 時傳入
+- 固定價格方案（`monthly` 訂閱）與**動態定價方案（dynamic plan）**：適用於單次購買、贊助，或任何金額需要由買家或系統動態決定的場景；實際金額於每次建立結帳 session 時傳入
 - 優惠碼（Discount Code）— 支援定額／折扣百分比／免費，可重複 N 期或永久，亦可作為註冊推薦碼於結帳時自動套用
 - HMAC-SHA256 callback 簽章驗證
 - 訂閱生命週期管理（取消 / 恢復）

@@ -1,6 +1,6 @@
 ---
 name: portaly-payment
-version: 0.2.1
+version: 0.3.0
 description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans, checkout sessions, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -117,7 +117,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - **Before creating a new plan, always query existing plans** with `GET /api/creator-subscription/plans` using the current API key. Plans are shared across live and test modes; if a suitable plan already exists, reuse it instead of creating a duplicate.
 - Require at least one active plan in Portaly before creating a checkout session.
 - Use the Plan APIs to create or update the product basics that the human user wants to list on Portaly.
-- Confirm the plan name, description, amount, currency, billing period (`monthly`, `yearly`, or `one-time`), pricing type (`fixed` or `dynamic`), and status match the intended product.
+- Confirm the plan name, description, amount, currency, billing period (`monthly` or `one-time`), pricing type (`fixed` or `dynamic`), and status match the intended product.
 - For dynamic pricing plans: set `pricingType` to `dynamic` and `billingPeriod` to `one-time`. The amount is not set on the plan; instead, the caller passes `amount` when creating each checkout session.
 - If the third party has its own product catalog, persist the Portaly `planId` together with the merchant's internal product or entitlement identifier.
 - AI Agent should ask the human user to provide a plan image, use the plan image upload API to upload the image to Portaly.
@@ -127,11 +127,11 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 ### 3.5 Create discount codes (optional)
 
 - Use the Discount Code APIs after at least one plan exists.
-- A code carries an array of **rules**; each rule can target a different set of plans with its own discount and duration. Example: code `EARLY2026` with two rules — 50% off for 3 cycles (= 3 months) on the monthly plan, and 20% off for 1 cycle (= 1 year) on the yearly plan.
+- A code carries an array of **rules**; each rule can target a different set of plans with its own discount and duration. Example: code `EARLYBIRD` with two rules — 50% off for 3 cycles (= 3 months) on the monthly plan, and a flat amount off the one-time plan.
 - Per rule, confirm with the human user:
   - **Discount type**: `fixed` (TWD off) / `percent` (% off) / `free` (100% off).
-  - **Duration**: `repeating N cycles` (default 1) or `forever` (typically with `fixed`). One cycle equals one billing period — a month for a monthly plan, a year for a yearly plan.
-  - **appliesTo**: `all` (fallback for any plan not covered by a specific rule) or `specific` planIds (e.g. yearly plan only). At most one `all` rule per code; planIds may not appear in more than one rule.
+  - **Duration**: `repeating N cycles` (default 1) or `forever` (typically with `fixed`). One cycle equals one billing period — a month for a monthly plan.
+  - **appliesTo**: `all` (fallback for any plan not covered by a specific rule) or `specific` planIds (e.g. the monthly plan only). At most one `all` rule per code; planIds may not appear in more than one rule.
 - Code-level params:
   - **Custom code**: 3-40 chars, `[A-Z0-9_-]`. Stored and displayed in **UPPERCASE**; lookup is case-insensitive on input. Unique per profile. Immutable post-create.
   - **Redemption window**: `redeemFrom` / `redeemBy`.
@@ -181,7 +181,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 ### 8. Manage recurring subscriptions
 
-- Only recurring plans with `billingPeriod = monthly | yearly` support cancel or resume.
+- Only recurring plans with `billingPeriod = monthly` support cancel or resume.
 - Cancellation means stopping the next recurring charge. It is not a refund. In your system, the rights or content associated should remain active until the end of the current paid period, which is indicated by `cancelEffectiveAt` in the subscription record.
 - Portaly currently supports merchant-system initiated subscription lifecycle actions through API key authenticated endpoints.
 - Use the same Portaly Vibe Payment API key for these calls.
