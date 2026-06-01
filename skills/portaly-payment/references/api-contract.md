@@ -280,7 +280,7 @@ Response 201:
   "data": {
     "id": "dc_abc123",
     "profileId": "profile_xyz",
-    "code": "EARLY2026",
+    "code": "EARLYBIRD",
     "status": "active",
     "rules": [
       {

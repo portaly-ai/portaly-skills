@@ -127,7 +127,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 ### 3.5 Create discount codes (optional)
 
 - Use the Discount Code APIs after at least one plan exists.
-- A code carries an array of **rules**; each rule can target a different set of plans with its own discount and duration. Example: code `EARLY2026` with two rules — 50% off for 3 cycles (= 3 months) on the monthly plan, and a flat amount off the one-time plan.
+- A code carries an array of **rules**; each rule can target a different set of plans with its own discount and duration. Example: code `EARLYBIRD` with two rules — 50% off for 3 cycles (= 3 months) on the monthly plan, and a flat amount off the one-time plan.
 - Per rule, confirm with the human user:
   - **Discount type**: `fixed` (TWD off) / `percent` (% off) / `free` (100% off).
   - **Duration**: `repeating N cycles` (default 1) or `forever` (typically with `fixed`). One cycle equals one billing period — a month for a monthly plan.
