@@ -177,7 +177,6 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - If the callback payload does not include `subscriptionId`, persist `sessionId` as the recurring subscription identifier because the current implementation uses `sessionId` as `subscriptionId`.
 - **Use `sessionId` as an idempotency key** — if a callback with the same `sessionId` has already been processed, skip duplicate handling to avoid double fulfillment.
 - **`callbackUrl` must use HTTPS.** Serving over plain HTTP exposes the `callbackSecret` signature and payload in transit.
-- **Heads up — Portaly may auto-send a welcome/upgrade email when the callback fires.** A successful (`status: completed`) callback triggers Portaly's `welcome_paid` template by default. Symmetrically, a cancel call triggers `subscription_canceled`. If the vibe coder already sends their own purchase-confirmation or cancellation email, **disable the matching template** before going live with `PUT /api/creator-email/templates/welcome_paid` (or `subscription_canceled`) carrying `{ "enabled": false }`.
 
 ### 8. Manage recurring subscriptions
 
