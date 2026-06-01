@@ -369,7 +369,7 @@ Founder pricing (fixed forever, single plan):
 
 ### Ref-code Usage
 
-A discount code can also serve as a registration ref code. The vibe coder records the code via the `portaly-user` skill's `signupRefCode` field at user registration; once that buyer triggers a checkout and verifies their email, Portaly auto-applies the matching rule for the chosen plan. See the user-skill api-contract for `signupRefCode` semantics.
+A discount code can also serve as a registration ref code. The vibe coder records the code as the user's `signupRefCode` at registration; once that buyer triggers a checkout and verifies their email, Portaly auto-applies the matching rule for the chosen plan.
 
 ### Rate limit
 

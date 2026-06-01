@@ -50,8 +50,7 @@ Discount codes can double as registration ref codes:
 
 1. Vibe coder creates a code (e.g. `EARLYBIRD`) via this skill.
 2. The third-party app's signup flow accepts a `?ref=EARLYBIRD` URL parameter.
-3. On registration, the third-party app calls `portaly-user`'s sync API with `signup_ref_code: "EARLYBIRD"`.
-4. When the same buyer later starts a checkout, Portaly auto-applies the matching rule for the chosen plan once the buyer's email is verified — no need to pass `discountCode` on the session.
+3. When the same buyer later starts a checkout, Portaly auto-applies the matching rule for the chosen plan once the buyer's email is verified — no need to pass `discountCode` on the session.
 
 Things to check before recommending the ref-code path:
 

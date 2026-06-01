@@ -43,7 +43,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 ## Quick Start
 
-- Before starting, AI agent should ask the human user to claim or create a Portaly Vibe Payment API key/CallbackSecret in the Portaly Vibe Dashboard at `https://portaly.ai/dashboard` and store the issued secret material safely.
+- Before starting, AI agent should ask the human user to claim or create a Portaly Vibe Payment API key/CallbackSecret in the Portaly Vibe Dashboard at `https://portaly.cc/admin/creator-subscription` and store the issued secret material safely.
 - Ask the human user whether they want a **live** or **test** key. Recommend starting with a test key for integration development.
 
 1. Confirm what the human user is trying to build.
@@ -85,7 +85,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 ### 1. Apply for the API key
 
 - Require a Portaly Vibe Payment API key and CallbackSecret for this integration.
-- Instruct the human user to apply for or create the Portaly Vibe Payment API key in the Portaly Vibe Dashboard at `https://portaly.ai/dashboard`.
+- Instruct the human user to apply for or create the Portaly Vibe Payment API key in the Portaly Vibe Dashboard at `https://portaly.cc/admin/creator-subscription`.
 - Ask whether the user wants a **live** key (`pcs_live_…`) or a **test** key (`pcs_test_…`). Recommend starting with a test key for development and switching to live for production.
 - Be explicit that this step is performed by a human operator in Portaly Vibe Dashboard, not by the third-party integration code.
 - Tell the human user to store the issued secret material safely, or store it on the user's behalf only in an appropriate secret manager or secure environment store.
@@ -137,7 +137,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
   - **Redemption window**: `redeemFrom` / `redeemBy`.
   - **Caps**: `maxRedemptions` (total) / `maxRedemptionsPerCustomer` (per email).
 - Codes are shared across **live and test** modes (same as plans).
-- Codes also serve as **ref codes** — see the `portaly-user` skill for how to record `signupRefCode` at user registration. When a buyer with a recorded `signupRefCode` later checks out and verifies their email, Portaly auto-applies the matching rule, provided the code is still within its `redeemBy` window.
+- Codes also serve as **ref codes**: record the code as `signupRefCode` at user registration. When a buyer with a recorded `signupRefCode` later checks out and verifies their email, Portaly auto-applies the matching rule, provided the code is still within its `redeemBy` window.
 - See `references/discount-code-examples.md` for example prompts and the parameter cheatsheet.
 - **Money-moving guard**: live-mode discount creation requires explicit user confirmation (same rule as live-mode plan creation).
 
@@ -177,7 +177,6 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - If the callback payload does not include `subscriptionId`, persist `sessionId` as the recurring subscription identifier because the current implementation uses `sessionId` as `subscriptionId`.
 - **Use `sessionId` as an idempotency key** — if a callback with the same `sessionId` has already been processed, skip duplicate handling to avoid double fulfillment.
 - **`callbackUrl` must use HTTPS.** Serving over plain HTTP exposes the `callbackSecret` signature and payload in transit.
-- **Heads up — Portaly may auto-send a welcome/upgrade email when the callback fires.** A successful (`status: completed`) callback triggers Portaly's `welcome_paid` template by default. Symmetrically, a cancel call triggers `subscription_canceled`. If the vibe coder already sends their own purchase-confirmation or cancellation email, **disable the matching template** before going live with `PUT /api/creator-email/templates/welcome_paid` (or `subscription_canceled`) carrying `{ "enabled": false }`. See the `portaly-email` skill for the full list of email types and disable workflow.
 
 ### 8. Manage recurring subscriptions
 
@@ -200,7 +199,6 @@ Order query API:
 **Vibe MCP shortcuts (preferred when available):**
 
 - `vibe_list_orders` — list orders without a `PORTALY_API_KEY`; uses the MCP Bearer token and the connection's configured API mode. Available once the `portaly-payment` skill is installed and the MCP session is restarted.
-- `vibe_list_members` — list subscription members by the same token. Available once the `portaly-member` skill is installed.
 
 Recurring management rules:
 
@@ -234,12 +232,6 @@ What to persist for recurring lifecycle:
 - `status`
 - `cancelAtPeriodEnd`
 - `cancelEffectiveAt`
-
-### 8.5. Wire invitation email CTA (optional)
-
-If the merchant plans to use Portaly's invitation-email flow to recruit followers (waitlist signups, campaigns), the CTA in those emails redirects through `https://portaly.ai/r/{code}` to a waitlist landing page. By default the page is hosted by Portaly; the vibe coder can also host it themselves on their own domain by setting `appBaseUrl` on the merchant config.
-
-This is a separate concern from payment integration — for the full setup, install and follow the `portaly-email` skill: `npx skills add portaly-ai/portaly-skills --skill portaly-email`.
 
 ### 9. Enable subscriber self-service portal (optional)
 
