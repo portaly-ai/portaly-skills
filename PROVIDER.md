@@ -31,11 +31,11 @@ To work unmodified, a fork's backend must be wire-compatible with the Portaly RE
 
 - **Auth**: `Authorization: Bearer ${PORTALY_API_KEY}` on all admin endpoints.
 - **Endpoints** referenced by the skills (relative to `PORTALY_API_HOST`):
-  - Payment: `/api/creator-subscription/{config,plans,checkout-sessions,subscriptions,orders,portal-sessions,health-check-reports,admin/users/sync,...}`
-  - Email: `/api/creator-email/templates/{name}`, `/api/waitlist/{slug}`
-  - Click tracking: `/r/{code}` (HTTP 302 to the resolved landing page)
+  - Payment: `/api/creator-subscription/{config,plans,checkout-sessions,subscriptions,orders,portal-sessions,discount-codes,...}`
+  - Email templates (toggled from the payment flow): `/api/creator-email/templates/{name}`
+  - Digital products: `/api/digital-products/{,{productId},checkout-sessions,orders}`
 - **Callback signatures**: HMAC-SHA256 of `${timestamp}.${stableJson(payload)}` using the merchant's `callbackSecret`. See `skills/portaly-payment/scripts/sign_callback.mjs` for the canonical implementation.
-- **Response shapes**: The skills assume `{ data: ... }`-wrapped responses. See `skills/portaly-payment/references/api-contract.md` and `skills/portaly-user/references/api-contract.md` for the full contract.
+- **Response shapes**: The skills assume `{ data: ... }`-wrapped responses. See `skills/portaly-payment/references/api-contract.md` and `skills/portaly-product/references/api-contract.md` for the full contract.
 
 If your backend diverges from any of the above, `PORTALY_API_HOST` alone won't be enough — you'll need to fork the skills.
 
@@ -49,12 +49,9 @@ PORTALY_API_KEY=...        # the same auth token used by the default backend
 PORTALY_CALLBACK_SECRET=... # for verifying inbound payment callbacks
 ```
 
-The reference scripts that already read this var:
+The bundled scripts (`skills/*/scripts/sign_callback.{mjs,py}`) are host-agnostic — they only verify HMAC signatures and never call the API, so they don't reference the host at all.
 
-- `skills/portaly-user/scripts/sync_user.mjs`
-- `skills/portaly-sentry/scripts/report.mjs`
-
-When generating new code, the agent should follow the same pattern:
+When generating code that does call the API, the agent should read the host from this var:
 
 ```ts
 const PORTALY_API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'

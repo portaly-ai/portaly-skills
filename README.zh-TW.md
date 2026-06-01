@@ -2,7 +2,7 @@
 
 # Portaly Skills
 
-[Portaly](https://portaly.cc) 創作者專用的 AI Agent Skill 集合。透過 AI Agent 將 Portaly 服務 — 分析、支付、用戶管理 — 整合到任何專案中。
+[Portaly](https://portaly.cc) 創作者專用的 AI Agent Skill 集合。透過 AI Agent 將 Portaly 服務 — 支付、數位商品 — 整合到任何專案中。
 
 ## 安裝
 
@@ -11,7 +11,7 @@
 npx skills add portaly-ai/portaly-skills
 
 # 安裝單一 skill
-npx skills add portaly-ai/portaly-skills --skill portaly-analytics
+npx skills add portaly-ai/portaly-skills --skill portaly-payment
 ```
 
 ## 更新
@@ -21,40 +21,15 @@ npx skills add portaly-ai/portaly-skills --skill portaly-analytics
 npx skills update
 
 # 更新單一 skill
-npx skills update portaly-analytics
+npx skills update portaly-payment
 ```
 
 ## Skills 一覽
 
 | Skill | 說明 | 觸發關鍵字 |
 |-------|------|-----------|
-| **portaly-analytics** | GA4 分析安裝、Portaly 事件追蹤、儀表板連結 | `GA4`、`Google Analytics`、`事件追蹤` |
 | **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、單次購買、動態金額定價、優惠碼、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳`、`優惠碼`、`單次購買`、`動態定價`、`贊助` |
 | **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
-| **portaly-user** | 用戶同步至 Portaly Vibe — 全量遷移、增量同步、Dashboard 查看 | `用戶同步`、`member sync`、`用戶管理` |
-| **portaly-sentry** | Portaly Vibe 支付串接的安全與可靠性健康檢查，可回報結果到 Vibe 儀表板 | `Portaly 健康檢查`、`sentry 掃描`、`金流安全審計` |
-| **portaly-email** | 將 Invitation Email 註冊連結導向 Portaly 託管 CTA（零設定）或 vibe coder 自架的 waitlist 落地頁 | `Invitation Email`、`Waitlist 落地頁`、`app base URL` |
-
-## Portaly Analytics Integration
-
-```bash
-npx skills add portaly-ai/portaly-skills --skill portaly-analytics
-```
-
-協助創作者在網站安裝 Google Analytics 4，並連結到 Portaly 後台查看分析數據。
-
-- 支援 Next.js（App Router / Pages Router）、React SPA、純 HTML 的 GA4 安裝
-- 5 個 Portaly 標準事件 + GA4 電商事件對應
-- Portaly 後台 GA 授權連結流程
-
-**前置條件：** Google Analytics 4 帳號與 Measurement ID（`G-XXXXXXX`），以及 Portaly 帳號。
-
-**Skill 觸發條件：**
-- 「幫我在網站安裝 Google Analytics」
-- 「我想追蹤 Portaly 結帳事件」
-- 「幫我串接 GA4 到我的 Next.js 專案」
-- 「我想在 Portaly 後台看到網站分析數據」
-- 「幫我把 Google Analytics 連結到 Portaly」
 
 ## Portaly Vibe Payment Integration
 
@@ -72,7 +47,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 訂閱生命週期管理（取消 / 恢復）
 - 訂閱者自助入口（Self-Service Portal）
 
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard) 申請。
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.cc/admin/creator-subscription) 申請。
 
 **Skill 觸發條件：**
 - 「幫我在 Portaly Vibe 上新增一個訂閱商品」
@@ -98,7 +73,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-product
 - Per-order 事件：`digital_product.checkout.completed`、`digital_product.order.refunded`
 - 託管寄信 — 每筆付費訂單一封確認信，免費商品跳過
 
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），與 payment skill 共用。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard) 申請。
+**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），與 payment skill 共用。至 [Portaly Vibe Dashboard](https://portaly.cc/admin/creator-subscription) 申請。
 
 **Skill 觸發條件：**
 - 「在我自己的網站上賣 Portaly 數位商品」
@@ -106,70 +81,6 @@ npx skills add portaly-ai/portaly-skills --skill portaly-product
 - 「在我的網站上列出創作者的下載/模板/課程」
 - 「打造一個 powered by Portaly 的商店」
 - 「設定 Portaly 數位商品的 webhook」
-
-## Portaly User Management
-
-```bash
-npx skills add portaly-ai/portaly-skills --skill portaly-user
-```
-
-協助 vibe coder 將應用程式的用戶資料同步到 Portaly Vibe，讓創作者在 Dashboard 查看完整的使用者與訂閱狀態。
-
-- 全量同步：批次匯入既有用戶，支援分批與指數退避
-- 增量同步：在註冊/更新/停用事件中以 fire-and-forget 模式自動同步
-- Dashboard 可視化：`https://portaly.ai/dashboard/users`
-- 同步紀錄：追蹤每次同步的成功/失敗狀態
-
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard) 申請。
-
-**Skill 觸發條件：**
-- 「幫我同步用戶到 Portaly Vibe」
-- 「幫我把既有的會員資料遷移到 Portaly」
-- 「幫我設定用戶增量同步」
-
-## Portaly Sentry 健康檢查
-
-```bash
-npx skills add portaly-ai/portaly-skills --skill portaly-sentry
-```
-
-在部署前對 Portaly Vibe 支付串接執行安全與可靠性稽核。搭配 `portaly-payment` 使用——以其 API 合約作為正確串接的 canonical 參考。
-
-- 8 大類、合計 26 項檢查：簽章驗證、訂閱生命週期、Callback 端點、環境憑證、安全最佳實踐、Web 安全、依賴安全、資料處理
-- 純靜態分析——不需要執行使用者的程式碼
-- Read-only audit——絕不修改使用者程式碼
-- 可選擇將掃描結果回報至 Vibe 儀表板 `https://portaly.ai/dashboard/sentry-scans`
-- 支援手動執行與每週排程掃描
-
-**前置條件：** 已安裝 `portaly-payment` skill（作為 canonical 參考）。選用：Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），用來把結果回報到 Vibe 儀表板。
-
-**Skill 觸發條件：**
-- 「部署前幫我跑一次 Portaly 健康檢查」
-- 「幫我稽核 Portaly 支付串接有沒有安全問題」
-- 「掃描我的 Portaly callback 簽章驗證是否正確」
-- 「我的 Portaly 串接可以安心上線嗎？」
-- 「執行一次 Portaly sentry 掃描」
-
-## Portaly Invitation Email Integration
-
-```bash
-npx skills add portaly-ai/portaly-skills --skill portaly-email
-```
-
-協助 vibe coder 把 Portaly Vibe 註冊邀請信件中的連結導向正確的落地頁 — 可選擇 Portaly 託管頁面（零開發）或在自己的網域上實作 `/waitlist/[creatorSlug]`（完全控制 UX）。
-
-- Mode A — 直接嵌入 `https://portaly.ai/waitlist/{creatorSlug}` CTA，不用寫任何後端
-- Mode B — 設定 `appBaseUrl` 並在自己的網域實作頁面；點擊追蹤仍走 Portaly
-- Mode B 提供 Next.js、React SPA、純 HTML 三種範本
-- 與 `portaly-user` 串接，把新訂閱者同步進創作者儀表板
-
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。Mode B 需要一個可公開存取的 HTTPS 網域。
-
-**Skill 觸發條件：**
-- 「註冊信件的連結會導去哪裡？」
-- 「我想把 waitlist 落地頁放在自己網站上」
-- 「在 Hero 區塊放一個 Portaly waitlist CTA」
-- 「設定 invitation email 的 app base URL」
 
 ## 串接到自己的 Server
 
@@ -186,13 +97,11 @@ PORTALY_API_HOST=https://your-backend.example.com
 如果你之前從獨立的 repository 安裝過 skill：
 
 ```bash
-rm -rf ~/.claude/skills/portaly-analytics-skill
 rm -rf ~/.claude/skills/portaly-payment-skill
 npx skills add portaly-ai/portaly-skills --all -g
 ```
 
 舊的 repository 已封存：
-- `real-engine-tw/portaly-analytics-skill`（已封存）
 - `real-engine-tw/portaly-payment-skill`（已封存）
 
 ## Windows 注意事項

@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for AI coding agents to help Portaly creators integrate analytics, payment, and user management services. Skills are packaged instructions, reference docs, and example scripts that extend an agent's capabilities.
+A collection of skills for AI coding agents to help Portaly creators integrate payment and digital products services. Skills are packaged instructions, reference docs, and example scripts that extend an agent's capabilities.
 
 **This is not an application project** — no build system, no npm dependencies, no tests. Content is documentation-driven skill definitions, reference materials, and copy-ready example code.
 
@@ -12,22 +12,10 @@ A collection of skills for AI coding agents to help Portaly creators integrate a
 
 ```
 skills/
-  portaly-analytics/          # GA4 analytics integration
-    SKILL.md                  # Skill definition (entry point)
-    references/               # GA4 setup guide, event tracking contract
-    scripts/                  # gtag.js and event tracking examples (.mjs)
   portaly-payment/            # Portaly Vibe payment integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, checkout and renewal docs
     scripts/                  # Callback verification examples (.mjs, .py)
-  portaly-user/               # User management and sync
-    SKILL.md                  # Skill definition (entry point)
-    references/               # User sync API contract
-    scripts/                  # Migration and sync examples (.mjs)
-  portaly-sentry/             # Pre-deploy health check for payment integrations
-    SKILL.md                  # Skill definition (entry point)
-    references/               # Health check contract (26 checks), common pitfalls
-    scripts/                  # Static analyzers (.mjs) — signature sort, subscription lifecycle
   portaly-product/            # Portaly digital products integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, bundle pricing algorithm
@@ -46,12 +34,6 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 
 ## Key Domain Concepts
 
-**Analytics Skill:**
-- Supported frameworks: Next.js (App Router / Pages Router), React SPA, vanilla HTML
-- GA4 Measurement ID format: `G-XXXXXXX` (not `UA-XXXXX`)
-- 5 Portaly custom events + GA4 ecommerce event mapping
-- GA4 data has a 24–48 hour processing delay
-
 **Payment Skill:**
 - API host and payment page: `https://portaly.ai`
 - Dual mode: live (`pcs_live_`) / test (`pcs_test_`), determined by API key
@@ -61,21 +43,14 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Rate limit: read 120 req/min, write 20 req/min
 - `callbackUrl` must use HTTPS
 
-**User Skill:**
+**Product Skill:**
 - API host: `https://portaly.ai`
-- Uses the same Creator Subscription API Key (`pcs_live_*` / `pcs_test_*`)
-- Email is the dedup key: `UNIQUE(profile_id, api_key_id, email)`
-- Batch limit: max 100 users per sync call
-- Sync calls must be fire-and-forget — never block the main business flow
-- Deletion: sync with `status: "deleted"` removes the user (no separate DELETE endpoint)
-
-**Sentry Skill:**
-- 26 checks across 8 categories: `SIG` (signature), `SUB` (subscription), `CBK` (callback), `ENV` (env & credentials), `SEC` (security), `WEB` (web fundamentals), `DEP` (dependencies), `DATA` (data handling)
-- Three severity levels: `CRITICAL` (must fix before deploy), `WARNING` (should fix), `INFO` (fix when convenient)
-- Static analysis only — read-only audit, never modifies user code
-- Depends on `portaly-payment` skill's `references/api-contract.md` as the canonical reference for correct integration
-- Reporting API (optional): `POST /api/creator-subscription/health-check-reports` on host `https://portaly.ai`, authenticated with `Authorization: Bearer {PORTALY_API_KEY}` — same key as the payment skill. May return 404 if not yet live; in that case skip reporting and show results locally only.
-- Results flow into the creator's Vibe dashboard at `https://portaly.ai/dashboard/sentry-scans`
+- Uses the same Creator Subscription API Key (`pcs_live_*` / `pcs_test_*`) as the payment skill
+- Stripe Checkout pattern: third party lists products on their own site → checkout redirects to Portaly's hosted page
+- Always price from `effectivePrice` (handles sale / countdown / free), never `sale ?? price`
+- Bundle pricing: proportional split, last item absorbs rounding (`sum(allocations) === totalAmount`); each item becomes its own order
+- Webhook events: `digital_product.checkout.completed` (per session), `digital_product.order.refunded` (per order)
+- HMAC-SHA256 webhook signature verification, ISO-datetime timestamp valid within 5 minutes
 
 ## Provider Abstraction
 

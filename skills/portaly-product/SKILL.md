@@ -34,7 +34,7 @@ Payment is handled entirely on Portaly's hosted checkout page — you never see 
 
 ## Quick Start
 
-1. Ensure the human user has a Portaly Vibe Payment API key. If not, send them to https://portaly.ai/dashboard. Recommend test key for development.
+1. Ensure the human user has a Portaly Vibe Payment API key. If not, send them to https://portaly.cc/admin/creator-subscription. Recommend test key for development.
 2. Have them place secrets in `.env` themselves (never via chat — see Guardrails):
    ```
    PORTALY_API_KEY=pcs_test_xxx
