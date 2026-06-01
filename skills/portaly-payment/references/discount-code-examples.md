@@ -2,13 +2,16 @@
 
 Reach for this when the human user asks the agent to "make a coupon", "build a discount code", "set up a promo", or describes a campaign in prose. The agent should turn the prose into a `POST /api/creator-subscription/discount-codes` payload and confirm before calling in **live** mode.
 
+> **⚠️ Yearly temporarily unsupported.** A `specific` rule that targets a `yearly` plan is rejected with `400 INVALID_DISCOUNT_CODE`. When a prompt asks for a yearly-plan discount, tell the user yearly is temporarily unavailable and offer a monthly / one-time rule (or an `all` rule) instead. The examples below use monthly / one-time plans only.
+
 ## Example prompts the agent should handle
 
 | Prompt | Translates into |
 |---|---|
-| 「建立 BLACKFRIDAY 8 折碼，2026 年底前可用，限 100 次、每人 1 次，僅限年費 plan」 | code `BLACKFRIDAY`, single rule on yearly plan, percent 20, repeating cycles 1, redeemBy 2026-12-31, maxRedemptions 100, maxRedemptionsPerCustomer 1 |
-| 「建立活動碼 EARLY2026：月費前 3 期半價、年費首年 8 折」 | code `EARLY2026`, two rules — monthly plan (percent 50, cycles 3) and yearly plan (percent 20, cycles 1) |
-| 「FOUNDER100 永久折 100 元，限定 plan_pro_yearly」 | code `FOUNDER100`, single rule on `plan_pro_yearly`, fixed 100 TWD, forever |
+| 「建立 BLACKFRIDAY 8 折碼，2026 年底前可用，限 100 次、每人 1 次，限月費 plan」 | code `BLACKFRIDAY`, single rule on monthly plan, percent 20, repeating cycles 3, redeemBy 2026-12-31, maxRedemptions 100, maxRedemptionsPerCustomer 1 |
+| 「建立活動碼 EARLY2026：月費前 3 期半價、單次購買折 200 元」 | code `EARLY2026`, two rules — monthly plan (percent 50, cycles 3) and one-time plan (fixed 200 TWD, cycles 1) |
+| 「FOUNDER100 永久折 100 元，限定 plan_pro_monthly」 | code `FOUNDER100`, single rule on `plan_pro_monthly`, fixed 100 TWD, forever |
+| 「僅限年費 plan 的折扣」 | ⚠️ Yearly temporarily unsupported — `specific` rule on a yearly plan returns `400 INVALID_DISCOUNT_CODE`. Tell the user and offer a monthly / one-time rule instead. |
 | 「FREEMONTH 首期免費，所有 plan 通用，無使用上限」 | code `FREEMONTH`, single rule appliesTo `all`, free, repeating cycles 1, no caps |
 | "Make a 30% off code WELCOME for the first month for any plan, max 1 per customer." | code `WELCOME`, appliesTo `all`, percent 30, repeating cycles 1, maxRedemptionsPerCustomer 1 |
 | "Set up a referral perk REFER10 — anyone using this code gets 10% off every charge for as long as they stay subscribed." | code `REFER10`, appliesTo `all`, percent 10, forever (note: `forever` is unusual with `percent`; most often paired with `fixed`) |
@@ -18,12 +21,12 @@ Reach for this when the human user asks the agent to "make a coupon", "build a d
 | Field | Type | Meaning | Constraints / notes |
 |---|---|---|---|
 | `code` | string | Custom code string | 3-40 chars, `[A-Z0-9_-]`, **stored UPPERCASE**, unique per profile, **immutable post-create** |
-| `rules[].appliesTo` | object | Which plan(s) this rule applies to | `{ type: 'all' }` (≤1 per code) or `{ type: 'specific', planIds: [...] }`. planIds can't repeat across rules |
+| `rules[].appliesTo` | object | Which plan(s) this rule applies to | `{ type: 'all' }` (≤1 per code) or `{ type: 'specific', planIds: [...] }`. planIds can't repeat across rules. **A `specific` rule may not target a `yearly` plan while yearly is paused (`400 INVALID_DISCOUNT_CODE`).** |
 | `rules[].discount.type` | enum | Discount kind | `fixed` / `percent` / `free` |
 | `rules[].discount.value` | number | Discount magnitude | `fixed`: positive integer TWD; `percent`: 1-100; not used for `free` |
 | `rules[].discount.currency` | enum | Currency for `fixed` | Currently only `TWD` |
 | `rules[].duration.type` | enum | Discount period kind | `repeating` or `forever` |
-| `rules[].duration.cycles` | number | # of billing periods to apply (for `repeating`) | 1-60. **Monthly plan: 1 cycle = 1 month. Yearly plan: 1 cycle = 1 year.** |
+| `rules[].duration.cycles` | number | # of billing periods to apply (for `repeating`) | 1-60. **Monthly plan: 1 cycle = 1 month.** (Yearly plan: 1 cycle = 1 year, once yearly is re-enabled.) |
 | `redeemFrom` | ISO datetime | Start of the redemption window | Optional; null = immediately |
 | `redeemBy` | ISO datetime | End of the redemption window | Optional; null = no end. Must be after `redeemFrom` |
 | `maxRedemptions` | integer | Total cap | Optional; null = unlimited |
@@ -35,12 +38,12 @@ Reach for this when the human user asks the agent to "make a coupon", "build a d
 |  | `repeating { cycles: N }` | `forever` |
 |---|---|---|
 | `fixed` | First N cycles get `value` TWD off (e.g. 100 TWD off first 3 months). | Permanent low-price tier — every renewal gets `value` TWD off. |
-| `percent` | First N cycles get the percentage off (e.g. 20% off first year for yearly). | Every renewal gets the percentage off. Less common than `fixed forever` but valid. |
+| `percent` | First N cycles get the percentage off (e.g. 50% off first 3 months). | Every renewal gets the percentage off. Less common than `fixed forever` but valid. |
 | `free` | First N cycles cost 0 (e.g. free first month). | Permanent free — generally not what merchants want; prefer changing the plan price. |
 
 The most common combinations:
 
-- **percent + repeating** → introductory discount ("first year 20% off")
+- **percent + repeating** → introductory discount ("first 3 months 50% off")
 - **free + repeating(1)** → trial-style first-period freebie
 - **fixed + forever** → loyalty / founder pricing
 
@@ -64,6 +67,6 @@ Things to check before recommending the ref-code path:
 
 Before calling `POST .../discount-codes` with a `pcs_live_*` API key, confirm the action explicitly with the human user:
 
-> "I'm about to create discount code `EARLY2026` in **live** mode for profile `<profileId>`. It will give 50% off for 3 months on the monthly plan and 20% off for 1 year on the yearly plan, with a per-customer limit of 1. Should I proceed?"
+> "I'm about to create discount code `EARLY2026` in **live** mode for profile `<profileId>`. It will give 50% off for 3 months on the monthly plan and NT$200 off the one-time plan, with a per-customer limit of 1. Should I proceed?"
 
 Only call after a clear "yes". Same rule applies to `PUT` updates and `DELETE` (status flip) in live mode.

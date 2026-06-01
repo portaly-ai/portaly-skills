@@ -137,7 +137,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `description`: optional
   - `amount`: required positive number for fixed pricing; omit or set to `0` for dynamic pricing
   - `currency`: optional, defaults to `TWD`
-  - `billingPeriod`: required, `monthly` or `yearly`, `one-time` is a single-payment plan that does not auto-renew
+  - `billingPeriod`: required, `monthly` or `one-time` (`one-time` is a single-payment plan that does not auto-renew). **`yearly` is temporarily unsupported — the API rejects it with `422 YEARLY_TEMPORARILY_UNSUPPORTED`.**
   - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
@@ -197,7 +197,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `description`: optional
   - `amount`: optional positive number (must be non-negative for dynamic pricing plans)
   - `currency`: optional
-  - `billingPeriod`: optional, `monthly` or `yearly`, `one-time` is a single-payment plan that does not auto-renew
+  - `billingPeriod`: optional, `monthly` or `one-time` (`one-time` is a single-payment plan that does not auto-renew). **`yearly` is temporarily unsupported — switching a plan to `yearly` is rejected with `422 YEARLY_TEMPORARILY_UNSUPPORTED`.**
   - `pricingType`: optional, `fixed` or `dynamic`
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
@@ -258,9 +258,10 @@ A **rule** is a discriminated union over three fields. The pipes below denote al
 
 Rule semantics:
 
-- `cycles` is **billing-period count**. Monthly plan + cycles 3 → discount applies to first 3 monthly charges. Yearly plan + cycles 1 → discount applies to first yearly charge.
+- `cycles` is **billing-period count**. Monthly plan + cycles 3 → discount applies to first 3 monthly charges. (Yearly plan + cycles 1 → first yearly charge, once yearly is re-enabled.)
 - `forever` is typically used with `fixed` (permanent low-price tier). It is also valid with `percent` or `free`, though those combinations are rarely what merchants want.
 - For a given checkout, the rule that targets the plan via `specific.planIds` wins; otherwise the `all` fallback applies (at most one per code).
+- **Yearly temporarily unsupported:** a `specific` rule whose `planIds` include a `yearly` plan is rejected with `400 INVALID_DISCOUNT_CODE`. Target `monthly` / `one-time` plans, or use an `all` rule (it only ever applies to the still-allowed plans).
 
 ### `POST /api/creator-subscription/discount-codes`
 
@@ -289,8 +290,8 @@ Response 201:
         "duration": { "type": "repeating", "cycles": 3 }
       },
       {
-        "appliesTo": { "type": "specific", "planIds": ["plan_yearly_pro"] },
-        "discount": { "type": "percent", "value": 20 },
+        "appliesTo": { "type": "specific", "planIds": ["plan_lifetime_pro"] },
+        "discount": { "type": "fixed", "value": 200, "currency": "TWD" },
         "duration": { "type": "repeating", "cycles": 1 }
       }
     ],
@@ -308,21 +309,22 @@ Response 201:
 Error codes:
 
 - `400 Validation failed` — Zod failure (rules conflict, percent out of range, redeem window inverted, etc.).
+- `400 INVALID_DISCOUNT_CODE` — a `specific` rule targets a `yearly` plan, which is temporarily unsupported.
 - `403 UPGRADE_REQUIRED` — profile lacks the entitlement to create discount codes (parity with plan creation).
 - `409 DUPLICATE_CODE` — same code already exists for this profile.
 
 ### Single-rule examples
 
-Percent + repeating, scoped to yearly plan:
+Percent + repeating, scoped to the monthly plan:
 
 ```json
 {
   "code": "BLACKFRIDAY",
   "rules": [
     {
-      "appliesTo": { "type": "specific", "planIds": ["plan_yearly_pro"] },
+      "appliesTo": { "type": "specific", "planIds": ["plan_monthly_pro"] },
       "discount": { "type": "percent", "value": 20 },
-      "duration": { "type": "repeating", "cycles": 1 }
+      "duration": { "type": "repeating", "cycles": 3 }
     }
   ],
   "redeemBy": "2026-12-31T23:59:59.000Z",
@@ -353,7 +355,7 @@ Founder pricing (fixed forever, single plan):
   "code": "FOUNDER100",
   "rules": [
     {
-      "appliesTo": { "type": "specific", "planIds": ["plan_pro_yearly"] },
+      "appliesTo": { "type": "specific", "planIds": ["plan_pro_monthly"] },
       "discount": { "type": "fixed", "value": 100, "currency": "TWD" },
       "duration": { "type": "forever" }
     }
@@ -456,6 +458,7 @@ Request body (dynamic pricing plan):
   - current implementation contract: `subscriptionId === checkoutSessionId === sessionId`
   - for recurring subscriptions, persist `sessionId` as the subscription identifier used by cancel or resume APIs
   - for dynamic pricing plans, include `amount` in the request body; omitting it returns a 400 error
+  - **yearly temporarily unsupported:** creating a checkout session for a plan whose `billingPeriod` is `yearly` returns a `400` error stating yearly subscriptions are temporarily unavailable. This guards any pre-existing yearly plan — surface the message to the buyer/merchant and offer the monthly or one-time plan instead.
 
 Node.js example:
 
@@ -541,7 +544,7 @@ Current identifier contract:
 
 - Supported only for recurring subscriptions:
   - `billingPeriod = monthly`
-  - `billingPeriod = yearly`
+  - `billingPeriod = yearly` (no new yearly subscriptions can be created right now, but pre-existing ones still cancel / resume)
 - Behavior:
   - stops the next recurring charge
   - does not issue a refund
