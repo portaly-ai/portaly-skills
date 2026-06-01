@@ -72,8 +72,6 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 訂閱生命週期管理（取消 / 恢復）
 - 訂閱者自助入口（Self-Service Portal）
 
-> ⚠️ **年訂閱方案暫時停用。** 目前無法建立或結帳 `yearly` 方案，針對年訂閱方案的優惠碼規則也會被擋下——請改用 `monthly` 或 `one-time` 方案。
-
 **前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.ai/dashboard) 申請。
 
 **Skill 觸發條件：**

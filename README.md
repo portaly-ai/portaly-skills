@@ -72,8 +72,6 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 - Recurring subscription management (cancel / resume)
 - Subscriber self-service portal
 
-> ⚠️ **Yearly billing is temporarily unavailable.** Creating or checking out a `yearly` plan, and discount-code rules targeting a yearly plan, are blocked for now — use `monthly` or `one-time` plans instead.
-
 **Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`). Apply at [Portaly Vibe Dashboard](https://portaly.ai/dashboard).
 
 **Skill triggers:**
