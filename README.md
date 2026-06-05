@@ -41,7 +41,7 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 
 - Merchant config and plan creation via API
 - Hosted checkout session flow
-- Fixed plans for subscriptions (`monthly`) and **dynamic plans** for one-time purchases, donations, tip jars, or any buyer-specified amount — the amount is set per checkout session
+- Fixed plans for subscriptions (`monthly` / `yearly`) and **dynamic plans** for one-time purchases, donations, tip jars, or any buyer-specified amount — the amount is set per checkout session. Yearly plans use 12-month deferred disbursement: the buyer pays upfront, the creator receives 1/12 of net revenue per month, and refunds are blocked once the first installment has been released.
 - Discount codes — fixed / percent / free, repeating or forever, with ref-code auto-apply at checkout
 - HMAC-SHA256 callback signature verification
 - Recurring subscription management (cancel / resume)

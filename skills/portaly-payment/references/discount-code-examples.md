@@ -9,6 +9,7 @@ Reach for this when the human user asks the agent to "make a coupon", "build a d
 | 「建立 BLACKFRIDAY 8 折碼，2026 年底前可用，限 100 次、每人 1 次，限月費 plan」 | code `BLACKFRIDAY`, single rule on monthly plan, percent 20, repeating cycles 3, redeemBy 2026-12-31, maxRedemptions 100, maxRedemptionsPerCustomer 1 |
 | 「建立活動碼 EARLYBIRD：月費前 3 期半價、單次購買折 200 元」 | code `EARLYBIRD`, two rules — monthly plan (percent 50, cycles 3) and one-time plan (fixed 200 TWD, cycles 1) |
 | 「FOUNDER100 永久折 100 元，限定 plan_pro_monthly」 | code `FOUNDER100`, single rule on `plan_pro_monthly`, fixed 100 TWD, forever |
+| 「年費首年 8 折 ANNUAL20，限 yearly plan」 | code `ANNUAL20`, single rule on yearly plan, percent 20, repeating cycles 1 (= first year) |
 | 「FREEMONTH 首期免費，所有 plan 通用，無使用上限」 | code `FREEMONTH`, single rule appliesTo `all`, free, repeating cycles 1, no caps |
 | "Make a 30% off code WELCOME for the first month for any plan, max 1 per customer." | code `WELCOME`, appliesTo `all`, percent 30, repeating cycles 1, maxRedemptionsPerCustomer 1 |
 | "Set up a referral perk REFER10 — anyone using this code gets 10% off every charge for as long as they stay subscribed." | code `REFER10`, appliesTo `all`, percent 10, forever (note: `forever` is unusual with `percent`; most often paired with `fixed`) |
@@ -23,7 +24,7 @@ Reach for this when the human user asks the agent to "make a coupon", "build a d
 | `rules[].discount.value` | number | Discount magnitude | `fixed`: positive integer TWD; `percent`: 1-100; not used for `free` |
 | `rules[].discount.currency` | enum | Currency for `fixed` | Currently only `TWD` |
 | `rules[].duration.type` | enum | Discount period kind | `repeating` or `forever` |
-| `rules[].duration.cycles` | number | # of billing periods to apply (for `repeating`) | 1-60. **Monthly plan: 1 cycle = 1 month.** |
+| `rules[].duration.cycles` | number | # of billing periods to apply (for `repeating`) | 1-60. **Monthly plan: 1 cycle = 1 month. Yearly plan: 1 cycle = 1 year.** |
 | `redeemFrom` | ISO datetime | Start of the redemption window | Optional; null = immediately |
 | `redeemBy` | ISO datetime | End of the redemption window | Optional; null = no end. Must be after `redeemFrom` |
 | `maxRedemptions` | integer | Total cap | Optional; null = unlimited |
