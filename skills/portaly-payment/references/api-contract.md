@@ -10,6 +10,7 @@
 - recurring subscription query, cancel, and resume
 - subscription list query with pagination
 - order and payment record query with pagination
+- invoice record query (invoice number, issue status, e-invoice result)
 - signed callback verification
 - fallback manual completion flows
 - rate limiting behavior and retry handling
@@ -840,6 +841,45 @@ Use this when the human user needs to query payment/order records for a profile.
   - Only returns orders with `projectId = 'creatorSubscription'`
   - Supports cursor-based pagination
 
+## Invoice Query
+
+Use this when the human user needs the invoice records for a profile — invoice number, issue status, and e-invoice (ECPay) result. `GET /orders` returns the transaction/payment side; this endpoint returns the invoice side of the same payments.
+
+- Endpoint:
+  - `GET /api/creator-subscription/invoices`
+- Required headers:
+  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+- Query parameters:
+  - `profileId`: optional for API key auth (derived from key), required for Firebase auth
+  - `mode`: optional, `live` or `test` — only honored for Firebase auth (omit to list all modes). API key callers are pinned to the key's own mode and cannot read the other mode's invoices
+- Response fields:
+  - `data[]`: array of invoice records, newest first
+  - `data[].id`
+  - `data[].creatorSubscriptionId`
+  - `data[].checkoutSessionId`
+  - `data[].profileId`
+  - `data[].mode`
+  - `data[].planId`
+  - `data[].planName`
+  - `data[].amount`
+  - `data[].currency`
+  - `data[].status`: `SUCCESS` or `FAILED` (the payment result)
+  - `data[].customerName`
+  - `data[].customerEmail`
+  - `data[].invoice`: the requested carrier info (`{ type, carrierType, carrierNumber, company, companyId }`) or `null`
+  - `data[].invoiceStatus`: `pending` | `processing` | `issued` | `not_applicable`
+  - `data[].invoiceTaskId`
+  - `data[].invoiceLastError`
+  - `data[].invoiceIssuedAt`
+  - `data[].timestamp`
+  - `data[].createdAt`
+  - `data[].updatedAt`
+  - `data[].ecpayInvoice`: the issued e-invoice result (`InvoiceNo`, `InvoiceDate`, …) or `null`
+  - `data[].appliedDiscount`: present when a discount applied to this charge (`{ codeId, code, rule, source }`); otherwise `null`
+- Notes:
+  - API key auth scopes results to the key's mode (a live key never sees test invoices and vice versa)
+  - Returns all matching records (no pagination); use `GET /orders` for cursor-paginated transaction records
+
 ## Rate Limiting
 
 All creator-subscription API endpoints are rate limited **except** checkout session creation (`POST /api/creator-subscription/checkout-sessions`).
@@ -848,7 +888,7 @@ All creator-subscription API endpoints are rate limited **except** checkout sess
 
 | Group | Window | Max requests | Applies to |
 |---|---|---|---|
-| read | 1 minute | 120 | GET sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders |
+| read | 1 minute | 120 | GET sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders, GET invoices |
 | write | 1 minute | 20 | POST cancel, POST resume, PUT plans/{id}, PUT config, POST plans |
 | api-keys | 1 minute | 10 | POST/GET/DELETE api-keys |
 
