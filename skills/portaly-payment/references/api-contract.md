@@ -201,6 +201,8 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `pricingType`: optional, `fixed` or `dynamic`
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
+  - `image`: optional string (URL returned by the images endpoint, or `""` to clear). For uploading a new file, use `POST /api/creator-subscription/plans/{planId}/images` below; pass `image` here only to set an already-hosted URL or to clear it
+  - `externalInformationUrl`: optional object with `url` and `text` (both required when present); previously settable only at create time
 
 `POST /api/creator-subscription/plans/{planId}/images`
 
