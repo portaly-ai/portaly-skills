@@ -395,7 +395,8 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `amount`: optional positive number. **Required** for dynamic pricing plans; ignored for fixed pricing plans
   - `successRedirectUrl`: optional merchant success page
   - `cancelRedirectUrl`: optional merchant cancel page
-  - `callbackUrl`: optional merchant callback endpoint
+  - `callbackUrl`: optional merchant callback endpoint (receives the checkout-completion callback)
+  - `subscriptionCallbackUrl`: optional separate endpoint for recurring subscription lifecycle callbacks (renewal charges, status changes). Falls back to `callbackUrl` when omitted. Verified with the same signing scheme as `callbackUrl` (see Signed Callback)
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied later via the buyer's `signupRefCode` once their email is verified inside hosted checkout.
