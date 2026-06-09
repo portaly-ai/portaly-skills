@@ -75,6 +75,7 @@ Use this when the human user needs to set or update merchant branding for Portal
   - `merchantName`: optional string
   - `merchantLogo`: optional string (URL returned by the images endpoint, or `""` to clear)
   - `appBaseUrl`: optional, must start with `https://` (max 255 chars; trailing slash stripped). Pass `""` to clear.
+  - `inviteRedirectPath`: optional path-only override (max 200 chars; must start with `/`, only letters/digits/`-`/`_`/`/`; trailing slash stripped). When set together with `appBaseUrl`, invitation redirects land on `${appBaseUrl}${inviteRedirectPath}` (skipping the default `/waitlist/{slug}` segment). Pass `""` to clear.
   - `brandDescription`: optional, free-form text for AI context (max 4000 chars). Pass `""` to clear.
 
 - Request body:
@@ -91,6 +92,7 @@ Use this when the human user needs to set or update merchant branding for Portal
   - `data.merchantName`
   - `data.merchantLogo`
   - `data.appBaseUrl`
+  - `data.inviteRedirectPath`
   - `data.brandDescription`
   - `data.updatedAt`
   - `data.updatedBy`
@@ -141,6 +143,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
+  - `image`: optional string (an already-hosted image URL). To upload a new file instead, use `POST /api/creator-subscription/plans/{planId}/images` after creating the plan
   - `externalInformationUrl`: optional object with `url` and `text`
 - Request body (fixed pricing):
 
