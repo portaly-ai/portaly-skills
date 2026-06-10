@@ -118,7 +118,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - Require at least one active plan in Portaly before creating a checkout session.
 - Use the Plan APIs to create or update the product basics that the human user wants to list on Portaly.
 - Confirm the plan name, description, amount, currency, billing period (`monthly`, `yearly`, or `one-time`), pricing type (`fixed` or `dynamic`), and status match the intended product.
-- **Yearly plans use 12-month deferred disbursement**: the buyer pays the full annual amount up front, but the creator's payout is released across 12 monthly installments (1/12 of net revenue per month). Refunds on a yearly order are **blocked once the first installment has been released** (typically by the next monthly settlement). Surface this trade-off to the human user before creating a yearly plan — it controls refund risk for the creator but means buyers cannot get a full refund after the first month.
+- **Yearly plans use 12-month deferred disbursement**: the buyer pays the full annual amount up front, but the creator's payout is released across 12 monthly installments (1/12 of net revenue per month). Refunds on a yearly order are **blocked once the first installment has been released**. Surface this trade-off to the human user before creating a yearly plan — it controls refund risk for the creator but means buyers cannot get a full refund after that point.
 - For dynamic pricing plans: set `pricingType` to `dynamic` and `billingPeriod` to `one-time`. The amount is not set on the plan; instead, the caller passes `amount` when creating each checkout session.
 - If the third party has its own product catalog, persist the Portaly `planId` together with the merchant's internal product or entitlement identifier.
 - AI Agent should ask the human user to provide a plan image, use the plan image upload API to upload the image to Portaly.
@@ -128,7 +128,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 ### 3.5 Create discount codes (optional)
 
 - Use the Discount Code APIs after at least one plan exists.
-- A code carries an array of **rules**; each rule can target a different set of plans with its own discount and duration. Example: code `EARLYBIRD` with two rules — 50% off for 3 cycles (= 3 months) on the monthly plan, and 20% off for 1 cycle (= 1 year) on the yearly plan.
+- A code carries an array of **rules**; each rule can target a different set of plans with its own discount and duration. Example: code `EARLYBIRD` with two rules — 50% off for 3 cycles (= 3 months) on the monthly plan, and NT$200 off for 1 cycle on the one-time plan. For a yearly code, see `ANNUAL20`: 20% off for 1 cycle (= 1 year) on the yearly plan.
 - Per rule, confirm with the human user:
   - **Discount type**: `fixed` (TWD off) / `percent` (% off) / `free` (100% off).
   - **Duration**: `repeating N cycles` (default 1) or `forever` (typically with `fixed`). One cycle equals one billing period — a month for a monthly plan, a year for a yearly plan.

@@ -197,7 +197,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `description`: optional
   - `amount`: optional positive number (must be non-negative for dynamic pricing plans)
   - `currency`: optional
-  - `billingPeriod`: optional, `monthly`, `yearly`, or `one-time` (`one-time` is a single-payment plan that does not auto-renew; `yearly` payouts are released across 12 monthly installments)
+  - `billingPeriod`: optional, `monthly`, `yearly`, or `one-time` (`one-time` is a single-payment plan that does not auto-renew; `yearly` payouts are released across 12 monthly installments — refunds are blocked once the first installment has been released)
   - `pricingType`: optional, `fixed` or `dynamic`
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
