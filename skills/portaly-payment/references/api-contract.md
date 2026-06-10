@@ -137,7 +137,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `description`: optional
   - `amount`: required positive number for fixed pricing; omit or set to `0` for dynamic pricing
   - `currency`: optional, defaults to `TWD`
-  - `billingPeriod`: required, `monthly` or `one-time` (`one-time` is a single-payment plan that does not auto-renew)
+  - `billingPeriod`: required, `monthly`, `yearly`, or `one-time` (`one-time` is a single-payment plan that does not auto-renew; `yearly` is billed once a year and **payout to the creator is released across 12 monthly installments** — refunds are blocked once the first installment has been released)
   - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
@@ -197,7 +197,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `description`: optional
   - `amount`: optional positive number (must be non-negative for dynamic pricing plans)
   - `currency`: optional
-  - `billingPeriod`: optional, `monthly` or `one-time` (`one-time` is a single-payment plan that does not auto-renew)
+  - `billingPeriod`: optional, `monthly`, `yearly`, or `one-time` (`one-time` is a single-payment plan that does not auto-renew; `yearly` payouts are released across 12 monthly installments — refunds are blocked once the first installment has been released)
   - `pricingType`: optional, `fixed` or `dynamic`
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
@@ -258,7 +258,7 @@ A **rule** is a discriminated union over three fields. The pipes below denote al
 
 Rule semantics:
 
-- `cycles` is **billing-period count**. Monthly plan + cycles 3 → discount applies to first 3 monthly charges.
+- `cycles` is **billing-period count**. Monthly plan + cycles 3 → discount applies to first 3 monthly charges. Yearly plan + cycles 1 → discount applies to the first yearly charge.
 - `forever` is typically used with `fixed` (permanent low-price tier). It is also valid with `percent` or `free`, though those combinations are rarely what merchants want.
 - For a given checkout, the rule that targets the plan via `specific.planIds` wins; otherwise the `all` fallback applies (at most one per code).
 
@@ -541,9 +541,10 @@ Current identifier contract:
 
 - Supported only for recurring subscriptions:
   - `billingPeriod = monthly`
+  - `billingPeriod = yearly`
 - Behavior:
   - stops the next recurring charge
-  - does not issue a refund
+  - does not issue a refund (yearly: any unreleased deferred installments continue to settle through the original 12-month schedule)
   - keeps the current paid period active until `cancelEffectiveAt`
 - Request fields:
   - `reason`: optional, one of `customer_requested | payment_failures | manual | other`
