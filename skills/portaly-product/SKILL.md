@@ -129,7 +129,7 @@ Validation is up-front: if a `productId` is invalid, inactive, or out of stock, 
 
 Treat the hosted page as a black box. Do not attempt to collect card tokens client-side.
 
-The hosted page is creator-branded (creator's name, avatar, colors) with a small "powered by Portaly" mark. It does not show original per-item prices when items are bundled — only the bundle's `totalAmount`.
+The hosted page is creator-branded (creator's name, avatar, colors) with a small "powered by Portaly" mark. It shows each item's `listedPrice`; when `listedPrice < originalPrice`, the original price is shown struck-through. When `totalAmount` is less than the sum of all `listedPrice` values (e.g. you applied a bundle discount), the page shows a subtotal, discount line, and final total.
 
 ### 5. Consume the webhook
 

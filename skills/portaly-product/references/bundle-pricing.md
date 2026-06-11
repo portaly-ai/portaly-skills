@@ -8,6 +8,8 @@ Understanding how Portaly splits the buyer-paid `totalAmount` across multiple pr
 
 For each item in the bundle, Portaly looks at the product's `effectivePrice` (the server-computed current selling price — see api-contract.md for derivation rules). An item is treated as **free** when `effectivePrice <= 0`, otherwise as **paid**.
 
+> The checkout-session response surfaces this same value per item as `listedPrice` (alongside `originalPrice`, the strike-through list price). `effectivePrice` and `listedPrice` are the same number — the former is the field name in the product list/detail view, the latter is the field name on a checkout-session item.
+
 - A free item is always allocated `0`. It does not consume any of `totalAmount`.
 - `totalAmount` is split across paid items only, proportionally to each paid item's `effectivePrice`.
 - The last paid item absorbs rounding so `sum(allocations) === totalAmount` exactly.
