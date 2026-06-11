@@ -123,6 +123,7 @@ Use this when the human user needs to set or update merchant branding for Portal
 Use this when the human user wants the Agent to create or maintain the product basics that will be listed on Portaly.
 
 - **Plans belong to the `profileId` and are shared across live and test modes.** Always query existing plans before creating a new one to avoid duplicates.
+- **Plan images are read-only on the plan object.** `GET` / `POST` / `PUT` responses return a resolved `imageUrl` (a public URL, or `null`) — never the internal storage ref. There is no writable `image` field on create or update; to set a plan's image, create the plan first, then upload via `POST /api/creator-subscription/plans/{planId}/images`.
 - Read endpoints:
   - `GET /api/creator-subscription/plans`
   - `GET /api/creator-subscription/plans/{planId}`
@@ -144,7 +145,6 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
-  - `image`: optional string (an already-hosted image URL). To upload a new file instead, use `POST /api/creator-subscription/plans/{planId}/images` after creating the plan
   - `externalInformationUrl`: optional object with `url` and `text`
 - Request body (fixed pricing):
 
@@ -188,7 +188,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `data.pricingType`
   - `data.status`
   - `data.merchantPlanId`
-  - `data.image`
+  - `data.imageUrl` (resolved public image URL, or `null`)
   - `data.externalInformationUrl`
   - `data.createdAt`
   - `data.updatedAt`
@@ -205,7 +205,6 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `pricingType`: optional, `fixed` or `dynamic`
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
-  - `image`: optional string (URL returned by the images endpoint, or `""` to clear). For uploading a new file, use `POST /api/creator-subscription/plans/{planId}/images` below; pass `image` here only to set an already-hosted URL or to clear it
   - `externalInformationUrl`: optional object with `url` and `text` (both required when present); previously settable only at create time
 
 `POST /api/creator-subscription/plans/{planId}/images`
