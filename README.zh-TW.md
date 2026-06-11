@@ -68,7 +68,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-product
 
 - 透過 API 取得創作者商品並在自家網站渲染（價格一律讀 `effectivePrice`）
 - 單品或自訂 bundle checkout session，跳轉到 Portaly 託管結帳頁
-- Bundle 採原價比例拆價，每筆商品在 Portaly 端各自獨立成單
+- Bundle 採生效價（特價後）比例拆價，每筆商品在 Portaly 端各自獨立成單
 - HMAC-SHA256 webhook 簽章驗證（timestamp 5 分鐘有效）
 - Per-order 事件：`digital_product.checkout.completed`、`digital_product.order.refunded`
 - 託管寄信 — 每筆付費訂單一封確認信，免費商品跳過
