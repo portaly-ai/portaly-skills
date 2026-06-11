@@ -145,7 +145,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
-  - `externalInformationUrl`: optional object with `url` and `text`
+  - `externalInformationUrl`: optional object with `url` and `text` (both required when present)
 - Request body (fixed pricing):
 
 ```json
@@ -395,7 +395,6 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `successRedirectUrl`: optional merchant success page
   - `cancelRedirectUrl`: optional merchant cancel page
   - `callbackUrl`: optional merchant callback endpoint (receives the checkout-completion callback)
-  - `subscriptionCallbackUrl`: optional separate endpoint for recurring subscription lifecycle callbacks (renewal charges, status changes). Falls back to `callbackUrl` when omitted. Verified with the same signing scheme as `callbackUrl` (see Signed Callback)
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied later via the buyer's `signupRefCode` once their email is verified inside hosted checkout.
@@ -843,7 +842,7 @@ Use this when the human user needs to query payment/order records for a profile.
 
 ## Invoice Query
 
-Use this when the human user needs the invoice records for a profile — invoice number, issue status, and e-invoice (ECPay) result. `GET /orders` returns the transaction/payment side; this endpoint returns the invoice side of the same payments.
+Use this when the human user needs the invoice records for a profile — invoice number, issue status, and e-invoice (ECPay) result. `GET /api/creator-subscription/orders` returns the transaction/payment side; this endpoint returns the invoice side of the same payments.
 
 - Endpoint:
   - `GET /api/creator-subscription/invoices`
@@ -878,7 +877,7 @@ Use this when the human user needs the invoice records for a profile — invoice
   - `data[].appliedDiscount`: present when a discount applied to this charge (`{ codeId, code, rule, source }`); otherwise `null`
 - Notes:
   - API key auth scopes results to the key's mode (a live key never sees test invoices and vice versa)
-  - Returns all matching records (no pagination); use `GET /orders` for cursor-paginated transaction records
+  - Returns all matching records (no pagination); use `GET /api/creator-subscription/orders` for cursor-paginated transaction records
 
 ## Rate Limiting
 
@@ -888,7 +887,7 @@ All creator-subscription API endpoints are rate limited **except** checkout sess
 
 | Group | Window | Max requests | Applies to |
 |---|---|---|---|
-| read | 1 minute | 120 | GET sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders, GET invoices |
+| read | 1 minute | 120 | GET checkout-sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders, GET invoices |
 | write | 1 minute | 20 | POST cancel, POST resume, PUT plans/{id}, PUT config, POST plans |
 | api-keys | 1 minute | 10 | POST/GET/DELETE api-keys |
 
