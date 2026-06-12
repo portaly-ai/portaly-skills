@@ -75,7 +75,7 @@ List the calling creator's digital products. Returns a compact view — enough t
 ```
 
 - `effectivePrice` is the **current selling price** the buyer should see — already accounts for `priceStatus`, `productMode`, and countdown settings. **Use this for any "current price" UI; do not roll your own `sale ?? price` logic.** Reason: `sale` is only the active price when `priceStatus === 'isSale'`; when `priceStatus === 'isCountdown'`, the real price lives in `countdownSetting[0].countdownPrice`, and when `productMode === 'free'`, the price is 0 regardless of `price`/`sale`.
-- `price` is the creator's listed (a.k.a. "original") price. Use it for the strike-through "list price" next to `effectivePrice` when `effectivePrice < price`. It is also used internally to allocate the bundle total across the resulting orders (see Bundle Pricing).
+- `price` is the creator's listed (a.k.a. "original") price. Use it for the strike-through "list price" next to `effectivePrice` when `effectivePrice < price`. Bundle allocation is computed from `effectivePrice`, not `price` — see Bundle Pricing.
 - `sale` is the raw "sale price" field the creator entered; `null` if not set. Do **not** display this directly — show `effectivePrice` instead, which encodes whether the sale price is actually in effect.
 - `priceStatus` is `'isOriginal' | 'isSale' | 'isCountdown'` — encodes which pricing mode the creator chose. Surface it only if you want to render a "Sale!" or "Countdown!" badge; otherwise rely on `effectivePrice`.
 - `productMode` is `'normal' | 'free'`. Free products still go through checkout (for delivery + email), but `effectivePrice` will be `0`.
@@ -188,8 +188,8 @@ Field rules:
     "totalAmount": 999,
     "currency": "TWD",
     "items": [
-      { "productId": "prod_abc", "originalPrice": 500, "listedPrice": 400, "allocatedAmount": 333 },
-      { "productId": "prod_def", "originalPrice": 700, "listedPrice": 700, "allocatedAmount": 666 }
+      { "productId": "prod_abc", "originalPrice": 500, "listedPrice": 400, "allocatedAmount": 363 },
+      { "productId": "prod_def", "originalPrice": 700, "listedPrice": 700, "allocatedAmount": 636 }
     ]
   }
 }
