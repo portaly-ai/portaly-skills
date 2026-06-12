@@ -75,7 +75,7 @@ List the calling creator's digital products. Returns a compact view — enough t
 ```
 
 - `effectivePrice` is the **current selling price** the buyer should see — already accounts for `priceStatus`, `productMode`, and countdown settings. **Use this for any "current price" UI; do not roll your own `sale ?? price` logic.** Reason: `sale` is only the active price when `priceStatus === 'isSale'`; when `priceStatus === 'isCountdown'`, the real price lives in `countdownSetting[0].countdownPrice`, and when `productMode === 'free'`, the price is 0 regardless of `price`/`sale`.
-- `price` is the creator's listed (a.k.a. "original") price. Use it for the strike-through "list price" next to `effectivePrice` when `effectivePrice < price`. It is also used internally to allocate the bundle total across the resulting orders (see Bundle Pricing).
+- `price` is the creator's listed (a.k.a. "original") price. Use it for the strike-through "list price" next to `effectivePrice` when `effectivePrice < price`. Bundle allocation is computed from `effectivePrice`, not `price` — see Bundle Pricing.
 - `sale` is the raw "sale price" field the creator entered; `null` if not set. Do **not** display this directly — show `effectivePrice` instead, which encodes whether the sale price is actually in effect.
 - `priceStatus` is `'isOriginal' | 'isSale' | 'isCountdown'` — encodes which pricing mode the creator chose. Surface it only if you want to render a "Sale!" or "Countdown!" badge; otherwise rely on `effectivePrice`.
 - `productMode` is `'normal' | 'free'`. Free products still go through checkout (for delivery + email), but `effectivePrice` will be `0`.
@@ -188,14 +188,16 @@ Field rules:
     "totalAmount": 999,
     "currency": "TWD",
     "items": [
-      { "productId": "prod_abc", "allocatedAmount": 333 },
-      { "productId": "prod_def", "allocatedAmount": 666 }
+      { "productId": "prod_abc", "originalPrice": 500, "listedPrice": 400, "allocatedAmount": 363 },
+      { "productId": "prod_def", "originalPrice": 700, "listedPrice": 700, "allocatedAmount": 636 }
     ]
   }
 }
 ```
 
-- `allocatedAmount` is the share of `totalAmount` that will end up on each resulting order, computed by **proportional split** of original prices (see Bundle Pricing). Sum equals `totalAmount`.
+- `originalPrice` is the product's listed (full) price at session creation time — the same value the list/detail view exposes as `price`. Use it as the strike-through price when displaying a discount.
+- `listedPrice` is the effective price in use at session creation time — the same value the list/detail view exposes as `effectivePrice` (accounts for `priceStatus`, `productMode`, countdown settings). Equal to `originalPrice` when no discount is active. When `listedPrice < originalPrice`, the hosted checkout page automatically renders a strike-through original price and a discounted price.
+- `allocatedAmount` is the share of `totalAmount` that will end up on each resulting order, computed by **proportional split** of `listedPrice` values (see Bundle Pricing). Sum equals `totalAmount`. This is a financial field used for order records, invoicing, and refunds — not for display.
 - `expiresAt` is 30 minutes from creation. After expiry, attempts to pay will fail; create a new session.
 
 **Errors**:
@@ -360,21 +362,21 @@ signature = HMAC_SHA256(
 
 ## Bundle Pricing (Proportional Split)
 
-When `items[]` has more than one product, Portaly splits `totalAmount` across the resulting orders by each item's `effectivePrice`. Items with `effectivePrice <= 0` (free) are allocated `0` and do not participate in the split — `totalAmount` is distributed across the paid items only.
+When `items[]` has more than one product, Portaly splits `totalAmount` across the resulting orders by each item's `listedPrice` (the effective price captured at session creation — same value the list/detail view exposes as `effectivePrice`). Items with `listedPrice <= 0` (free) are allocated `0` and do not participate in the split — `totalAmount` is distributed across the paid items only.
 
 Algorithm:
 ```
-paid = items where effectivePrice > 0
-sumPaid = sum(paid[i].effectivePrice)
+paid = items where listedPrice > 0
+sumPaid = sum(paid[i].listedPrice)
 for each free item: allocated = 0
 for i in 0..paid.length-2:
-  allocated[paid[i]] = round(totalAmount * paid[i].effectivePrice / sumPaid)
+  allocated[paid[i]] = round(totalAmount * paid[i].listedPrice / sumPaid)
 allocated[paid[last]] = totalAmount - sum(allocated of earlier paid items)
 ```
 
 The last paid item absorbs rounding so `sum(allocated) === totalAmount` exactly. When every item is free, every allocation is `0` and `totalAmount` must be `0`.
 
-Example: bundle of 3 items with effective prices `100`, `0` (free), `300`; `totalAmount = 400`.
+Example: bundle of 3 items with listed prices `100`, `0` (free), `300`; `totalAmount = 400`.
 - Item 1 (100) → round(400 × 100 / 400) = 100
 - Item 2 (free) → 0
 - Item 3 (300) → 400 − 100 = 300
