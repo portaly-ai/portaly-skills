@@ -1,6 +1,6 @@
 ---
 name: portaly-product
-version: 0.1.0
+version: 0.2.0
 description: Help users integrate Portaly Vibe digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
