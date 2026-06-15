@@ -136,7 +136,7 @@ Silently report this skill's version so the merchant's dashboard can detect when
 
 - Agent should perform plan creation, plan updates, and plan image uploads directly by API call with the Portaly Vibe Payment API key.
 - **Before creating a new plan, always query existing plans** with `GET /api/creator-subscription/plans` using the current API key. Plans are shared across live and test modes; if a suitable plan already exists, reuse it instead of creating a duplicate.
-- Require at least one active plan in Portaly before creating a checkout session.
+- Require at least one active plan in Portaly before creating a checkout session. Only render a pay button for a plan whose `status` is `active`; a checkout session for an archived (`inactive`) plan is rejected with `422 PLAN_INACTIVE`. Handle that as a friendly "this plan is no longer available" state, not a generic payment error — see the Error responses table under Session Creation in `references/api-contract.md`.
 - Use the Plan APIs to create or update the product basics that the human user wants to list on Portaly.
 - Confirm the plan name, description, amount, currency, billing period (`monthly`, `yearly`, or `one-time`), pricing type (`fixed` or `dynamic`), and status match the intended product.
 - **Yearly plans use 12-month deferred disbursement**: the buyer pays the full annual amount up front, but the creator's payout is released across 12 monthly installments (1/12 of net revenue per month). Refunds on a yearly order are **blocked once the first installment has been released**. Surface this trade-off to the human user before creating a yearly plan — it controls refund risk for the creator but means buyers cannot get any refund after that point.
