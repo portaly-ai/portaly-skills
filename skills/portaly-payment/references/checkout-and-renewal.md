@@ -43,9 +43,12 @@ In the hosted flow, Portaly handles:
 ## Renewal Behavior
 
 - If the first checkout succeeds, Portaly keeps the payment method needed for future recurring charges.
-- Later renewals are charged by Portaly without requiring the buyer to repeat the full checkout flow.
-- On renewal, Portaly updates its own subscription and payment records internally.
-- If the merchant needs to reflect renewal results, use Portaly callbacks and/or session or payment reconciliation flows defined by the integration.
+- Later renewals are charged by Portaly (internal auto-billing) without requiring the buyer to repeat the full checkout flow. Renewals run on an hourly schedule once `nextBillingAt` is due.
+- On renewal, Portaly updates its own subscription and payment records internally **and dispatches a signed callback for each renewal outcome**:
+  - `creator_subscription.payment.succeeded` on a successful renewal charge (carries `nextBillingAt`, `paymentReference`, `amount`).
+  - `creator_subscription.payment.failed` on a failed renewal charge (carries `failureCount`, `failureReason`, `nextRetryAt`, `willCancel`). Sent on every failed attempt; after 3 consecutive failures the subscription is canceled and `creator_subscription.canceled` is also sent.
+- These renewal callbacks go to the subscription's `subscriptionCallbackUrl` if set, otherwise to the checkout `callbackUrl`. See `api-contract.md` → Signed Callback for payloads.
+- Merchants that prefer pull-based reconciliation can instead poll `GET /api/creator-subscription/subscriptions/{id}` and watch `status`, `nextBillingAt`, `lastChargedAt`, and `failureCount`.
 - **Dynamic pricing plans** (`pricingType: 'dynamic'`) are always `one-time` and do not auto-renew. Each payment requires a new checkout session with an explicit `amount`.
 
 ## Cancel And Resume Behavior

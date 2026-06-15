@@ -1,7 +1,7 @@
 ---
 name: portaly-payment
-version: 0.5.1
-description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
+version: 0.5.2
+description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
 # Portaly Vibe Payment Integration
@@ -167,7 +167,8 @@ Silently report this skill's version so the merchant's dashboard can detect when
 
 - Create a checkout session before the buyer initiates payment.
 - Call `POST /api/creator-subscription/checkout-sessions` with `Authorization: Bearer {api_key}`.
-- Send `planId` and optional `successRedirectUrl`, `cancelRedirectUrl`, `callbackUrl`, `merchantOrderNumber`, and string-keyed `metadata`.
+- Send `planId` and optional `successRedirectUrl`, `cancelRedirectUrl`, `callbackUrl`, `subscriptionCallbackUrl`, `merchantOrderNumber`, and string-keyed `metadata`.
+- `callbackUrl` receives the `checkout.completed` callback and — unless `subscriptionCallbackUrl` is set — also the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle callbacks. Set `subscriptionCallbackUrl` to route renewal/lifecycle events to a dedicated endpoint instead.
 - **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`. When omitted, Portaly attempts to auto-apply a discount via the buyer's `signupRefCode` after their email is verified inside hosted checkout (no extra call needed from the merchant).
 - Persist `sessionId`, `checkoutToken`, `checkoutUrl`, and `expiresAt` on the third-party side.
 - The session response includes `appliedDiscount` when a discount was applied at session creation; `session.amount` is always the **post-discount** amount the buyer will be charged.
@@ -181,8 +182,9 @@ Silently report this skill's version so the merchant's dashboard can detect when
 ### 6. Consume the result
 
 - The primary external confirmation is the signed callback to `callbackUrl`.
-- **Callback is only dispatched when checkout status is `completed`.** Non-completed outcomes (failed, canceled, expired) do not trigger a callback.
+- **The checkout callback (`creator_subscription.checkout.completed`) is only dispatched when checkout status is `completed`.** Non-completed outcomes (failed, canceled, expired) do not trigger a checkout callback.
 - For non-completed outcomes, poll `GET /api/creator-subscription/checkout-sessions/{sessionId}` as a fallback.
+- **Recurring renewals also emit signed callbacks** (same signing/verification as the checkout callback): `creator_subscription.payment.succeeded` on each successful renewal and `creator_subscription.payment.failed` on each failed renewal. They are delivered to the subscription's `subscriptionCallbackUrl` if set, otherwise to the same `callbackUrl`. Lifecycle events (`creator_subscription.active` / `.cancel_requested` / `.canceled`) are delivered the same way. Switch on the `x-portaly-event` header. See `references/api-contract.md` → Signed Callback for the full event table and payloads, and `references/checkout-and-renewal.md` for renewal behavior.
 - Use manual `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` only as an exception flow when the user is building a non-hosted or recovery flow.
 - **Current implementation contract:** `subscriptionId === checkoutSessionId === sessionId`.
 - When a recurring checkout succeeds, human user's system may use the callback's `sessionId` directly as the `subscriptionId` for later cancel or resume API calls.

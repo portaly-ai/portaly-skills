@@ -394,7 +394,8 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `amount`: optional positive number. **Required** for dynamic pricing plans; ignored for fixed pricing plans
   - `successRedirectUrl`: optional merchant success page
   - `cancelRedirectUrl`: optional merchant cancel page
-  - `callbackUrl`: optional merchant callback endpoint (receives the checkout-completion callback)
+  - `callbackUrl`: optional merchant callback endpoint. Receives `creator_subscription.checkout.completed`, and — unless `subscriptionCallbackUrl` is set — the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle (`active` / `cancel_requested` / `canceled`) callbacks too.
+  - `subscriptionCallbackUrl`: optional. When set, recurring renewal and lifecycle callbacks are delivered here instead of `callbackUrl` (the checkout-completion callback still goes to `callbackUrl`). Falls back to `callbackUrl` when empty.
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied later via the buyer's `signupRefCode` once their email is verified inside hosted checkout.
@@ -566,12 +567,18 @@ Current identifier contract:
   - `planId`
   - `mode` (`live` or `test`)
   - `billingPeriod`
-  - `status`
+  - `status` (`active` | `past_due` | `canceled`)
   - `cancelAtPeriodEnd`
   - `nextBillingAt`
+  - `lastChargedAt` — timestamp of the last successful charge
+  - `lastPaymentReference` — provider reference of the last successful charge
+  - `failureCount` — consecutive renewal-charge failures (reset to 0 on success; subscription is auto-canceled at 3)
+  - `lastFailureReason` — provider message for the most recent failed charge
+  - `lastFailureAt` — timestamp of the most recent failed charge
   - `cancelRequestedAt`
   - `cancelEffectiveAt`
   - `canceledAt`
+- Renewal reconciliation by polling: a successful renewal advances `nextBillingAt` and updates `lastChargedAt`; a failed renewal increments `failureCount` and sets `status: past_due` (or `canceled` on the 3rd failure). Prefer the renewal callbacks below over polling when possible.
 
 `POST /api/creator-subscription/subscriptions/{subscriptionId}/cancel`
 
@@ -712,6 +719,65 @@ Payload example:
   "paymentMethod": "tappay"
 }
 ```
+
+### Callback events
+
+| `x-portaly-event` | When | Notes |
+|---|---|---|
+| `creator_subscription.checkout.completed` | Initial hosted checkout completes | The only checkout-time callback. |
+| `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds (monthly/yearly) | Not sent for the first checkout charge — that is `checkout.completed`. |
+| `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
+| `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal. |
+| `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
+| `creator_subscription.canceled` | Subscription becomes `canceled` | Fired for any cancellation, including the 3rd-failure auto-cancel. |
+
+All events are signed and delivered the same way as `checkout.completed`. They are POSTed to the subscription's `subscriptionCallbackUrl` when set, otherwise to the checkout `callbackUrl`. Differentiate by the `x-portaly-event` header / payload `event` field, and use `subscriptionId` as the idempotency key.
+
+Renewal-success payload (`creator_subscription.payment.succeeded`):
+
+```json
+{
+  "event": "creator_subscription.payment.succeeded",
+  "subscriptionId": "session_123",
+  "profileId": "profile_123",
+  "planId": "plan_123",
+  "mode": "live",
+  "status": "active",
+  "billingPeriod": "monthly",
+  "amount": 299,
+  "currency": "TWD",
+  "paymentReference": "txn_renewal_001",
+  "paymentId": "pay_456",
+  "chargedAt": "2026-07-15T10:00:00.000Z",
+  "nextBillingAt": "2026-08-15T10:00:00.000Z",
+  "customerEmail": "buyer@example.com"
+}
+```
+
+Renewal-failure payload (`creator_subscription.payment.failed`):
+
+```json
+{
+  "event": "creator_subscription.payment.failed",
+  "subscriptionId": "session_123",
+  "profileId": "profile_123",
+  "planId": "plan_123",
+  "mode": "live",
+  "status": "past_due",
+  "billingPeriod": "monthly",
+  "amount": 299,
+  "currency": "TWD",
+  "paymentReference": "txn_renewal_002",
+  "failureReason": "card declined",
+  "failureCount": 1,
+  "failedAt": "2026-08-15T10:00:00.000Z",
+  "nextRetryAt": "2026-08-16T10:00:00.000Z",
+  "willCancel": false,
+  "customerEmail": "buyer@example.com"
+}
+```
+
+- `willCancel` is `true` and `nextRetryAt` is `null` on the final (3rd) failure; `status` is then `canceled`.
 
 Verification rule:
 
