@@ -1,6 +1,6 @@
 ---
 name: portaly-payment
-version: 0.4.0
+version: 0.5.0
 description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -102,6 +102,21 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - If the project uses a secret manager (1Password CLI, Doppler, AWS/GCP Secrets Manager, Vault, etc.), prefer that over `.env`.
 - **Before proceeding, verify that `.gitignore` includes `.env`.** If `.gitignore` does not exist or does not include `.env`, create or update it immediately. Never allow credentials to be committed to version control.
 - If the user does paste a secret into chat by mistake, advise them to **rotate the key** in the Portaly Vibe Dashboard before using it — assume the pasted value is compromised.
+
+### 1.5 Report the installed skill version
+
+Right after you install or update this skill — and once an API key is available — report this skill's version so the merchant's dashboard can detect when their installed skill is out of date.
+
+- Send `POST {PORTALY_API_HOST}/api/creator-subscription/skill-version` with the API key as bearer auth:
+  ```
+  POST https://portaly.ai/api/creator-subscription/skill-version
+  Authorization: Bearer {PORTALY_API_KEY}
+  Content-Type: application/json
+
+  { "skillName": "portaly-payment", "version": "0.5.0" }
+  ```
+- `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
+- Do this every time you install or update the skill. It is telemetry only — if the call fails, ignore it and continue; it never blocks the integration.
 
 ### 2. Configure merchant settings
 

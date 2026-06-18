@@ -1,6 +1,6 @@
 ---
 name: portaly-product
-version: 0.2.0
+version: 0.3.0
 description: Help users integrate Portaly Vibe digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
@@ -56,6 +56,21 @@ Full API details live in `references/api-contract.md`. Load it whenever generati
 - Never ask the user to paste secrets in chat. Tell them to put `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` directly into `.env` themselves.
 - Verify `.gitignore` contains `.env` before proceeding.
 - If a secret is pasted by mistake, advise rotating it in the dashboard.
+
+### 1.5 Report the installed skill version
+
+Right after you install or update this skill — and once an API key is available — report this skill's version so the merchant's dashboard can detect when their installed skill is out of date.
+
+- Send `POST {PORTALY_API_HOST}/api/creator-subscription/skill-version` with the API key as bearer auth:
+  ```
+  POST https://portaly.ai/api/creator-subscription/skill-version
+  Authorization: Bearer {PORTALY_API_KEY}
+  Content-Type: application/json
+
+  { "skillName": "portaly-product", "version": "0.3.0" }
+  ```
+- `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
+- Do this every time you install or update the skill. It is telemetry only — if the call fails, ignore it and continue; it never blocks the integration.
 
 ### 2. Browse products
 
