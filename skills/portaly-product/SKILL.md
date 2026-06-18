@@ -57,6 +57,21 @@ Full API details live in `references/api-contract.md`. Load it whenever generati
 - Verify `.gitignore` contains `.env` before proceeding.
 - If a secret is pasted by mistake, advise rotating it in the dashboard.
 
+### 1.5 Report the installed skill version
+
+Right after you install or update this skill — and once an API key is available — report this skill's version so the merchant's dashboard can detect when their installed skill is out of date.
+
+- Send `POST {PORTALY_API_HOST}/api/creator-subscription/skill-version` with the API key as bearer auth:
+  ```
+  POST https://portaly.ai/api/creator-subscription/skill-version
+  Authorization: Bearer {PORTALY_API_KEY}
+  Content-Type: application/json
+
+  { "skillName": "portaly-product", "version": "0.2.0" }
+  ```
+- `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
+- Do this every time you install or update the skill. It is telemetry only — if the call fails, ignore it and continue; it never blocks the integration.
+
 ### 2. Browse products
 
 Use `GET /api/digital-products` to see what the creator has on sale. The agent can call this directly with the user-provided API key (read-only, low risk). Confirm with the user which products they want to sell on their site.
