@@ -1,6 +1,6 @@
 ---
 name: portaly-payment
-version: 0.4.0
+version: 0.5.0
 description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -113,7 +113,7 @@ Right after you install or update this skill — and once an API key is availabl
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.4.0" }
+  { "skillName": "portaly-payment", "version": "0.5.0" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - Do this every time you install or update the skill. It is telemetry only — if the call fails, ignore it and continue; it never blocks the integration.

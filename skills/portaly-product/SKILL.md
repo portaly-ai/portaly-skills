@@ -1,6 +1,6 @@
 ---
 name: portaly-product
-version: 0.2.0
+version: 0.3.0
 description: Help users integrate Portaly Vibe digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
@@ -67,7 +67,7 @@ Right after you install or update this skill — and once an API key is availabl
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.2.0" }
+  { "skillName": "portaly-product", "version": "0.3.0" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - Do this every time you install or update the skill. It is telemetry only — if the call fails, ignore it and continue; it never blocks the integration.
