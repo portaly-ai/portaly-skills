@@ -8,6 +8,7 @@ This document is the canonical contract for the Portaly **Digital Products** API
 ## Use This Reference For
 
 - Listing a creator's digital products
+- Creating and managing (edit / activate / deactivate) the creator's products
 - Building a checkout that supports single-item or bundle (multi-item) purchases
 - Verifying webhook signatures
 - Reading order data after purchase
@@ -142,6 +143,95 @@ Single-product detailed view — all fields safe for pre-purchase display. Use t
 **Errors**:
 - `404 PRODUCT_NOT_FOUND` — productId does not exist under this creator
 - `404 PRODUCT_NOT_ACTIVE` — product exists but is `isActive: false` (use `includeInactive=true` if you specifically need to fetch inactive products)
+
+### POST `/api/digital-products`
+
+Create a digital product under the calling creator. The request body is
+**forwarded verbatim** to Portaly's product write handler, which is the single
+source of validation (the same rules as Portaly's product editor). Vibe does
+not re-validate — error messages below come straight from that validator.
+
+**Request body** (all fields except `name` are optional):
+
+```json
+{
+  "name": "Course: Advanced Photography",
+  "category": "default",
+  "description": "Short summary",
+  "price": 1500,
+  "productMode": "normal",
+  "priceStatus": "isSale",
+  "sale": 990,
+  "isActive": false,
+  "buttonName": "Buy Now",
+  "productDescription": "<p>Full HTML detail…</p>",
+  "productSpec": true,
+  "specItems": [{ "label": "Format", "label1": "PDF + Video" }],
+  "isStock": true,
+  "stock": 100,
+  "isShowStock": true,
+  "customLocale": "zh",
+  "productContents": [
+    { "type": "isLink", "linkText": "Download", "link": "https://…" }
+  ]
+}
+```
+
+| Field | Notes |
+|---|---|
+| `name` | **Required.** Must be unique under the creator (`Product name already exists` otherwise). |
+| `category` | `default` (digital) \| `live` (live class). Default `default`. |
+| `description` | Short HTML summary. |
+| `price` | Number/string. Min 60 (TWD) / 5 (EN) or 0; max 100000. Required for paid products. |
+| `productMode` | `normal` (paid) \| `free`. |
+| `priceStatus` | `isOriginal` \| `isSale` \| `isCountdown`. |
+| `sale` | Sale price; required when `priceStatus === 'isSale'`; must be `< price`. |
+| `countdownSetting` | `[{ countdownPrice, deadlinePrice, countdownTime }]` (exactly one) when `priceStatus === 'isCountdown'`; `countdownTime` must be a future date. |
+| `isActive` | Activate immediately. **Activation requires at least one fulfilled `productContents` item** (else `Product cannot be activated: …`). |
+| `buttonName` | CTA label (≤ 100 chars). |
+| `productDescription` | Full HTML detail body. |
+| `productSpec` / `specItems` | Spec table toggle + rows (max 5; each `{ label, label1 }`). |
+| `isStock` / `stock` / `isShowStock` / `stockButtonName` | Stock limit, count, show-remaining, sold-out CTA. `stock` required when `isStock`. |
+| `customLocale` | `zh` \| `en` checkout language. |
+| `isRepurchasable`, `isRating`, `isSoldQuantity`, `isPhone`, `isSyncDescription`, `enableCoupon`, `enablePayPal`, `titleText`, `videoUrl`, `videoText`, `thanksContent`, `thanksAlert` | Same meaning as the Portaly product editor. |
+| `productContents` | Deliverables: `[{ type: 'isLink'\|'isForm'\|'isEmebedVideo', … }]`. `isLink` needs `link`+`linkText`; `isForm` needs `form`+`formText`; `isEmebedVideo` needs a YouTube/Vimeo `emebedVideo`. |
+
+> Product **images** are not set via this JSON — image upload uses a separate signed-URL flow and is out of scope for this contract.
+
+**Response 201**: same shape as `GET /api/digital-products/{productId}` (the detailed view), wrapped in `{ "data": { … } }` — includes the computed `effectivePrice`. The fail-closed whitelist still applies, so `productContents` and thank-you content are **not** echoed back even though you just set them.
+
+**Errors** (status + message pass through from the validator):
+- `400` — validation message, e.g. `name is required`, `Product name already exists`, `Amount must be at least 60 or 0`, `Sale price must be lower than original price`, `Product cannot be activated: …`
+- `401 Missing bearer token` / `Invalid API key`
+- `429` — rate limited (`Retry-After` header)
+
+### PATCH `/api/digital-products/{productId}`
+
+Update an existing product. Same body fields as create, **all optional**; at
+least one updatable field must be present. Omitted fields are left unchanged.
+Renaming to an existing product name returns `400 Product name already exists`.
+Activating (`isActive: true`) enforces the same fulfilled-content rule as create.
+
+**Response 200**: detailed view wrapped in `{ "data": { … } }`.
+
+**Errors**: `400` (validation, as above, plus `At least one product property is required`), `404 Product not found`, `401`, `429`.
+
+### POST `/api/digital-products/{productId}/status`
+
+Activate or deactivate a product.
+
+**Request body**: `{ "isActive": true | false }`. Omit `isActive` to **toggle**
+the current state.
+
+```json
+{ "isActive": false }
+```
+
+Activating enforces the fulfilled-content rule (`Product cannot be activated: …`).
+
+**Response 200**: detailed view wrapped in `{ "data": { … } }`.
+
+**Errors**: `404 Product not found`, `400 Product cannot be activated: …`, `401`, `429`.
 
 ### POST `/api/digital-products/checkout-sessions`
 
@@ -416,6 +506,7 @@ Each paid order in the bundle generates its own confirmation email — same temp
 
 - 100 requests / minute per API key for read endpoints
 - 30 requests / minute per API key for `POST /checkout-sessions`
+- Write endpoints (`POST` / `PATCH /api/digital-products`, `POST .../status`) are rate limited per creator profile
 - 429 responses include `Retry-After` header
 
 ---
