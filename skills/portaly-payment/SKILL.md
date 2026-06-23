@@ -1,6 +1,6 @@
 ---
 name: portaly-payment
-version: 0.5.0
+version: 0.5.1
 description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 

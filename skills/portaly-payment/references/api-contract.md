@@ -510,7 +510,7 @@ the buyer on a dead page.
 | HTTP | `code` | When | Surface to buyer as |
 | --- | --- | --- | --- |
 | 422 | `PLAN_INACTIVE` | The plan was archived / deactivated by the creator. | "This plan is no longer available." Do not retry. |
-| 404 | _(none)_ | `planId` does not exist for this merchant. | Misconfiguration — log it; don't show the buyer a payment error. |
+| 404 | `PLAN_NOT_FOUND` | `planId` does not exist for this merchant. | Misconfiguration — log it; don't show the buyer a payment error. |
 | 422 | `YEARLY_TEMPORARILY_UNSUPPORTED` | Yearly billing period is temporarily disabled. | "Yearly billing is temporarily unavailable." Offer monthly if you have it. |
 | 400 | `INVALID_DISCOUNT_CODE` | Manual `discountCode` is invalid (see `reason`). | "That discount code can't be applied." Let them retry without it. |
 | 400 | _(none)_ | Dynamic-pricing plan called without a positive `amount`, or malformed body. | Misconfiguration — log it; fix the request. |
