@@ -488,8 +488,39 @@ const response = await fetch(
 );
 
 const result = await response.json();
+
+if (!response.ok) {
+  // result.error is a human-readable message; result.code (when present) is
+  // the stable identifier to branch on. Map it to your own localized copy
+  // instead of showing result.error to buyers verbatim.
+  throw new Error(result.code || result.error || "checkout session failed");
+}
+
 const { sessionId, checkoutUrl, checkoutToken, expiresAt } = result.data;
 ```
+
+### Error responses
+
+Every failure returns `{ "error": string }`. Business-rule failures also include a
+stable `{ "code": string }` you should branch on — do **not** match on `error`
+text, it is copy and may change. Always check `response.ok` before reading
+`result.data`; a failed call has no `checkoutUrl`, so redirecting blindly leaves
+the buyer on a dead page.
+
+| HTTP | `code` | When | Surface to buyer as |
+| --- | --- | --- | --- |
+| 422 | `PLAN_INACTIVE` | The plan was archived / deactivated by the creator. | "This plan is no longer available." Do not retry. |
+| 404 | `PLAN_NOT_FOUND` | `planId` does not exist for this merchant. | Misconfiguration — log it; don't show the buyer a payment error. |
+| 422 | `YEARLY_TEMPORARILY_UNSUPPORTED` | Yearly billing period is temporarily disabled. | "Yearly billing is temporarily unavailable." Offer monthly if you have it. |
+| 400 | `INVALID_DISCOUNT_CODE` | Manual `discountCode` is invalid (see `reason`). | "That discount code can't be applied." Let them retry without it. |
+| 400 | _(none)_ | Dynamic-pricing plan called without a positive `amount`, or malformed body. | Misconfiguration — log it; fix the request. |
+| 401 | _(none)_ | Missing/invalid bearer token. | Never surface — this is a server-side key problem. |
+| 403 | _(none)_ | API key not authorized for this plan's profile, or missing callback secret. | Never surface — server-side key problem. |
+
+A best-practice plan-selection UI never shows a pay button for a plan that isn't
+`status: "active"` (query `GET …/plans` first), so `PLAN_INACTIVE` should only
+ever fire on a race — a plan archived between page load and checkout. Treat it as
+the friendly "no longer available" state above, not a generic payment failure.
 
 ## Session Query
 
