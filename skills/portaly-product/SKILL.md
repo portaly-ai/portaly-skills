@@ -1,10 +1,10 @@
 ---
 name: portaly-product
-version: 0.3.0
-description: Help users integrate Portaly Vibe digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
+version: 0.3.1
+description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
-# Portaly Vibe Digital Products Integration
+# Portaly Digital Products Integration
 
 Use this skill to help a human user wire their own website (typically vibe-coded with Cursor / v0 / Lovable / etc.) to sell a creator's Portaly digital products. The user owns the product display UI; Portaly owns the checkout, payment, email, and order success page.
 
@@ -15,7 +15,7 @@ Pattern is the same as Stripe Checkout:
 3. Portaly handles payment, sends the buyer a confirmation email, and serves the post-purchase deliverables page.
 4. Portaly POSTs a signed webhook to the user's callback URL when the purchase completes (and when a creator later refunds).
 
-## Portaly Vibe Digital Products Environments
+## Portaly Digital Products Environments
 
 API host (overridable via `PORTALY_API_HOST`):
 
@@ -34,7 +34,7 @@ Payment is handled entirely on Portaly's hosted checkout page — you never see 
 
 ## Quick Start
 
-1. Ensure the human user has a Portaly Vibe Payment API key. If not, send them to https://portaly.cc/admin/creator-subscription. Recommend test key for development.
+1. Ensure the human user has a Portaly Payment API key. If they have no Portaly Payment account yet, send them to register first at https://portaly.cc/payment; otherwise they create the key in the dashboard at https://portaly.cc/admin/creator-subscription. Recommend test key for development.
 2. Have them place secrets in `.env` themselves (never via chat — see Guardrails):
    ```
    PORTALY_API_KEY=pcs_test_xxx

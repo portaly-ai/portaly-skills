@@ -28,16 +28,16 @@ npx skills update portaly-payment
 
 | Skill | Description | Triggers |
 |-------|-------------|----------|
-| **portaly-payment** | Portaly Vibe hosted checkout, subscription plans, dynamic / one-time pricing, discount codes, and callback verification | `Portaly Vibe payment`, `subscription`, `checkout`, `discount code`, `one-time`, `dynamic pricing` |
+| **portaly-payment** | Portaly Payment hosted checkout, subscription plans, dynamic / one-time pricing, discount codes, and callback verification | `Portaly Payment`, `subscription`, `checkout`, `discount code`, `one-time`, `dynamic pricing` |
 | **portaly-product** | Sell a creator's Portaly digital products from your own vibe-coded site — list products, build single or bundle checkout sessions, hosted payment + email, signed webhooks | `Portaly digital products`, `bundle checkout`, `digital downloads`, `creator product API` |
 
-## Portaly Vibe Payment Integration
+## Portaly Payment Integration
 
 ```bash
 npx skills add portaly-ai/portaly-skills --skill portaly-payment
 ```
 
-Helps users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans, checkout sessions, and callback verification.
+Helps users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans, checkout sessions, and callback verification.
 
 - Merchant config and plan creation via API
 - Hosted checkout session flow
@@ -47,16 +47,16 @@ Helps users integrate Portaly Vibe hosted payment checkout, including merchant s
 - Recurring subscription management (cancel / resume)
 - Subscriber self-service portal
 
-**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`). Apply at [Portaly Vibe Dashboard](https://portaly.cc/admin/creator-subscription).
+**Prerequisites:** Portaly Payment API Key (`pcs_live_*` or `pcs_test_*`). No account yet? Register at [portaly.cc/payment](https://portaly.cc/payment), then create the key in the [Portaly Payment Dashboard](https://portaly.cc/admin/creator-subscription).
 
 **Skill triggers:**
-- "Add a subscription product on Portaly Vibe"
-- "Integrate Portaly Vibe payment into my app"
-- "I want to use the Portaly Vibe payment API"
-- "Help me integrate Portaly Vibe checkout"
-- "Create a discount code on Portaly Vibe"
+- "Add a subscription product on Portaly Payment"
+- "Integrate Portaly Payment into my app"
+- "I want to use the Portaly Payment API"
+- "Help me integrate Portaly Payment checkout"
+- "Create a discount code on Portaly Payment"
 - "Add a one-time purchase or pay-what-you-want flow with Portaly"
-- "Set up a tip jar / donation checkout with Portaly Vibe"
+- "Set up a tip jar / donation checkout with Portaly Payment"
 
 ## Portaly Digital Products Integration
 
@@ -73,7 +73,7 @@ Helps vibe coders sell a creator's Portaly digital products from their own site 
 - Per-order events: `digital_product.checkout.completed` and `digital_product.order.refunded`
 - Hosted confirmation emails — one per paid order, free items skip email
 
-**Prerequisites:** Portaly Vibe Payment API Key (`pcs_live_*` or `pcs_test_*`) — shared with the payment skill. Apply at [Portaly Vibe Dashboard](https://portaly.cc/admin/creator-subscription).
+**Prerequisites:** Portaly Payment API Key (`pcs_live_*` or `pcs_test_*`) — shared with the payment skill. No account yet? Register at [portaly.cc/payment](https://portaly.cc/payment), then create the key in the [Portaly Payment Dashboard](https://portaly.cc/admin/creator-subscription).
 
 **Skill triggers:**
 - "Sell Portaly digital products from my own site"

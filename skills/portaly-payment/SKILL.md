@@ -1,16 +1,16 @@
 ---
 name: portaly-payment
-version: 0.5.2
-description: Help users integrate Portaly Vibe hosted payment checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Vibe payment, creator subscription, or wants to add subscription-based checkout to their application.
+version: 0.5.3
+description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
-# Portaly Vibe Payment Integration
+# Portaly Payment Integration
 
-Use this skill to help a human user finish a Portaly Vibe API integration quickly. Keep answers operational: prefer step lists, API request and response bullets, and copy-ready examples over long architecture explanations.
+Use this skill to help a human user finish a Portaly Payment API integration quickly. Keep answers operational: prefer step lists, API request and response bullets, and copy-ready examples over long architecture explanations.
 
-## Portaly Vibe Payment Environments
+## Portaly Payment Environments
 
-Portaly Vibe Payment supports two modes per API key: **live** and **test**.
+Portaly Payment supports two modes per API key: **live** and **test**.
 
 ### API Host & Payment site
 
@@ -43,7 +43,8 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 ## Quick Start
 
-- Before starting, AI agent should ask the human user to claim or create a Portaly Vibe Payment API key/CallbackSecret in the Portaly Vibe Dashboard at `https://portaly.cc/admin/creator-subscription` and store the issued secret material safely.
+- If the human user does not yet have a Portaly Payment account, send them to register first at `https://portaly.cc/payment`.
+- Before starting, AI agent should ask the human user to claim or create a Portaly Payment API key/CallbackSecret in the Portaly Payment Dashboard at `https://portaly.cc/admin/creator-subscription` and store the issued secret material safely.
 - Ask the human user whether they want a **live** or **test** key. Recommend starting with a test key for integration development.
 
 1. Confirm what the human user is trying to build.
@@ -53,7 +54,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
    3. upload merchant or plan images (Agent should ask human user to provide image assets if needed)
 2. After setup, integrate the checkout session creation and callback handling into current system:
    1. create checkout session before buyer initiates payment
-   2. redirect buyer to Portaly vibe checkout
+   2. redirect buyer to Portaly checkout
    3. verify and consume the callback from Portaly after checkout completion
    4. if the integration needs subscription lifecycle management, also wire cancel and resume APIs for recurring plans
    5. if the integration needs subscriber self-service (letting subscribers manage their own subscriptions), wire the portal session API
@@ -68,7 +69,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 - Write for an AI agent that is helping a human user complete integration work.
 - Lead with the next concrete steps the human should take.
-- Be explicit when an API can be called directly by the Agent with the Portaly Vibe Payment API key.
+- Be explicit when an API can be called directly by the Agent with the Portaly Payment API key.
 - Prefer using the setup APIs directly for merchant config, plan creation, plan updates, image uploads, and checkout session creation when the user has already provided valid credentials and required inputs.
 - Use lists for:
   - setup steps
@@ -84,10 +85,10 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 ### 1. Apply for the API key
 
-- Require a Portaly Vibe Payment API key and CallbackSecret for this integration.
-- Instruct the human user to apply for or create the Portaly Vibe Payment API key in the Portaly Vibe Dashboard at `https://portaly.cc/admin/creator-subscription`.
+- Require a Portaly Payment API key and CallbackSecret for this integration.
+- Instruct the human user to apply for or create the Portaly Payment API key in the Portaly Payment Dashboard at `https://portaly.cc/admin/creator-subscription`.
 - Ask whether the user wants a **live** key (`pcs_live_…`) or a **test** key (`pcs_test_…`). Recommend starting with a test key for development and switching to live for production.
-- Be explicit that this step is performed by a human operator in Portaly Vibe Dashboard, not by the third-party integration code.
+- Be explicit that this step is performed by a human operator in Portaly Payment Dashboard, not by the third-party integration code.
 - Tell the human user to store the issued secret material safely, or store it on the user's behalf only in an appropriate secret manager or secure environment store.
 - Explain that the API key is used for bearer authentication in API calls and the `callbackSecret` is used for verifying the authenticity of callbacks from Portaly If user asking.
 - **Never ask the user to paste the API key or `callbackSecret` into chat.** Chat transcripts can be logged, cached, or echoed back by the model in summaries, diffs, or tool call arguments. Treat secrets as values the agent never needs to see in plaintext.
@@ -101,7 +102,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - The agent reads these at runtime via `process.env.PORTALY_API_KEY` (Node) or `os.environ["PORTALY_API_KEY"]` (Python) — it never needs the literal secret value in-context.
 - If the project uses a secret manager (1Password CLI, Doppler, AWS/GCP Secrets Manager, Vault, etc.), prefer that over `.env`.
 - **Before proceeding, verify that `.gitignore` includes `.env`.** If `.gitignore` does not exist or does not include `.env`, create or update it immediately. Never allow credentials to be committed to version control.
-- If the user does paste a secret into chat by mistake, advise them to **rotate the key** in the Portaly Vibe Dashboard before using it — assume the pasted value is compromised.
+- If the user does paste a secret into chat by mistake, advise them to **rotate the key** in the Portaly Payment Dashboard before using it — assume the pasted value is compromised.
 
 ### 1.5 Report the installed skill version
 
@@ -126,15 +127,15 @@ Silently report this skill's version so the merchant's dashboard can detect when
 
 ### 2. Configure merchant settings
 
-- Agent should perform these setup actions directly by API call with the Portaly Vibe Payment API key.
+- Agent should perform these setup actions directly by API call with the Portaly Payment API key.
 - Use the Config APIs when the human user needs to set merchant branding before any product goes live.
 - AI Agent should ask the human user to provide a `merchantLogo` image asset, use the config image upload API to upload image to Portaly. The merchant logo is optional — if the user does not have one ready, skip this step and proceed with plan creation.
-- Use `PUT /api/creator-subscription/config` and `POST /api/creator-subscription/config/images` to set up merchant branding with the Portaly Vibe Payment API key.
+- Use `PUT /api/creator-subscription/config` and `POST /api/creator-subscription/config/images` to set up merchant branding with the Portaly Payment API key.
 - **Vibe MCP shortcut:** If the agent is connected to Vibe MCP (i.e. `vibe_update_brand` is available), use it to set `merchantName`, `appBaseUrl`, and `brandDescription` instead of the REST call — no `PORTALY_API_KEY` needed. Only pass fields that are currently blank or need updating; omit the rest.
 
 ### 3. Create a valid subscription plan
 
-- Agent should perform plan creation, plan updates, and plan image uploads directly by API call with the Portaly Vibe Payment API key.
+- Agent should perform plan creation, plan updates, and plan image uploads directly by API call with the Portaly Payment API key.
 - **Before creating a new plan, always query existing plans** with `GET /api/creator-subscription/plans` using the current API key. Plans are shared across live and test modes; if a suitable plan already exists, reuse it instead of creating a duplicate.
 - Require at least one active plan in Portaly before creating a checkout session. Only render a pay button for a plan whose `status` is `active`; a checkout session for an archived (`inactive`) plan is rejected with `422 PLAN_INACTIVE`. Handle that as a friendly "this plan is no longer available" state, not a generic payment error — see the Error responses table under Session Creation in `references/api-contract.md`.
 - Use the Plan APIs to create or update the product basics that the human user wants to list on Portaly.
@@ -208,7 +209,7 @@ Silently report this skill's version so the merchant's dashboard can detect when
 - Cancellation means stopping the next recurring charge. It is not a refund. In your system, the rights or content associated should remain active until the end of the current paid period, which is indicated by `cancelEffectiveAt` in the subscription record.
 - For yearly subscriptions, cancellation does **not** trigger a refund of the unreleased deferred portion — the creator continues to receive remaining monthly installments through the original 12-month schedule, and the buyer retains access until `cancelEffectiveAt` (i.e. the next yearly renewal date that will no longer be charged).
 - Portaly currently supports merchant-system initiated subscription lifecycle actions through API key authenticated endpoints.
-- Use the same Portaly Vibe Payment API key for these calls.
+- Use the same Portaly Payment API key for these calls.
 
 Recurring management APIs:
 
@@ -293,7 +294,7 @@ When answering with this skill, prefer this order:
 - Do **not** batch or loop these actions across multiple subscriptions without per-action confirmation.
 - Prefer the hosted checkout flow whenever possible. It already handles email verification, payment-method persistence, callback dispatch, subscription creation, payment creation, invoice task creation, and order bridge writes.
 - Distinguish clearly between:
-  - setup APIs that the Agent can call directly with the Portaly Vibe Payment API key
+  - setup APIs that the Agent can call directly with the Portaly Payment API key
 - Do not invent provider behavior. TapPay and 91APP differ materially.
 - Do not assume callback delivery means success without checking the `status` and verified signature.
 - Do not derive subscription state from redirect success pages alone. Redirects are UX only; callback or status query is the source of truth.

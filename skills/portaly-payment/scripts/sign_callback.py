@@ -34,7 +34,7 @@ def sign_callback(secret: str, payload: Any, timestamp: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate or verify Portaly Vibe Payment callback signatures."
+        description="Generate or verify Portaly Payment callback signatures."
     )
     parser.add_argument("--secret", required=True, help="callbackSecret")
     parser.add_argument("--timestamp", required=True, help="x-portaly-timestamp")

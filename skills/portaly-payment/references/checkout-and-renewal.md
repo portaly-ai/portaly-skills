@@ -11,7 +11,7 @@ This reference is supplemental background for third-party integrators. It explai
 
 ## Checkout Flow
 
-1. The merchant backend creates a checkout session with the Portaly Vibe Payment API.
+1. The merchant backend creates a checkout session with the Portaly Payment API.
 2. Portaly returns a `checkoutUrl` and `sessionId`.
 3. The merchant redirects the buyer to `checkoutUrl`.
 4. The buyer completes Portaly hosted checkout.
@@ -73,7 +73,7 @@ In the hosted flow, Portaly handles:
 ## Recommended Third-Party Responsibility
 
 - create the checkout session
-- redirect the buyer to Portaly Vibe checkout
+- redirect the buyer to Portaly checkout
 - verify the signed callback
 - persist `sessionId`, `subscriptionId` if present, merchant order reference, payment status, and callback payload
 - use reconciliation queries when callback delivery or buyer state is uncertain

@@ -20,7 +20,7 @@
 Use this when the human user asks how to authenticate third-party requests.
 
 - Header:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 - Notes:
   - the API key is tied to one `profileId`
   - each key has a fixed `mode`: `live` or `test`
@@ -30,12 +30,12 @@ Use this when the human user asks how to authenticate third-party requests.
 
 ## API Key Creation
 
-Use this when the human user is creating a new API key from the Portaly Vibe Dashboard.
+Use this when the human user is creating a new API key from the Portaly Payment Dashboard.
 
 - Endpoint:
   - `POST /api/creator-subscription/api-keys`
 - Required auth:
-  - Firebase auth (Portaly Vibe Dashboard only — not a third-party API)
+  - Firebase auth (Portaly Payment Dashboard only — not a third-party API)
 - Request fields:
   - `profileId`: required
   - `mode`: optional, `live` (default) or `test`
@@ -58,7 +58,7 @@ Mode behavior:
 
 ## Merchant Config
 
-Use this when the human user needs to set or update merchant branding for Portaly Vibe Payment.
+Use this when the human user needs to set or update merchant branding for Portaly Payment.
 
 - Read endpoint:
   - `GET /api/creator-subscription/config`
@@ -66,7 +66,7 @@ Use this when the human user needs to set or update merchant branding for Portal
   - `PUT /api/creator-subscription/config`
   - `POST /api/creator-subscription/config/images`
 - Setup headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 
 `PUT /api/creator-subscription/config`
 
@@ -132,7 +132,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `PUT /api/creator-subscription/plans/{planId}`
   - `POST /api/creator-subscription/plans/{planId}/images`
 - Setup headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 
 `POST /api/creator-subscription/plans`
 
@@ -239,7 +239,7 @@ Use this when the human user wants to issue promotional codes for the plans on P
   - `PUT /api/creator-subscription/discount-codes/{codeId}` — update (rejects `code` field with 400 `CODE_IMMUTABLE`)
   - `DELETE /api/creator-subscription/discount-codes/{codeId}` — soft delete (`status: disabled`)
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
   - `Content-Type: application/json`
 
 ### Rule shape
@@ -387,7 +387,7 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
 - Endpoint:
   - `POST /api/creator-subscription/checkout-sessions`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
   - `Content-Type: application/json`
 - Request fields:
   - `planId`: Portaly plan id
@@ -530,7 +530,7 @@ Use this when the human user needs reconciliation or a status page.
 - Endpoint:
   - `GET /api/creator-subscription/checkout-sessions/{sessionId}`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 - Useful response fields:
   - `status`
   - `merchantOrderNumber`
@@ -552,7 +552,7 @@ Use this when the human user needs to look up a recurring subscription or stop o
   - `POST /api/creator-subscription/subscriptions/{subscriptionId}/cancel`
   - `POST /api/creator-subscription/subscriptions/{subscriptionId}/resume`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 
 Current identifier contract:
 
@@ -638,7 +638,7 @@ Use this only for controlled recovery or non-hosted payment flows.
 - Endpoint:
   - `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
   - `Content-Type: application/json`
 - Request fields:
   - `checkoutToken`
@@ -846,7 +846,7 @@ Use this when the human user needs to list all subscriptions for a profile, with
 - Endpoint:
   - `GET /api/creator-subscription/subscriptions`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 - Query parameters:
   - `profileId`: optional for API key auth (derived from key), required for Firebase auth
   - `status`: optional, `active` | `past_due` | `canceled`
@@ -903,7 +903,7 @@ Use this when the human user needs to query payment/order records for a profile.
 - Endpoint:
   - `GET /api/creator-subscription/orders`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 - Query parameters:
   - `profileId`: optional for API key auth (derived from key), required for Firebase auth
   - `mode`: optional, `live` (default) or `test` — only used with Firebase auth; API key auth derives mode from the key
@@ -945,7 +945,7 @@ Use this when the human user needs the invoice records for a profile — invoice
 - Endpoint:
   - `GET /api/creator-subscription/invoices`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
 - Query parameters:
   - `profileId`: optional for API key auth (derived from key), required for Firebase auth
   - `mode`: optional, `live` or `test` — only honored for Firebase auth (omit to list all modes). API key callers are pinned to the key's own mode and cannot read the other mode's invoices
@@ -1049,7 +1049,7 @@ Use this when the human user wants to let their subscribers manage their own sub
 - API host:
   - `https://portaly.ai`
 - Required headers:
-  - `Authorization: Bearer {portaly_vibe_payment_api_key}`
+  - `Authorization: Bearer {portaly_payment_api_key}`
   - `Content-Type: application/json`
 - Request fields:
   - `customerEmail`: optional, the subscriber's email (required if `subscriptionId` is not provided)

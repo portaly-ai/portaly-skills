@@ -22,7 +22,7 @@ Only the **API host**. Everything else (brand name, dashboard URLs, etc.) is sti
 |---|---|
 | REST API host (scripts and generated code) | `PORTALY_API_HOST` env var, default `https://portaly.ai` |
 | Hosted UI URLs (`/checkout`, `/waitlist/{slug}`, `/r/{code}`, `/dashboard/*`) | None — hardcoded in `SKILL.md` and refs as `portaly.ai` strings |
-| Brand name ("Portaly", "Portaly Vibe") | None — hardcoded in `SKILL.md` and refs |
+| Brand name ("Portaly", "Portaly Payment") | None — hardcoded in `SKILL.md` and refs |
 | API key prefix (`pcs_live_`, `pcs_test_`) | None — wire-format compatibility required |
 
 ## Backend compatibility contract

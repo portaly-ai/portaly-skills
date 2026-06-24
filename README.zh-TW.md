@@ -28,16 +28,16 @@ npx skills update portaly-payment
 
 | Skill | 說明 | 觸發關鍵字 |
 |-------|------|-----------|
-| **portaly-payment** | Portaly Vibe 託管結帳、訂閱方案、單次購買、動態金額定價、優惠碼、callback 驗證 | `Portaly Vibe 支付`、`訂閱`、`結帳`、`優惠碼`、`單次購買`、`動態定價`、`贊助` |
+| **portaly-payment** | Portaly Payment 託管結帳、訂閱方案、單次購買、動態金額定價、優惠碼、callback 驗證 | `Portaly Payment 支付`、`訂閱`、`結帳`、`優惠碼`、`單次購買`、`動態定價`、`贊助` |
 | **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
 
-## Portaly Vibe Payment Integration
+## Portaly Payment Integration
 
 ```bash
 npx skills add portaly-ai/portaly-skills --skill portaly-payment
 ```
 
-協助串接 Portaly Vibe 託管支付結帳，包含商家設定、訂閱方案、結帳 session 與 callback 驗證。
+協助串接 Portaly Payment 託管支付結帳，包含商家設定、訂閱方案、結帳 session 與 callback 驗證。
 
 - 透過 API 建立商家設定與訂閱方案
 - 託管結帳 session 流程
@@ -47,16 +47,16 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 訂閱生命週期管理（取消 / 恢復）
 - 訂閱者自助入口（Self-Service Portal）
 
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。至 [Portaly Vibe Dashboard](https://portaly.cc/admin/creator-subscription) 申請。
+**前置條件：** Portaly Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`）。還沒有帳號？先至 [portaly.cc/payment](https://portaly.cc/payment) 註冊，再於 [Portaly Payment Dashboard](https://portaly.cc/admin/creator-subscription) 建立金鑰。
 
 **Skill 觸發條件：**
-- 「幫我在 Portaly Vibe 上新增一個訂閱商品」
-- 「幫我串接 Portaly Vibe 的支付功能」
-- 「我要使用 Portaly Vibe 的支付 API」
-- 「請協助我整合 Portaly Vibe 的支付功能」
-- 「幫我在 Portaly Vibe 建立優惠碼」
-- 「在 Portaly Vibe 加上單次購買或自訂金額的結帳流程」
-- 「在 Portaly Vibe 加上贊助功能」
+- 「幫我在 Portaly Payment 上新增一個訂閱商品」
+- 「幫我串接 Portaly Payment 的支付功能」
+- 「我要使用 Portaly Payment 的支付 API」
+- 「請協助我整合 Portaly Payment 的支付功能」
+- 「幫我在 Portaly Payment 建立優惠碼」
+- 「在 Portaly Payment 加上單次購買或自訂金額的結帳流程」
+- 「在 Portaly Payment 加上贊助功能」
 
 ## Portaly Digital Products Integration
 
@@ -73,7 +73,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-product
 - Per-order 事件：`digital_product.checkout.completed`、`digital_product.order.refunded`
 - 託管寄信 — 每筆付費訂單一封確認信，免費商品跳過
 
-**前置條件：** Portaly Vibe Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），與 payment skill 共用。至 [Portaly Vibe Dashboard](https://portaly.cc/admin/creator-subscription) 申請。
+**前置條件：** Portaly Payment API 金鑰（`pcs_live_*` 或 `pcs_test_*`），與 payment skill 共用。還沒有帳號？先至 [portaly.cc/payment](https://portaly.cc/payment) 註冊，再於 [Portaly Payment Dashboard](https://portaly.cc/admin/creator-subscription) 建立金鑰。
 
 **Skill 觸發條件：**
 - 「在我自己的網站上賣 Portaly 數位商品」

@@ -1,6 +1,6 @@
 # Portaly Digital Products API Contract
 
-This document is the canonical contract for the Portaly Vibe **Digital Products** API. It is used by:
+This document is the canonical contract for the Portaly **Digital Products** API. It is used by:
 - Third-party systems (your code) integrating against `portaly.ai`
 - Portaly-vibe backend implementing the routes
 - Reviewers verifying request/response shapes
@@ -17,7 +17,7 @@ This document is the canonical contract for the Portaly Vibe **Digital Products*
 
 ## Bearer Auth
 
-All endpoints accept `Authorization: Bearer {api_key}` where `{api_key}` is a Portaly Vibe Payment API key (`pcs_live_...` or `pcs_test_...`).
+All endpoints accept `Authorization: Bearer {api_key}` where `{api_key}` is a Portaly Payment API key (`pcs_live_...` or `pcs_test_...`).
 
 - The key is the **same** key used for the `portaly-payment` (creator-subscription) skill. One key per creator profile, two modes (live/test).
 - The key identifies one `profileId` (one creator). You can only see and operate on that creator's resources.

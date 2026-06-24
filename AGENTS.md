@@ -12,7 +12,7 @@ A collection of skills for AI coding agents to help Portaly creators integrate p
 
 ```
 skills/
-  portaly-payment/            # Portaly Vibe payment integration
+  portaly-payment/            # Portaly Payment integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, checkout and renewal docs
     scripts/                  # Callback verification examples (.mjs, .py)
