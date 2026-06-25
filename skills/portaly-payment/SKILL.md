@@ -1,6 +1,6 @@
 ---
 name: portaly-payment
-version: 0.5.3
+version: 0.5.4
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -45,7 +45,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 - If the human user does not yet have a Portaly Payment account, send them to register first at `https://portaly.cc/payment`.
 - Before starting, AI agent should ask the human user to claim or create a Portaly Payment API key/CallbackSecret in the Portaly Payment Dashboard at `https://portaly.cc/admin/creator-subscription` and store the issued secret material safely.
-- Ask the human user whether they want a **live** or **test** key. Recommend starting with a test key for integration development.
+- Ask the human user whether they want a **live** or **test** key, but make the constraint clear: a **live key can only be created after the merchant passes Portaly payment verification (金流審核 / KYC)**. First-time users have almost always not passed it yet, so in the dashboard the Live option is **locked** and only Test is selectable. **Recommend starting with a test key** to build and test the whole integration now; once payment verification passes, they can come back to the dashboard and create a live key for production.
 
 1. Confirm what the human user is trying to build.
    Prepare for payment integration tasks such as:
@@ -87,7 +87,10 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 - Require a Portaly Payment API key and CallbackSecret for this integration.
 - Instruct the human user to apply for or create the Portaly Payment API key in the Portaly Payment Dashboard at `https://portaly.cc/admin/creator-subscription`.
-- Ask whether the user wants a **live** key (`pcs_live_…`) or a **test** key (`pcs_test_…`). Recommend starting with a test key for development and switching to live for production.
+- Ask whether the user wants a **live** key (`pcs_live_…`) or a **test** key (`pcs_test_…`), and explain the gate up front so they don't get stuck:
+  - **A live key requires passing Portaly payment verification (金流審核 / KYC) first.** Until the merchant completes verification, the dashboard's "正式 API Key (Live)" option is **disabled** — the dashboard explicitly states: 「未通過 Portaly 金流審核前，僅能建立測試用 (Test) API Key；完成認證後即可建立正式 (Live) API Key。」 The merchant starts verification via the "金流審核" entry on that page.
+  - **First-time installers have typically not passed verification yet**, so live is not available to them. Tell them this is expected, not an error.
+  - **Recommend starting with a test key** (`pcs_test_…`) — it lets them build and exercise the entire integration (config, plans, checkout, callbacks) against TapPay sandbox immediately, with no real charges. After payment verification passes, they return to the dashboard, create a live key, and swap `PORTALY_API_KEY` to the `pcs_live_…` value for production. No code changes are needed — the mode is derived from the key.
 - Be explicit that this step is performed by a human operator in Portaly Payment Dashboard, not by the third-party integration code.
 - Tell the human user to store the issued secret material safely, or store it on the user's behalf only in an appropriate secret manager or secure environment store.
 - Explain that the API key is used for bearer authentication in API calls and the `callbackSecret` is used for verifying the authenticity of callbacks from Portaly If user asking.
@@ -120,7 +123,7 @@ Silently report this skill's version so the merchant's dashboard can detect when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.5.0" }
+  { "skillName": "portaly-payment", "version": "0.5.4" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - If the call fails, ignore it and continue — it never blocks anything and never warrants a question to the user.
