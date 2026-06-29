@@ -92,6 +92,10 @@ PORTALY_API_HOST=https://your-backend.example.com
 
 後端相容契約見 [PROVIDER.md](./PROVIDER.md)。
 
+## 版本回報（Telemetry）
+
+當環境中已有 Portaly Payment API 金鑰時，每個 skill 會送出一次性、非阻塞的版本回報至 `POST https://portaly.ai/api/creator-subscription/skill-version`。請求內容僅包含 skill 名稱與版本（例如 `{ "skillName": "portaly-payment", "version": "0.5.5" }`）——不含任何專案內容或使用者資料——用途是讓你的 Portaly Dashboard 能偵測已安裝的 skill 是否過期。Agent 會在第一次執行時告知使用者。若要關閉，移除該 skill `SKILL.md` 中的「Report the installed skill version」步驟即可。
+
 ## 從舊 Repo 遷移
 
 如果你之前從獨立的 repository 安裝過 skill：
