@@ -132,6 +132,15 @@ async function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+// Run main() only when executed directly as a CLI — never on import. Guarded so
+// the module still loads on runtimes with no `process` global, and `node:url` is
+// imported lazily so it never touches an edge / WebCrypto runtime.
+async function runIfMain() {
+  if (typeof process === "undefined" || !process.argv?.[1]) return;
+  const { pathToFileURL } = await import("node:url");
+  if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+    await main();
+  }
 }
+
+runIfMain();
