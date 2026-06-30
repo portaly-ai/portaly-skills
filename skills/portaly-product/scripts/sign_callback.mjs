@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import crypto from "node:crypto";
+import { pathToFileURL } from "node:url";
 
 export function stableJson(value) {
   if (Array.isArray(value)) {
@@ -95,6 +96,6 @@ function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }

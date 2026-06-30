@@ -236,4 +236,5 @@ For each integration session, leave the user with:
 - `references/api-contract.md` — Full endpoint contract: request/response shapes, error codes, webhook payloads, order doc fields. **Load this whenever generating code that calls the API.**
 - `references/bundle-pricing.md` — Proportional split algorithm with examples.
 - `scripts/sign_callback.mjs` — Node.js HMAC verification reference (copy into the user's project).
+- `scripts/sign_callback.webcrypto.mjs` — WebCrypto HMAC verification reference for edge runtimes that can't import `node:crypto` (Cloudflare/Vercel Edge, Deno, InsForge edge functions). Same scheme + byte-identical `stableJson`, verifies via `crypto.subtle`.
 - `scripts/sign_callback.py` — Python HMAC verification reference.
