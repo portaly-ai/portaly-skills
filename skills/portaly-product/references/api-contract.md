@@ -350,7 +350,7 @@ signature = HMAC_SHA256(
 )
 ```
 
-`stableJson` sorts object keys recursively and drops `undefined`. See `scripts/sign_callback.mjs`.
+`stableJson` sorts object keys recursively and drops `undefined`. See `scripts/sign_callback.mjs` (Node.js). On an edge / WebCrypto runtime that can't import `node:crypto` (Cloudflare/Vercel Edge, Deno, or an InsForge edge function), use `scripts/sign_callback.webcrypto.mjs` instead — same scheme, byte-identical `stableJson`, verifies via the global `crypto.subtle`.
 
 **Verification rules** (your responsibility):
 1. Verify `x-portaly-timestamp` is not older than 5 minutes (prevents replay).

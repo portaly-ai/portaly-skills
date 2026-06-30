@@ -792,7 +792,7 @@ Callback notes:
 - use `sessionId` as the idempotency key for callback processing
 - the `mode` field indicates whether this callback originated from a live or test checkout; merchants should use it to route test callbacks to sandbox order handling
 
-Use `scripts/sign_callback.mjs` for Node.js/TypeScript-oriented work and `scripts/sign_callback.py` for a language-agnostic reference.
+Use `scripts/sign_callback.mjs` for Node.js/TypeScript-oriented work and `scripts/sign_callback.py` for a language-agnostic reference. **On an edge / WebCrypto runtime that can't import `node:crypto`** (Cloudflare/Vercel Edge, Deno, or an InsForge edge function), use `scripts/sign_callback.webcrypto.mjs` instead — identical signing scheme and a byte-identical `stableJson`, but it verifies with the global `crypto.subtle` (no Node-only APIs). Do NOT hand-roll the key ordering: `stableJson` sorts with `localeCompare`, and a naive `.sort()` (UTF-16 order) silently rejects real callbacks.
 
 Express-style callback example:
 

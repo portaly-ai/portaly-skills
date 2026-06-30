@@ -144,7 +144,6 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - Use the Config APIs when the human user needs to set merchant branding before any product goes live.
 - AI Agent should ask the human user to provide a `merchantLogo` image asset, use the config image upload API to upload image to Portaly. The merchant logo is optional — if the user does not have one ready, skip this step and proceed with plan creation.
 - Use `PUT /api/creator-subscription/config` and `POST /api/creator-subscription/config/images` to set up merchant branding with the Portaly Payment API key.
-- **Vibe MCP shortcut:** If the agent is connected to Vibe MCP (i.e. `vibe_update_brand` is available), use it to set `merchantName`, `appBaseUrl`, and `brandDescription` instead of the REST call — no `PORTALY_API_KEY` needed. Only pass fields that are currently blank or need updating; omit the rest.
 
 ### 3. Create a valid subscription plan
 
@@ -234,10 +233,6 @@ Recurring management APIs:
 Order query API:
 
 - `GET /api/creator-subscription/orders` — list payment/order records with pagination
-
-**Vibe MCP shortcuts (preferred when available):**
-
-- `vibe_list_orders` — list orders without a `PORTALY_API_KEY`; uses the MCP Bearer token and the connection's configured API mode. Available once the `portaly-payment` skill is installed and the MCP session is restarted.
 
 Recurring management rules:
 
@@ -338,3 +333,5 @@ When using this skill, aim to return one or more of:
   Use when you need a deterministic example of Portaly callback signing and verification.
 - `scripts/sign_callback.mjs`
   Prefer this for Node.js, JavaScript, TypeScript, Express, or Next.js integrations.
+- `scripts/sign_callback.webcrypto.mjs`
+  Use on edge / WebCrypto runtimes that can't import `node:crypto` (Cloudflare/Vercel Edge, Deno, InsForge edge functions). Same scheme + byte-identical `stableJson`; verifies via the global `crypto.subtle`.
