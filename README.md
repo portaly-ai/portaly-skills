@@ -92,6 +92,10 @@ PORTALY_API_HOST=https://your-backend.example.com
 
 See [PROVIDER.md](./PROVIDER.md) for the backend compatibility contract.
 
+## Version Telemetry
+
+Once a Portaly Payment API key is present, each skill sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.5.5" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
+
 ## Migrating from Old Repos
 
 If you previously installed skills from the individual repositories:
