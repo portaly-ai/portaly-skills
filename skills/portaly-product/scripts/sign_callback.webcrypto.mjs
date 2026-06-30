@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// WebCrypto port of sign_callback.mjs — runs on ANY JS runtime (Node 18+, Deno,
+// WebCrypto port of sign_callback.mjs — runs on ANY JS runtime (Node 20+, Deno,
 // browsers, and edge runtimes like InsForge / Cloudflare / Vercel Edge) because it
 // uses the global `crypto.subtle` instead of `node:crypto`. Use this one when the
 // callback handler runs on an edge / WebCrypto runtime that cannot import `node:crypto`
@@ -8,10 +8,14 @@
 // — and `stableJson` are byte-identical to `sign_callback.mjs`; the only differences are
 // that signing/verifying are **async** (WebCrypto's API is promise-based) and the
 // constant-time compare is done in portable JS.
+// (`globalThis.crypto` is unflagged from Node 19+; on Node 18 it needs
+// `--experimental-global-webcrypto`.)
 
-// `stableJson` MUST stay byte-identical to sign_callback.mjs / sign_callback.py:
-// keys sorted with localeCompare (NOT a naive .sort(), which is UTF-16 order and
-// silently mismatches some keys → rejects real callbacks).
+// `stableJson` MUST stay byte-identical to sign_callback.mjs and to Portaly's
+// server-side signer — both sort keys with localeCompare (NOT a naive .sort(),
+// which is UTF-16 order and silently mismatches some keys → rejects real
+// callbacks). NOTE: sign_callback.py sorts by Unicode code point, so it can
+// diverge for mixed-case / non-ASCII keys (e.g. merchant-supplied metadata keys).
 export function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableJson(item)).join(",")}]`;
