@@ -170,19 +170,18 @@ truth; vibe forwards the body verbatim and returns Portaly's error messages):
 **Product images (cover + gallery) are set on a Portaly page, not via this API.**
 The write body has no image field — image upload needs the creator's Portaly
 login, which an API key can't stand in for. So after you create or update a
-product, if it needs a cover image, hand the creator this link and ask them to
-sign in and upload the file(s) in the browser:
+product, if it needs a cover image, hand the creator the upload link and ask
+them to sign in and upload the file(s) in the browser.
 
-```
-https://portaly.cc/admin/product/image-upload/{productId}
-```
-
-Use the real `productId` from the create/update response. Portaly then sets the
-cover `image` and the `productImages` gallery, which appear on the next
-`GET /api/digital-products/{productId}`. **Do not tell the user images "can't be
-set" and do not invent an upload flow (there is no signed-URL / raw-bytes API
-path)** — this hosted page is the way to add a cover image, so give them the
-link.
+**The create / update / status response includes that link as `imageUploadUrl`**
+(a `https://portaly.cc/admin/product/image-upload/{productId}` page) — read it
+straight from the response and give it to the creator; don't construct it. (It's
+also on `GET /api/digital-products/{productId}`, but not on the compact list.)
+Portaly then sets the cover `image` and the `productImages` gallery, which appear
+on the next `GET /api/digital-products/{productId}`. **Do not tell the user
+images "can't be set" and do not invent an upload flow (there is no signed-URL /
+raw-bytes API path)** — handing over `imageUploadUrl` is the way to add a cover
+image.
 
 See `references/api-contract.md` (the three write endpoints) for the full field
 list, validation messages, and error codes. **Load it before generating write

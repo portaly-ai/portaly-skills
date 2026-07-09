@@ -96,6 +96,7 @@ Single-product detailed view — all fields safe for pre-purchase display. Use t
     "name": "Course: Advanced Photography",
     "description": "...",
     "image": "https://...",
+    "imageUploadUrl": "https://portaly.cc/admin/product/image-upload/prod_xxx",
     "category": "default",
     "title": {
       "text": "Course: Advanced Photography",
@@ -139,6 +140,12 @@ Single-product detailed view — all fields safe for pre-purchase display. Use t
   }
 }
 ```
+
+- `image` is the current cover image URL (empty until one is uploaded).
+- `imageUploadUrl` is the hosted page where the creator uploads this product's
+  cover + gallery images — see the create-section image note. Present on the
+  detailed view only (`GET /api/digital-products/{productId}` and the
+  create / update / status responses); the compact list omits it.
 
 **Errors**:
 - `404 PRODUCT_NOT_FOUND` — productId does not exist under this creator
@@ -197,14 +204,16 @@ not re-validate — error messages below come straight from that validator.
 | `productContents` | Deliverables: `[{ type: 'isLink'\|'isForm'\|'isEmebedVideo', … }]`. `isLink` needs `link`+`linkText`; `isForm` needs `form`+`formText`; `isEmebedVideo` needs a YouTube/Vimeo `emebedVideo`. |
 
 > Product **images** (cover + gallery) are **not** set through this JSON body. A
-> creator uploads them from Portaly's hosted image-upload page —
-> `https://portaly.cc/admin/product/image-upload/{productId}` — after signing in
+> creator uploads them from Portaly's hosted image-upload page after signing in
 > with the Portaly account that manages the product. Image upload needs the
 > creator's login session, which an API key cannot substitute for, so the write
 > API and the image upload are deliberately split — this is by design, not a gap
-> in the contract. Once uploaded, the cover `image` and the `productImages`
-> gallery come back as resolved URLs from the read endpoints
-> (`GET /api/digital-products` and `GET /api/digital-products/{productId}`).
+> in the contract. **The response returns that page as the `imageUploadUrl`
+> field** (`https://portaly.cc/admin/product/image-upload/{productId}`) — hand
+> that link to the creator rather than constructing it yourself. Once uploaded,
+> the cover `image` and the `productImages` gallery come back as resolved URLs
+> from the read endpoints (`GET /api/digital-products` and
+> `GET /api/digital-products/{productId}`).
 
 **Response 201**: same shape as `GET /api/digital-products/{productId}` (the detailed view), wrapped in `{ "data": { … } }` — includes the computed `effectivePrice`. The fail-closed whitelist still applies, so `productContents` and thank-you content are **not** echoed back even though you just set them.
 
@@ -219,8 +228,8 @@ Update an existing product. Same body fields as create, **all optional**; at
 least one updatable field must be present. Omitted fields are left unchanged.
 Renaming to an existing product name returns `400 Product name already exists`.
 Activating (`isActive: true`) enforces the same fulfilled-content rule as create.
-Images work the same as create — set them from the hosted upload page
-(`https://portaly.cc/admin/product/image-upload/{productId}`), not through this body.
+Images work the same as create — not set through this body; the response
+returns the hosted upload page as `imageUploadUrl` to hand to the creator.
 
 **Response 200**: detailed view wrapped in `{ "data": { … } }`.
 
@@ -553,6 +562,7 @@ isActive, isStock, stock, customLocale, updatedAt
 All compact view fields, plus:
 
 ```
+imageUploadUrl,
 title (object: { text, color, align }),
 countdownSetting,
 isShowStock, stockButtonName, isRepurchasable, isRating, isSoldQuantity,
@@ -560,6 +570,10 @@ buttonName, productDescription, productSpec, specItems,
 productImageMode, productImages, videoUrl, videoImage, videoText,
 enableCoupon, createdAt
 ```
+
+`imageUploadUrl` is **not** a Firestore field — vibe derives it from the product
+id (`{PORTALY_PRODUCTS_API_BASE_URL || https://portaly.cc}/admin/product/image-upload/{id}`).
+It is intentionally on the detailed view only; the compact list omits it.
 
 ### Fields explicitly **NEVER** returned
 
@@ -585,6 +599,7 @@ Source Firestore doc lives at `profiles/{profileId}/products/{productId}` (see `
 | `name` | `name` or `title.text` if `name` missing | string |
 | `description` | `description` | string |
 | `image` | `image` | resolve `images/{id}` → public URL |
+| `imageUploadUrl` (detailed only) | derived from `id` | `{host}/admin/product/image-upload/{id}` — hosted upload page, not a Firestore field |
 | `category` | `category` | `'default' \| 'live'` |
 | `price` | `price` | Number(); 0 if invalid |
 | `sale` | `sale` | Number() or null |
