@@ -196,7 +196,15 @@ not re-validate — error messages below come straight from that validator.
 | `isRepurchasable`, `isRating`, `isSoldQuantity`, `isPhone`, `isSyncDescription`, `enableCoupon`, `enablePayPal`, `titleText`, `videoUrl`, `videoText`, `thanksContent`, `thanksAlert` | Same meaning as the Portaly product editor. |
 | `productContents` | Deliverables: `[{ type: 'isLink'\|'isForm'\|'isEmebedVideo', … }]`. `isLink` needs `link`+`linkText`; `isForm` needs `form`+`formText`; `isEmebedVideo` needs a YouTube/Vimeo `emebedVideo`. |
 
-> Product **images** are not set via this JSON — image upload uses a separate signed-URL flow and is out of scope for this contract.
+> Product **images** (cover + gallery) are **not** set through this JSON body. A
+> creator uploads them from Portaly's hosted image-upload page —
+> `https://portaly.cc/admin/product/image-upload/{productId}` — after signing in
+> with the Portaly account that manages the product. Image upload needs the
+> creator's login session, which an API key cannot substitute for, so the write
+> API and the image upload are deliberately split — this is by design, not a gap
+> in the contract. Once uploaded, the cover `image` and the `productImages`
+> gallery come back as resolved URLs from the read endpoints
+> (`GET /api/digital-products` and `GET /api/digital-products/{productId}`).
 
 **Response 201**: same shape as `GET /api/digital-products/{productId}` (the detailed view), wrapped in `{ "data": { … } }` — includes the computed `effectivePrice`. The fail-closed whitelist still applies, so `productContents` and thank-you content are **not** echoed back even though you just set them.
 
@@ -211,6 +219,8 @@ Update an existing product. Same body fields as create, **all optional**; at
 least one updatable field must be present. Omitted fields are left unchanged.
 Renaming to an existing product name returns `400 Product name already exists`.
 Activating (`isActive: true`) enforces the same fulfilled-content rule as create.
+Images work the same as create — set them from the hosted upload page
+(`https://portaly.cc/admin/product/image-upload/{productId}`), not through this body.
 
 **Response 200**: detailed view wrapped in `{ "data": { … } }`.
 

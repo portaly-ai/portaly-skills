@@ -167,6 +167,23 @@ truth; vibe forwards the body verbatim and returns Portaly's error messages):
 - Set prices with `price` / `productMode` / `priceStatus` / `sale` /
   `countdownSetting`; the same rules as the Portaly product editor apply.
 
+**Product images (cover + gallery) are set on a Portaly page, not via this API.**
+The write body has no image field — image upload needs the creator's Portaly
+login, which an API key can't stand in for. So after you create or update a
+product, if it needs a cover image, hand the creator this link and ask them to
+sign in and upload the file(s) in the browser:
+
+```
+https://portaly.cc/admin/product/image-upload/{productId}
+```
+
+Use the real `productId` from the create/update response. Portaly then sets the
+cover `image` and the `productImages` gallery, which appear on the next
+`GET /api/digital-products/{productId}`. **Do not tell the user images "can't be
+set" and do not invent an upload flow (there is no signed-URL / raw-bytes API
+path)** — this hosted page is the way to add a cover image, so give them the
+link.
+
 See `references/api-contract.md` (the three write endpoints) for the full field
 list, validation messages, and error codes. **Load it before generating write
 code.**
