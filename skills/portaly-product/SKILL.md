@@ -1,7 +1,7 @@
 ---
 name: portaly-product
-version: 0.3.2
-description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
+version: 0.4.0
+description: Help users integrate Portaly digital products checkout — list, create, and manage (edit / activate / deactivate) a creator's digital products, and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, creating or editing a Portaly product via API, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
 # Portaly Digital Products Integration
@@ -84,7 +84,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.3.2" }
+  { "skillName": "portaly-product", "version": "0.4.0" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -119,6 +119,73 @@ The detailed view returns most of the fields the creator configured in Portaly's
 - `videoUrl` / `videoImage` / `videoText` → optional preview video
 
 What the buyer sees on the user's site (product display, cart UI, "checkout" button) is entirely the user's responsibility — design it as they like.
+
+### 2b. Create & manage products (write API)
+
+The same API key can also **create and manage** the creator's products — no new
+key and no extra permission/scope is required (the key already identifies the
+creator profile). Product management does **not** go through billing, so a
+**test key works too** — there is no live/test distinction for writes.
+
+Three endpoints, all sending `Authorization: Bearer ${PORTALY_API_KEY}`:
+
+- `POST /api/digital-products` — create a product
+- `PATCH /api/digital-products/{productId}` — update a product (all fields optional)
+- `POST /api/digital-products/{productId}/status` — activate / deactivate (`{ "isActive": true|false }`; omit to toggle)
+
+```ts
+const res = await fetch(`${HOST}/api/digital-products`, {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.PORTALY_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Course: Advanced Photography',
+    price: 1500,
+    productMode: 'normal',
+    productContents: [
+      { type: 'isLink', linkText: 'Download', link: 'https://…' },
+    ],
+    isActive: true,
+  }),
+})
+const { data } = await res.json() // same detailed view as GET, incl. effectivePrice
+```
+
+Key rules (validation is enforced server-side by Portaly — the single source of
+truth; vibe forwards the body verbatim and returns Portaly's error messages):
+
+- **`name` is required and must be unique** for the creator.
+- **A product can only be activated when it has at least one fulfilled
+  `productContents` item** (a download link, form, or embedded video). Create it
+  inactive first if the deliverable isn't ready, then activate via the status
+  endpoint.
+- The response is the **same detailed view as `GET`** (with `effectivePrice`).
+  The fail-closed whitelist still applies, so `productContents` and thank-you
+  content are not echoed back.
+- Set prices with `price` / `productMode` / `priceStatus` / `sale` /
+  `countdownSetting`; the same rules as the Portaly product editor apply.
+
+**Product images (cover + gallery) are set on a Portaly page, not via this API.**
+The write body has no image field — image upload needs the creator's Portaly
+login, which an API key can't stand in for. So after you create or update a
+product, if it needs a cover image, hand the creator the upload link and ask
+them to sign in and upload the file(s) in the browser.
+
+**The create / update / status response includes that link as `imageUploadUrl`**
+(a `https://portaly.cc/admin/product/image-upload/{productId}` page) — read it
+straight from the response and give it to the creator; don't construct it. (It's
+also on `GET /api/digital-products/{productId}`, but not on the compact list.)
+Portaly then sets the cover `image` and the `productImages` gallery, which appear
+on the next `GET /api/digital-products/{productId}`. **Do not tell the user
+images "can't be set" and do not invent an upload flow (there is no signed-URL /
+raw-bytes API path)** — handing over `imageUploadUrl` is the way to add a cover
+image.
+
+See `references/api-contract.md` (the three write endpoints) for the full field
+list, validation messages, and error codes. **Load it before generating write
+code.**
 
 ### 3. Create a checkout session
 
