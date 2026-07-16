@@ -1,19 +1,28 @@
 #!/usr/bin/env node
 
 import crypto from "node:crypto";
+import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 
+// Portaly callback v1 signs stableJson(JSON.parse(wireBody)), not the raw body.
+// Keep this byte-identical to the committed production signer. In particular,
+// object keys use localeCompare and undefined mirrors JSON.stringify semantics.
 export function stableJson(value) {
   if (Array.isArray(value)) {
-    return `[${value.map((item) => stableJson(item)).join(",")}]`;
+    return `[${value
+      .map((item) =>
+        typeof item === "undefined" ? "null" : stableJson(item)
+      )
+      .join(",")}]`;
   }
 
   if (value && typeof value === "object") {
-    return `{${Object.entries(value)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([key, val]) => `${JSON.stringify(key)}:${stableJson(val)}`
-      )
+    const entries = Object.entries(value)
+      .filter(([, val]) => typeof val !== "undefined")
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    return `{${entries
+      .map(([key, val]) => `${JSON.stringify(key)}:${stableJson(val)}`)
       .join(",")}}`;
   }
 
@@ -46,6 +55,7 @@ export function verifyPortalyCallback({
 
 function parseArgs(argv) {
   const args = {};
+  const supported = new Set(["timestamp", "signature", "payload-file"]);
 
   for (let i = 2; i < argv.length; i += 1) {
     const current = argv[i];
@@ -54,6 +64,9 @@ function parseArgs(argv) {
     }
 
     const key = current.slice(2);
+    if (!supported.has(key)) {
+      throw new Error(`Unknown option: ${current}`);
+    }
     const next = argv[i + 1];
     if (next && !next.startsWith("--")) {
       args[key] = next;
@@ -66,28 +79,38 @@ function parseArgs(argv) {
   return args;
 }
 
-function main() {
-  const args = parseArgs(process.argv);
-  const { secret, timestamp, payload, signature } = args;
+function readPayload(payloadFile) {
+  const raw = payloadFile
+    ? fs.readFileSync(payloadFile, "utf8")
+    : fs.readFileSync(0, "utf8");
 
-  if (!secret || !timestamp || !payload) {
-    console.error(
-      "Usage: node sign_callback.mjs --secret <secret> --timestamp <timestamp> --payload '<json>' [--signature <hex>]"
-    );
-    process.exit(1);
+  if (!raw.trim()) {
+    throw new Error("Provide the JSON payload on stdin or with --payload-file.");
   }
 
-  const parsedPayload = JSON.parse(payload);
-  const generated = signPortalyCallback({
-    secret,
-    timestamp,
-    payload: parsedPayload,
-  });
+  return JSON.parse(raw);
+}
+
+function main() {
+  const args = parseArgs(process.argv);
+  const secret = process.env.PORTALY_CALLBACK_SECRET;
+  const { timestamp, signature } = args;
+
+  if (!secret || !timestamp) {
+    console.error(
+      "Usage: set PORTALY_CALLBACK_SECRET in the environment, then pipe JSON to " +
+        "`node sign_callback.mjs --timestamp <iso> [--signature <hex>]` or use --payload-file."
+    );
+    process.exit(2);
+  }
+
+  const payload = readPayload(args["payload-file"]);
+  const generated = signPortalyCallback({ secret, timestamp, payload });
 
   console.log(generated);
 
   if (typeof signature === "string") {
-    if (verifyPortalyCallback({ secret, timestamp, payload: parsedPayload, signature })) {
+    if (verifyPortalyCallback({ secret, timestamp, payload, signature })) {
       console.log("verified");
     } else {
       console.log("invalid");
@@ -97,5 +120,10 @@ function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
+  try {
+    main();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(2);
+  }
 }

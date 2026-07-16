@@ -1,32 +1,26 @@
 #!/usr/bin/env node
 
-// WebCrypto port of sign_callback.mjs — runs on ANY JS runtime (Node 20+, Deno,
-// browsers, and edge runtimes like InsForge / Cloudflare / Vercel Edge) because it
-// uses the global `crypto.subtle` instead of `node:crypto`. Use this one when the
-// callback handler runs on an edge / WebCrypto runtime that cannot import `node:crypto`
-// (e.g. an InsForge edge function). The signing scheme — `${timestamp}.${stableJson(payload)}`
-// — and `stableJson` are byte-identical to `sign_callback.mjs`; the only differences are
-// that signing/verifying are **async** (WebCrypto's API is promise-based) and the
-// constant-time compare is done in portable JS.
-// (`globalThis.crypto` is unflagged from Node 19+; on Node 18 it needs
-// `--experimental-global-webcrypto`.)
+// WebCrypto adapter for server and edge JavaScript runtimes. Callback secrets
+// must never be used in browser-delivered code even though WebCrypto exists there.
 
-// `stableJson` MUST stay byte-identical to sign_callback.mjs and to Portaly's
-// server-side signer — both sort keys with localeCompare (NOT a naive .sort(),
-// which is UTF-16 order and silently mismatches some keys → rejects real
-// callbacks). NOTE: sign_callback.py sorts by Unicode code point, so it can
-// diverge for mixed-case / non-ASCII keys (e.g. merchant-supplied metadata keys).
+// This must remain byte-identical to sign_callback.mjs and the production v1
+// signer: localeCompare key ordering plus JSON.stringify undefined semantics.
 export function stableJson(value) {
   if (Array.isArray(value)) {
-    return `[${value.map((item) => stableJson(item)).join(",")}]`;
+    return `[${value
+      .map((item) =>
+        typeof item === "undefined" ? "null" : stableJson(item)
+      )
+      .join(",")}]`;
   }
 
   if (value && typeof value === "object") {
-    return `{${Object.entries(value)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(
-        ([key, val]) => `${JSON.stringify(key)}:${stableJson(val)}`
-      )
+    const entries = Object.entries(value)
+      .filter(([, val]) => typeof val !== "undefined")
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    return `{${entries
+      .map(([key, val]) => `${JSON.stringify(key)}:${stableJson(val)}`)
       .join(",")}}`;
   }
 
@@ -35,7 +29,7 @@ export function stableJson(value) {
 
 function toHex(buffer) {
   return [...new Uint8Array(buffer)]
-    .map((b) => b.toString(16).padStart(2, "0"))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
 
@@ -56,16 +50,14 @@ export async function signPortalyCallback({ secret, payload, timestamp }) {
   return toHex(signature);
 }
 
-// Constant-time comparison over the two hex strings (WebCrypto has no timingSafeEqual).
-// Returns false on length mismatch (same as the node:crypto version), then XOR-folds
-// every char so the loop runs in time independent of where a mismatch occurs.
-function timingSafeEqualHex(a, b) {
-  if (a.length !== b.length) {
+function timingSafeEqualHex(left, right) {
+  if (left.length !== right.length) {
     return false;
   }
+
   let mismatch = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
   }
   return mismatch === 0;
 }
@@ -82,6 +74,7 @@ export async function verifyPortalyCallback({
 
 function parseArgs(argv) {
   const args = {};
+  const supported = new Set(["timestamp", "signature", "payload-file"]);
 
   for (let i = 2; i < argv.length; i += 1) {
     const current = argv[i];
@@ -90,6 +83,9 @@ function parseArgs(argv) {
     }
 
     const key = current.slice(2);
+    if (!supported.has(key)) {
+      throw new Error(`Unknown option: ${current}`);
+    }
     const next = argv[i + 1];
     if (next && !next.startsWith("--")) {
       args[key] = next;
@@ -103,27 +99,32 @@ function parseArgs(argv) {
 }
 
 async function main() {
+  const fs = await import("node:fs");
   const args = parseArgs(process.argv);
-  const { secret, timestamp, payload, signature } = args;
+  const secret = process.env.PORTALY_CALLBACK_SECRET;
+  const { timestamp, signature } = args;
 
-  if (!secret || !timestamp || !payload) {
+  if (!secret || !timestamp) {
     console.error(
-      "Usage: node sign_callback.webcrypto.mjs --secret <secret> --timestamp <timestamp> --payload '<json>' [--signature <hex>]"
+      "Usage: set PORTALY_CALLBACK_SECRET in the environment, then pipe JSON to " +
+        "`node sign_callback.webcrypto.mjs --timestamp <iso> [--signature <hex>]` or use --payload-file."
     );
-    process.exit(1);
+    process.exit(2);
   }
 
-  const parsedPayload = JSON.parse(payload);
-  const generated = await signPortalyCallback({
-    secret,
-    timestamp,
-    payload: parsedPayload,
-  });
+  const raw = args["payload-file"]
+    ? fs.readFileSync(args["payload-file"], "utf8")
+    : fs.readFileSync(0, "utf8");
+  if (!raw.trim()) {
+    throw new Error("Provide the JSON payload on stdin or with --payload-file.");
+  }
 
+  const payload = JSON.parse(raw);
+  const generated = await signPortalyCallback({ secret, timestamp, payload });
   console.log(generated);
 
   if (typeof signature === "string") {
-    if (await verifyPortalyCallback({ secret, timestamp, payload: parsedPayload, signature })) {
+    if (await verifyPortalyCallback({ secret, timestamp, payload, signature })) {
       console.log("verified");
     } else {
       console.log("invalid");
@@ -132,14 +133,19 @@ async function main() {
   }
 }
 
-// Run main() only when executed directly as a CLI — never on import. Guarded so
-// the module still loads on runtimes with no `process` global, and `node:url` is
-// imported lazily so it never touches an edge / WebCrypto runtime.
 async function runIfMain() {
-  if (typeof process === "undefined" || !process.argv?.[1]) return;
+  if (typeof process === "undefined" || !process.argv?.[1]) {
+    return;
+  }
+
   const { pathToFileURL } = await import("node:url");
   if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-    await main();
+    try {
+      await main();
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exit(2);
+    }
   }
 }
 
