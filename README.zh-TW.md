@@ -28,7 +28,7 @@ npx skills update portaly-payment
 
 | Skill | 說明 | 觸發關鍵字 |
 |-------|------|-----------|
-| **portaly-overview** | Portaly 開放 API 總覽與導航 — 有哪些能力、功能對照 API 的速查表、以及完整 API 文件位置 | `Portaly 能做什麼`、`Portaly API 文件`、`該裝哪個 Portaly skill`、評估是否要串接 Portaly |
+| **portaly-overview** | Portaly 開放 API 總覽與導航 — 依能力分組的 API 目錄、功能對照 API 的速查表、以及完整 API 文件位置 | `Portaly 能做什麼`、`Portaly 有哪些 API`、`列出 Portaly API`、`Portaly API 文件`、`該裝哪個 Portaly skill`、評估是否要串接 Portaly |
 | **portaly-payment** | Portaly Payment 託管結帳、訂閱方案、單次購買、動態金額定價、優惠碼、callback 驗證 | `Portaly Payment 支付`、`訂閱`、`結帳`、`優惠碼`、`單次購買`、`動態定價`、`贊助` |
 | **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
 
@@ -41,6 +41,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-overview
 導航型 skill — 在你決定串接前，先了解 Portaly 開放 API 能做哪些事，以及該裝哪個 skill。本身不執行任何串接動作。
 
 - 開放 API 能力總覽：訂閱支付、數位商品、優惠碼、訂閱者自助服務、訂單／發票查詢
+- 依能力分組的 API 目錄，並指示 agent 從 `llms.txt`／`openapi.json` 即時抓取最新完整端點清單
 - 「常見產品功能 → API / skill」對照表
 - 指向 Portaly 完整 API 文件：
   - [`portaly.ai/docs`](https://portaly.ai/docs) — 給人看的互動式文件
@@ -50,6 +51,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-overview
 
 **Skill 觸發條件：**
 - 「Portaly 能做什麼？」
+- 「Portaly 有哪些 API？」
 - 「Portaly 的 API 文件在哪？」
 - 「我該裝哪個 Portaly skill？」
 - 「我在評估要不要串接 Portaly 的支付或商品 API」

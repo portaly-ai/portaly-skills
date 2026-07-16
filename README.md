@@ -28,7 +28,7 @@ npx skills update portaly-payment
 
 | Skill | Description | Triggers |
 |-------|-------------|----------|
-| **portaly-overview** | Orientation and navigation across Portaly's open APIs — what's available, a feature-to-API mapping table, and where to find the full API docs | `what can Portaly do`, `Portaly API docs`, `which Portaly skill do I need`, evaluating Portaly before integrating |
+| **portaly-overview** | Orientation and navigation across Portaly's open APIs — an API catalog by capability group, a feature-to-API mapping table, and where to find the full API docs | `what can Portaly do`, `what APIs does Portaly have`, `list Portaly APIs`, `Portaly API docs`, `which Portaly skill do I need`, evaluating Portaly before integrating |
 | **portaly-payment** | Portaly Payment hosted checkout, subscription plans, dynamic / one-time pricing, discount codes, and callback verification | `Portaly Payment`, `subscription`, `checkout`, `discount code`, `one-time`, `dynamic pricing` |
 | **portaly-product** | Sell a creator's Portaly digital products from your own vibe-coded site — list products, build single or bundle checkout sessions, hosted payment + email, signed webhooks | `Portaly digital products`, `bundle checkout`, `digital downloads`, `creator product API` |
 
@@ -41,6 +41,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-overview
 Orientation and navigation skill — helps you figure out what Portaly's open APIs can do before you commit to an integration, and which skill to install next. Does not perform any integration work itself.
 
 - A capabilities overview of the open API surface: subscription payments, digital products, discount codes, subscriber self-service, and order/invoice queries
+- An API catalog by capability group, with instructions to fetch the always-current endpoint list live from `llms.txt` / `openapi.json`
 - A "common product feature → API / skill" mapping table
 - Pointers to Portaly's full API documentation:
   - [`portaly.ai/docs`](https://portaly.ai/docs) — interactive docs for humans
@@ -50,6 +51,7 @@ Orientation and navigation skill — helps you figure out what Portaly's open AP
 
 **Skill triggers:**
 - "What can Portaly do?"
+- "What APIs does Portaly have?"
 - "Where are Portaly's API docs?"
 - "Which Portaly skill do I need for X?"
 - "I'm evaluating Portaly's payment or product APIs"

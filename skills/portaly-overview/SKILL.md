@@ -1,7 +1,7 @@
 ---
 name: portaly-overview
 version: 0.1.0
-description: Orientation and navigation for what Portaly's open APIs can do — subscription payments, digital products, discount codes, subscriber self-service, and order/invoice queries — plus where to find Portaly's API docs. Trigger when the user asks "what can Portaly do", is evaluating Portaly's payment or product APIs before committing to an integration, is looking for Portaly API documentation, or is deciding which Portaly skill to install.
+description: Orientation and navigation for what Portaly's open APIs can do — subscription payments, digital products, discount codes, subscriber self-service, and order/invoice queries — plus an API catalog and where to find Portaly's API docs. Trigger when the user asks "what can Portaly do", "what APIs does Portaly have", wants a list or catalog of Portaly's APIs/endpoints, is evaluating Portaly's payment or product APIs before committing to an integration, is looking for Portaly API documentation, or is deciding which Portaly skill to install.
 ---
 
 # Portaly Overview
@@ -35,6 +35,27 @@ Portaly's open (third-party-facing) API surface currently covers:
 - **Orders and invoices** — query payment/order records and invoice status for reconciliation.
 
 All of this is exposed under two API key prefixes (`pcs_live_*` / `pcs_test_*`) that are shared across both the payment and product surfaces — one key covers everything in this table.
+
+## API Catalog
+
+The open API surface, by group. Endpoints listed here are representative, not exhaustive — see the fetch instructions below the table for the complete list.
+
+| Group | What it does | Representative endpoints |
+|---|---|---|
+| Merchant config | Merchant name / logo shown on hosted checkout | `GET/PUT /api/creator-subscription/config` |
+| Subscription plans | Create and manage monthly / yearly / one-time plans | `GET/POST /api/creator-subscription/plans`, `PUT .../plans/{planId}` |
+| Discount codes | Fixed / percent / free discounts, signup ref codes | `GET/POST /api/creator-subscription/discount-codes`, `GET .../discount-codes/lookup` |
+| Checkout sessions | Start a hosted checkout for a plan | `POST /api/creator-subscription/checkout-sessions`, `GET .../checkout-sessions/{sessionId}` |
+| Subscriptions | Query and manage active subscriptions | `GET /api/creator-subscription/subscriptions`, `POST .../subscriptions/{subscriptionId}/cancel`, `.../resume` |
+| Orders & invoices | Reconciliation and e-invoice status | `GET /api/creator-subscription/orders`, `GET .../invoices` |
+| Subscriber portal | Self-service portal for subscribers | `POST /api/creator-subscription/portal-sessions` |
+| Digital products | List products, single-item / bundle checkout | `GET /api/digital-products`, `POST /api/digital-products/checkout-sessions` |
+| Webhooks | Signed callbacks for payment / subscription / product events | 8 event types (`creator_subscription.*`, `digital_product.*`) |
+
+**Do not treat this table as the full contract.** When the user needs the complete, always-current endpoint list, fetch it live instead of relying on this file:
+
+- Fetch `https://portaly.ai/llms.txt` — condensed endpoint index, cheap to read first.
+- Fetch `https://portaly.ai/openapi.json` — full request/response schemas for every endpoint and webhook payload.
 
 ## Common Product Feature → API / Skill Mapping
 
