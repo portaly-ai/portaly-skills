@@ -8,3 +8,5 @@ AGENTS.override.md
 !.env.example
 __pycache__/
 *.py[cod]
+evals/results/
+evals/workspaces/
