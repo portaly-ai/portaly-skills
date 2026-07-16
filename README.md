@@ -43,7 +43,7 @@ Helps users integrate Portaly Payment hosted checkout, including merchant setup,
 - Hosted checkout session flow
 - Fixed plans for subscriptions (`monthly` / `yearly`) and **dynamic plans** for one-time purchases, donations, tip jars, or any buyer-specified amount — the amount is set per checkout session. Yearly plans use 12-month deferred disbursement: the buyer pays upfront, the creator receives 1/12 of net revenue per month, and refunds are blocked once the first installment has been released.
 - Discount codes — fixed / percent / free, repeating or forever, with ref-code auto-apply at checkout
-- HMAC-SHA256 callback signature verification
+- Runtime-aware HMAC-SHA256 callback verification for Node.js, server-side WebCrypto, Python, and Go, with production-derived conformance vectors
 - Recurring subscription management (cancel / resume)
 - Subscriber self-service portal
 
@@ -94,7 +94,7 @@ See [PROVIDER.md](./PROVIDER.md) for the backend compatibility contract.
 
 ## Version Telemetry
 
-Once a Portaly Payment API key is present, each skill sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.5.5" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
+Once a Portaly Payment API key is present, each skill sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.6.0" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
 
 ## Migrating from Old Repos
 
