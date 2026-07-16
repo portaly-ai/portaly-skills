@@ -21,6 +21,7 @@ skills/
     references/               # API contract, bundle pricing algorithm
     scripts/                  # Callback adapters + production-derived conformance checks
 evals/                        # Cross-skill contract runner and fresh-agent prompt corpus
+.github/workflows/            # Deterministic skill eval gate
 ```
 
 ## Skill Architecture
