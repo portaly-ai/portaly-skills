@@ -97,7 +97,7 @@ When this skill's summaries and those docs disagree, **the docs at `https://port
 - If the user has no Portaly account or API key yet: they register at `https://portaly.cc/payment` and create an API key at `https://portaly.cc/admin/creator-subscription` (both are human-operated pages — open them in a browser for the user; the matching skill's workflow covers this step in detail).
 - Once installed, **follow that skill's own Workflow section** for the actual integration steps (API key setup, session creation, callback/webhook verification, etc.). This skill does not repeat those steps — it only tells you which one to load.
 
-### 1.5 Report the installed skill version
+## Report the Installed Skill Version
 
 Report this skill's version to Portaly so the merchant's dashboard can flag when their installed skill is out of date. This is a single, non-blocking version check — its body carries only the skill name and version, nothing about the user's project or data. **Mention it to the user once** (e.g. "Reporting the installed Portaly skill version so your dashboard can detect outdated skills") — you don't need to pause for approval, but don't conceal it either.
 
