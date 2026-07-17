@@ -148,7 +148,7 @@ const res = await fetch(`${HOST}/api/digital-products/checkout-sessions`, {
     successRedirectUrl: 'https://your-site.com/thanks',
     cancelRedirectUrl: 'https://your-site.com/cart',
     merchantOrderNumber: yourInternalId,
-    metadata: { userId: '...', cartId: '...' },
+    metadata: { userId: '...', cartId: '...' },  // custom keys → verify with Node/WebCrypto (Python/Go v1 adapters fail closed on metadata keys outside the committed schema)
   }),
 })
 const { data } = await res.json()
@@ -176,8 +176,10 @@ x-portaly-signature: <hex>
 
 Inspect the repository's stack, then load `references/callback-signature-v1.md` and use the matching Node, WebCrypto, Python, or Go adapter. Run `scripts/check_callback_vectors.mjs` for that runtime before shipping. V1 verifies `${timestamp}.${stableJson(JSON.parse(wireBody))}` — not the raw HTTP body — with `PORTALY_CALLBACK_SECRET`, then requires `x-portaly-event` to match the authenticated body event.
 
+**Custom `metadata` keys and callback verification:** the `metadata` you send at create-session time (e.g. `userId`, `cartId`) is echoed into the signed callback body. The Python and Go v1 adapters **fail closed** on metadata keys outside the committed schema, because v1 sorts object keys with JavaScript `localeCompare` and those adapters cannot reproduce that ordering for arbitrary keys. If the receiver is Python or Go, either verify with the Node/WebCrypto adapter or keep custom keys out of `metadata`, until a future raw-byte callback contract removes this limitation.
+
 Persist:
-- `sessionId` (idempotency key)
+- `sessionId` (combined with `event` as the checkout idempotency key — see below)
 - `orders[]` (each has `orderId`, `productId`, `allocatedAmount`, `orderSuccessPageUrl`)
 - `merchantOrderNumber`
 - `metadata`

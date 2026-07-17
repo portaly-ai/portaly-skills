@@ -214,6 +214,11 @@ function checkPython() {
   const unsupportedPayloads = [
     { "hyphen-key": "value" },
     { metadata: { "unknown-metadata-key": "value" } },
+    // Valid-identifier custom metadata keys (e.g. the userId/cartId shown in
+    // the create-session SKILL examples) are echoed into the signed callback
+    // body, yet sit outside the committed key order. The native adapter must
+    // fail closed rather than guess their production localeCompare ordering.
+    { metadata: { userId: "u_1", cartId: "c_1" } },
     { amount: 1.25 },
     { amount: Number.MAX_SAFE_INTEGER + 1 },
   ];

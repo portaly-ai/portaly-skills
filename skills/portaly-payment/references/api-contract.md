@@ -397,7 +397,7 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `callbackUrl`: optional merchant callback endpoint. Receives `creator_subscription.checkout.completed`, and — unless `subscriptionCallbackUrl` is set — the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle (`active` / `cancel_requested` / `canceled`) callbacks too.
   - `subscriptionCallbackUrl`: optional. When set, recurring renewal and lifecycle callbacks are delivered here instead of `callbackUrl` (the checkout-completion callback still goes to `callbackUrl`). Falls back to `callbackUrl` when empty.
   - `merchantOrderNumber`: optional merchant-side order id
-  - `metadata`: optional string-keyed extra context
+  - `metadata`: optional string-keyed extra context. **Echoed into the signed callback body; keys outside the committed callback schema are only verifiable by the Node/WebCrypto adapters (the Python/Go v1 adapters fail closed on them).**
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied later via the buyer's `signupRefCode` once their email is verified inside hosted checkout.
   - `customerEmail`: optional pre-known buyer email. Currently informational only — the buyer-confirmed email captured during hosted checkout is the one used to look up the buyer's `signupRefCode` and to enforce the per-customer cap.
 

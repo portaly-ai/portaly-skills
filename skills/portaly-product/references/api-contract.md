@@ -174,7 +174,7 @@ Field rules:
 - `successRedirectUrl` / `cancelRedirectUrl`: optional. Used after the hosted checkout page completes / cancels.
 - `callbackUrl`: optional. Where Portaly sends signed webhooks for this session and its resulting orders. If omitted, you must poll the `GET /api/digital-products/checkout-sessions/{sessionId}` endpoint.
 - `merchantOrderNumber`: your internal reference. Echoed back in webhooks. Max 50 chars.
-- `metadata`: free-form string keys, max 20 keys, each value <= 500 chars. Echoed back. Do not put secrets here.
+- `metadata`: free-form string keys, max 20 keys, each value <= 500 chars. Echoed back. Do not put secrets here. **Because it is echoed into the signed callback body, keys outside the committed callback schema are only verifiable by the Node/WebCrypto adapters — the Python/Go v1 adapters fail closed on them.**
 
 **Response 200**:
 ```json
