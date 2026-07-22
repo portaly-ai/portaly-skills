@@ -124,6 +124,7 @@ Use this when the human user wants the Agent to create or maintain the product b
 
 - **Plans belong to the `profileId` and are shared across live and test modes.** Always query existing plans before creating a new one to avoid duplicates.
 - **Plan images are read-only on the plan object.** `GET` / `POST` / `PUT` responses return a resolved `imageUrl` (a public URL, or `null`) — never the internal storage ref. There is no writable `image` field on create or update; to set a plan's image, create the plan first, then upload via `POST /api/creator-subscription/plans/{planId}/images`.
+- **`billingPeriod` and `pricingType` are locked after plan creation.** Both are set once at create time and cannot be changed by `PUT`. Sending either with a different value on update returns **`422 PLAN_FIELD_LOCKED`** — see the Update section below for the full editable/locked field breakdown.
 - Read endpoints:
   - `GET /api/creator-subscription/plans`
   - `GET /api/creator-subscription/plans/{planId}`
@@ -138,11 +139,12 @@ Use this when the human user wants the Agent to create or maintain the product b
 
 - Request fields:
   - `name`: required
-  - `description`: optional
+  - `description`: optional. Accepts merchant-authored **rich HTML** (previously plain text only) — the server sanitizes it on write (`sanitize-html` allowlist); unsupported tags/attributes are stripped and plain text passes through unchanged. If the description references inline images, they must be hosted `https://` URLs (no embedded/base64 images).
   - `amount`: required positive number for fixed pricing; omit or set to `0` for dynamic pricing
   - `currency`: optional, defaults to `TWD`
-  - `billingPeriod`: required, `monthly`, `yearly`, or `one-time` (`one-time` is a single-payment plan that does not auto-renew; `yearly` is billed once a year and **payout to the creator is released across 12 monthly installments** — refunds are blocked once the first installment has been released)
-  - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session
+  - `listPrice`: optional positive number. Display-only original price ("原價") — shown struck-through above the charged `amount` on checkout. **Never charged**; omit it when there is no reference price to show.
+  - `billingPeriod`: required, `monthly`, `yearly`, or `one-time` (`one-time` is a single-payment plan that does not auto-renew; `yearly` is billed once a year and **payout to the creator is released across 12 monthly installments** — refunds are blocked once the first installment has been released). **Locked after creation** — see the Update section below.
+  - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session. **Locked after creation** — see the Update section below.
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
   - `externalInformationUrl`: optional object with `url` and `text` (both required when present)
@@ -153,6 +155,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   "name": "Pro Monthly",
   "description": "Monthly subscription plan",
   "amount": 299,
+  "listPrice": 399,
   "currency": "TWD",
   "billingPeriod": "monthly",
   "status": "active",
@@ -181,9 +184,10 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `data.id`
   - `data.profileId`
   - `data.name`
-  - `data.description`
+  - `data.description` (server-sanitized rich HTML, or plain text — safe to render as HTML on checkout)
   - `data.amount`
   - `data.currency`
+  - `data.listPrice` — optional display-only reference price ("原價"); absent when the creator set no reference price. Never charged.
   - `data.billingPeriod`
   - `data.pricingType`
   - `data.status`
@@ -196,16 +200,21 @@ Use this when the human user wants the Agent to create or maintain the product b
 
 `PUT /api/creator-subscription/plans/{planId}`
 
-- Request fields:
+- Partial update — only the keys present in the body are changed; omitted keys keep their current value.
+- **Editable fields** (send any subset):
   - `name`: optional
-  - `description`: optional
+  - `description`: optional. Same rich-HTML acceptance and server-side sanitization as create (see `POST` above) — updating `description` re-sanitizes the new value through the same allowlist.
   - `amount`: optional positive number (must be non-negative for dynamic pricing plans)
   - `currency`: optional
-  - `billingPeriod`: optional, `monthly`, `yearly`, or `one-time` (`one-time` is a single-payment plan that does not auto-renew; `yearly` payouts are released across 12 monthly installments — refunds are blocked once the first installment has been released)
-  - `pricingType`: optional, `fixed` or `dynamic`
+  - `listPrice`: optional positive number. Same display-only "原價" semantics as create — struck-through reference price shown above `amount`; never charged.
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
   - `externalInformationUrl`: optional object with `url` and `text` (both required when present); previously settable only at create time
+  - plan image: not part of this request body at all — update it via `POST /api/creator-subscription/plans/{planId}/images` instead (see below)
+- **Locked fields — set at creation, cannot be changed afterward:**
+  - `billingPeriod`
+  - `pricingType`
+  - Do not include either in the update body if you're trying to change its value. Doing so returns **`422 PLAN_FIELD_LOCKED`** — the plan's `billingPeriod` and `pricingType` are fixed for its lifetime. If the merchant needs a different billing period or pricing model, create a new plan instead of trying to convert an existing one.
 
 `POST /api/creator-subscription/plans/{planId}/images`
 
