@@ -89,6 +89,7 @@ Use this when the buyer is ready to go to Portaly hosted checkout.
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up front. **Do not create or manage discount codes yourself** — the merchant issues codes in the Portaly dashboard; you only ever pass a code a buyer typed in, verbatim, to this field.
+  - `customerEmail`: optional pre-known buyer email. Informational only — the buyer-confirmed email captured inside hosted checkout is the one used to look up the buyer's `signupRefCode` and to enforce a discount code's per-customer redemption cap.
 
 Request body (fixed pricing plan):
 
@@ -109,7 +110,8 @@ Request body (fixed pricing plan):
   - `data.checkoutUrl`: URL to redirect the buyer to — treat as authoritative, never reconstruct it
   - `data.checkoutToken`: server-side token for manual completion (rare)
   - `data.expiresAt`: session expiry timestamp
-  - `data.appliedDiscount?`: present when a `discountCode` was validated and applied. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. When present, `session.amount` is the **post-discount** amount.
+  - `data.amount`: the amount the buyer will be charged — the **post-discount** total (`appliedDiscount.finalAmount`) when a discount applied, otherwise the plan's `amount`
+  - `data.appliedDiscount?`: present when a `discountCode` was validated and applied. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. When present, `data.amount` is the **post-discount** amount.
 
 ```json
 {
@@ -126,7 +128,7 @@ Request body (fixed pricing plan):
 - Integration notes:
   - current implementation contract: `subscriptionId === checkoutSessionId === sessionId`
   - for recurring subscriptions, persist `sessionId` as the subscription identifier used by cancel/resume/portal APIs
-  - `POST /checkout-sessions` is the one endpoint **not** subject to rate limiting
+  - `POST /checkout-sessions` is **not** subject to rate limiting (nor is `POST /portal-sessions`)
 
 ### Error responses
 
@@ -135,8 +137,9 @@ Every failure returns `{ "error": string }`; business-rule failures also include
 | HTTP | `code` | When | Handle as |
 | --- | --- | --- | --- |
 | 422 | `PLAN_INACTIVE` | The plan was archived by the merchant between page load and checkout. | Friendly "this plan is no longer available" message. Re-fetch `GET /plans?status=active` and re-render. Do not retry the same call. |
-| 404 | `PLAN_NOT_FOUND` | `planId` does not exist for this merchant. | Misconfiguration on your side — log it, don't show the buyer a payment error. |
+| 404 | `PLAN_NOT_FOUND` | `planId` does not exist for this merchant. | Misconfiguration (or the plan was removed) — log it. Recover like `PLAN_INACTIVE`: re-fetch `GET /plans?status=active`, re-render, and prompt the user to pick an available plan. Don't show the buyer a raw payment error; don't retry the same `planId`. |
 | 400 | `INVALID_DISCOUNT_CODE` | The buyer-entered `discountCode` is invalid (see `reason`). | "That discount code can't be applied." Let them retry without it. |
+| 400 | `PER_CUSTOMER_LIMIT_REACHED` | The buyer-entered `discountCode` has hit its per-customer redemption cap for this buyer. | "That discount code can't be applied." Let them proceed without it — don't retry the same code for the same buyer. |
 | 403 | `KEY_SCOPE_FORBIDDEN` | You called a plan/config/discount **write** endpoint with this key. | This should not happen from a correctly-scoped integration — see "Out of Scope" below. Do not retry; do not attempt a workaround. Tell the merchant to make the change in the Portaly dashboard. |
 | 401 | _(none)_ | Missing/invalid bearer token. | Server-side key problem — never surface to the buyer. |
 
@@ -148,7 +151,8 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
   - `GET /api/creator-subscription/checkout-sessions/{sessionId}`
 - Required headers:
   - `Authorization: Bearer {portaly_payment_api_key}`
-- Useful response fields: `status`, `merchantOrderNumber`, `customerEmail`, `metadata`, `expiresAt`, `completedAt`
+- Useful response fields (this endpoint returns the **nested** checkout-session object, not the flat callback payload): `status`, `merchantOrderNumber`, `amount`, `billingPeriod`, `appliedDiscount`, `customer.name`, `customer.email`, `plan.{id, name, amount, currency, status}`, `expiresAt`, `createdAt`, `updatedAt`
+- There is **no** flat `customerEmail`, no `metadata`, and no `completedAt` on this response — the buyer email is `customer.email`, and completion time is only carried by the checkout callback's `completedAt`, not by this query. Read the buyer email as `data.customer.email`.
 - Common uses: status pages, reconciliation jobs, callback retry fallback (for non-`completed` outcomes, since the checkout callback only fires on `completed`)
 
 ## Signed Callback
@@ -158,8 +162,8 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
   - base string: `{timestamp}.{stable_json(payload)}`
   - algorithm: `HMAC-SHA256`
   - secret: the key's `callbackSecret`
-- **Reject callbacks where `x-portaly-timestamp` is older than 5 minutes** (replay protection). `x-portaly-timestamp` is an ISO datetime string, not Unix seconds.
-- **Use `sessionId` (or `subscriptionId`, which currently equals `sessionId`) as an idempotency key** — skip duplicate handling if you've already processed this id.
+- **Reject callbacks where `x-portaly-timestamp` is older than 5 minutes** (replay protection), and also reject one more than ~1 minute in the **future** (clock skew / forged timestamp). `x-portaly-timestamp` is an ISO datetime string, not Unix seconds.
+- **Dedup on an event-specific key, not `sessionId` alone.** Because `subscriptionId === checkoutSessionId === sessionId` is identical across every event on a subscription, keying idempotency on it drops each later event (`payment.succeeded`, `cancel_requested`, `canceled`) as a false duplicate. Compose the key from the event type + subscription + the event's own timestamp/id — e.g. `` `${x-portaly-event}:${subscriptionId}:${x-portaly-timestamp}` `` — and skip only when that composite has already been processed.
 - Payload fields to persist: `sessionId`, `subscriptionId` (falls back to `sessionId` if absent), `mode`, `merchantOrderNumber`, `status`, `paymentReference`, `paymentMethod`, `customerEmail`, `completedAt`, `appliedDiscount?`.
 
 Payload example (`creator_subscription.checkout.completed`):
@@ -250,11 +254,12 @@ If the merchant needs a new plan, a price change, updated branding, or a new dis
 
 ## Rate Limiting
 
-All creator-subscription endpoints are rate limited **except** `POST /checkout-sessions`.
+All creator-subscription endpoints are rate limited **except** `POST /checkout-sessions` and `POST /portal-sessions` — both are unlimited.
 
 | Group | Window | Max requests | Applies to |
 |---|---|---|---|
 | read | 1 minute | 120 | GET plans, GET checkout-sessions/{id}, GET subscriptions(-/{id}), GET orders |
 | write | 1 minute | 20 | POST subscriptions/{id}/cancel, POST subscriptions/{id}/resume |
+| _(unlimited)_ | — | — | POST checkout-sessions, POST portal-sessions |
 
 Response headers on every rate-limited call: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` (Unix seconds). On `429`, use the `Retry-After` header to schedule a retry.

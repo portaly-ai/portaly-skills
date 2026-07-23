@@ -87,15 +87,15 @@ Content-Type: application/json
 ### 4. Verify and consume the signed callback
 
 - Verify `x-portaly-signature` (HMAC-SHA256, secret = `callbackSecret`) over `{x-portaly-timestamp}.{stable_json(payload)}`.
-- Reject callbacks where `x-portaly-timestamp` is older than 5 minutes (it's an ISO datetime, not Unix seconds).
-- Use `sessionId` (fallback `subscriptionId`) as the idempotency key — skip if already processed.
+- Reject callbacks whose `x-portaly-timestamp` (an ISO datetime, not Unix seconds) is more than 5 minutes **old** — and also reject one more than ~1 minute in the **future**, which signals clock skew or a replayed/forged timestamp rather than a real delivery.
+- Dedup on an **event-specific** key, not `sessionId` alone. `subscriptionId === checkoutSessionId === sessionId` is the same value for every event on a subscription, so keying on it treats `payment.succeeded`, `cancel_requested`, and `canceled` as "already processed" and silently drops them. Build the key from the event type plus the subscription plus the event's own timestamp/id — e.g. `` `${x-portaly-event}:${subscriptionId}:${x-portaly-timestamp}` `` (or a per-delivery id if the payload carries one). Skip only when that composite key has already been processed.
 - Use `scripts/sign_callback.mjs` (Node/TS), `scripts/sign_callback.py` (reference), or `scripts/sign_callback.webcrypto.mjs` (edge/WebCrypto runtimes without `node:crypto`).
 - See `references/api-contract.md` → "Signed Callback" for the event table and payload shapes.
 
 ### 5. Handle checkout errors
 
 - `422 PLAN_INACTIVE` — the plan was archived between page load and checkout. Show a friendly "no longer available" message, re-fetch `GET /plans?status=active`, and re-render. Don't retry the same call.
-- `404 PLAN_NOT_FOUND` — misconfigured `planId` on your side. Log it; don't show the buyer a payment error.
+- `404 PLAN_NOT_FOUND` — the `planId` doesn't exist for this merchant (misconfigured on your side, or the plan was removed). Log it, then recover the same way as `PLAN_INACTIVE`: re-fetch `GET /plans?status=active`, re-render the current plan list, and prompt the user to pick an available plan. Never show the buyer a raw payment error, and don't retry the same `planId`.
 - `403 KEY_SCOPE_FORBIDDEN` — you (or a library) accidentally called a plan/config/discount **write** endpoint with this key. **Do not retry. Do not attempt a workaround or use a different key you might have lying around.** Tell the user plainly: this key is for integration only — plan, pricing, and discount-code changes go through the merchant's Portaly dashboard, not through this codebase.
 - See `references/api-contract.md` → "Error responses" and "Out Of Scope For This Key" for the full table.
 
@@ -118,9 +118,9 @@ If the integration needs subscription lifecycle management, these are available 
 - **This is an integration-scope key, not a management key.** Never attempt to create/update a plan, change merchant config, create/update/delete a discount code, or upload a plan/merchant image — all return `403 KEY_SCOPE_FORBIDDEN`. If asked to do any of these, explain that plans, pricing, and discount codes are managed by the merchant in the Portaly dashboard, and stop there — don't retry, don't look for a bypass, don't ask the user for a different key.
 - **Runtime fetch only.** Plan names, prices, `listPrice`, and discount codes must never be hardcoded in source, config files, or a build-time static page. Plans can be added, repriced, or archived by the merchant at any time — always read them live via `GET /plans`.
 - `callbackUrl` must be HTTPS. Serving over plain HTTP exposes the signature and payload in transit.
-- Verify every callback's HMAC signature; reject anything older than 5 minutes; use `sessionId` as the idempotency key.
+- Verify every callback's HMAC signature; reject any timestamp more than 5 minutes old or more than ~1 minute in the future; dedup on an event-specific key (event type + `subscriptionId` + the event's timestamp/id), never on `sessionId` alone — see Workflow step 4.
 - **Windows encoding:** run `chcp 65001` (cmd) or `$OutputEncoding = [System.Text.Encoding]::UTF8` (PowerShell) before rendering non-ASCII plan names/descriptions, so they don't come out garbled.
-- **Rate limiting:** read endpoints (plans, sessions, subscriptions, orders) allow 120 req/min; `POST /checkout-sessions` is not rate limited; subscription cancel/resume allow 20 req/min. On `429`, honor `Retry-After`.
+- **Rate limiting:** read endpoints (plans, sessions, subscriptions, orders) allow 120 req/min; `POST /checkout-sessions` and `POST /portal-sessions` are not rate limited; subscription cancel/resume allow 20 req/min. On `429`, honor `Retry-After`.
 - Do not derive subscription state from redirect success pages alone — they're UX only. The signed callback or a status query is the source of truth.
 
 ## Resources

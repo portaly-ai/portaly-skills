@@ -540,13 +540,19 @@ Use this when the human user needs reconciliation or a status page.
   - `GET /api/creator-subscription/checkout-sessions/{sessionId}`
 - Required headers:
   - `Authorization: Bearer {portaly_payment_api_key}`
-- Useful response fields:
+- Useful response fields (this endpoint returns the **nested** checkout-session object, not the flat callback payload):
   - `status`
   - `merchantOrderNumber`
-  - `customerEmail`
-  - `metadata`
+  - `amount`
+  - `billingPeriod`
+  - `appliedDiscount`
+  - `customer.name`
+  - `customer.email`
+  - `plan.{id, name, amount, currency, status}`
   - `expiresAt`
-  - `completedAt`
+  - `createdAt`
+  - `updatedAt`
+- There is **no** flat `customerEmail`, no `metadata`, and no `completedAt` on this response — read the buyer email as `data.customer.email`. Completion time is carried only by the checkout callback's `completedAt`, not by this query.
 - Common uses:
   - merchant status pages
   - reconciliation jobs
