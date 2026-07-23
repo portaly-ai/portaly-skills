@@ -813,8 +813,10 @@ app.post("/api/portaly/callback", async (req, res) => {
   if (!event || !signature || !Number.isFinite(timestampMs)) {
     return res.status(400).json({ error: "missing callback headers" });
   }
+  // Allow up to five minutes of clock skew in either direction so ordinary NTP
+  // drift between the sender and receiver does not reject legitimate callbacks.
   const ageMs = Date.now() - timestampMs;
-  if (ageMs < 0 || ageMs > 5 * 60 * 1000) {
+  if (Math.abs(ageMs) > 5 * 60 * 1000) {
     return res.status(401).json({ error: "stale callback" });
   }
 
@@ -849,6 +851,8 @@ app.post("/api/portaly/callback", async (req, res) => {
     status,
     paymentReference,
   };
+  // `reconcileVerifiedCallback` is a placeholder for your own persistence step:
+  // apply the event-specific idempotency key, then perform the state transition.
   await reconcileVerifiedCallback(event, callbackIdentity);
 
   return res.status(200).json({ ok: true });

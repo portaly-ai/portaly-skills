@@ -67,9 +67,10 @@ runtime. A future raw-byte/versioned contract is a separate production change.
 
 1. Require `x-portaly-event`, `x-portaly-timestamp`, and
    `x-portaly-signature`.
-2. Parse the ISO timestamp and apply the documented five-minute maximum age.
-   A future-clock-skew tolerance is not defined by the current contract, so
-   reject future timestamps rather than inventing one silently.
+2. Parse the ISO timestamp and reject it when it is more than five minutes from
+   now in either direction. The symmetric window tolerates ordinary NTP clock
+   skew between sender and receiver; a strict "reject any future timestamp" rule
+   would instead make legitimate callbacks fail intermittently with a 401.
 3. Recompute v1 from the parsed JSON payload and timing-safe compare the
    signature. Reject before any business side effect.
 4. Require the authenticated body `event` to equal `x-portaly-event`.

@@ -1,5 +1,9 @@
 ---
 name: portaly-product
+# Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
+# regex is anchored to the start of a line, so it cannot read the indented
+# metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
+version: 0.4.0
 metadata:
   version: "0.4.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
@@ -184,7 +188,7 @@ Persist:
 - `merchantOrderNumber`
 - `metadata`
 
-**Reject callbacks where `x-portaly-timestamp` is older than 5 minutes or in the future; the current contract defines no future-clock tolerance.** Use `event + sessionId` for checkout idempotency and `event + orderId` for refund idempotency; do not use one shared session-only key for every event type.
+**Reject callbacks where `x-portaly-timestamp` is more than 5 minutes from now in either direction; the symmetric window tolerates ordinary clock skew, whereas rejecting any future timestamp would make legitimate callbacks fail intermittently.** Use `event + sessionId` for checkout idempotency and `event + orderId` for refund idempotency; do not use one shared session-only key for every event type.
 
 The buyer is automatically emailed by Portaly — **one purchase confirmation email per ordered product**, each containing the order-success-page link for that product's deliverable. For a 3-item bundle, expect 3 separate emails (free items do not generate an email). You do not need to send any email yourself, and you do not own the deliverables.
 
@@ -219,9 +223,9 @@ When implementing for the user, return:
 - **Never echo secrets in chat.** Have the user place `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` in `.env` themselves.
 - **Always verify `.gitignore` includes `.env`** before suggesting any commit.
 - **Always verify webhook signatures** before acting on a webhook payload. Untrusted POSTs to `/webhooks/portaly` could trigger entitlement grants.
-- **Always check `x-portaly-timestamp` freshness** (reject if older than 5 minutes or in the future; the current contract defines no future-clock tolerance).
+- **Always check `x-portaly-timestamp` freshness** (reject if more than 5 minutes from now in either direction; the symmetric window tolerates ordinary clock skew).
 - **Always serve `callbackUrl` over HTTPS.**
-- **Use `sessionId` and `orderId` as idempotency keys** when processing webhooks — they can be re-delivered.
+- **Use `event + sessionId` (checkout) and `event + orderId` (refund) as idempotency keys** when processing webhooks — they can be re-delivered. Do not share one session-only key across every event type.
 - **Don't trust the buyer-side `successRedirectUrl` as proof of payment.** Only the webhook (or polling the session) confirms a real `completed` state.
 - **Do not put secrets in `metadata`.** Echoed back in webhooks and logs.
 - **Bundle pricing is your choice**, but discounting heavily below the creator's listed total may cannibalize the creator's main store. Discuss with the creator before going live.

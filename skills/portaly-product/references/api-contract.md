@@ -353,7 +353,7 @@ signature = HMAC_SHA256(
 Inspect the repository's language, framework, and runtime before choosing an adapter. Node, server-side WebCrypto, Python, and Go implementations plus production-derived vectors are documented in `callback-signature-v1.md`. V1 signs `stableJson(JSON.parse(wireBody))`, not the raw body. Do not hand-roll code-point sorting: built-in mixed-case callback keys can diverge from the production `localeCompare` contract. Python and Go deliberately fail closed outside their proven key/number domain; other runtimes must pass the same vectors or use an explicit server-side Node bridge.
 
 **Verification rules** (your responsibility):
-1. Verify `x-portaly-timestamp` is valid, not older than 5 minutes, and not in the future (the current contract defines no future-clock tolerance).
+1. Verify `x-portaly-timestamp` is valid and within 5 minutes of now in either direction (the symmetric window tolerates ordinary clock skew between sender and receiver).
 2. Recompute signature with your `callbackSecret` and timing-safe-compare to `x-portaly-signature`.
 3. Require the authenticated body `event` to equal `x-portaly-event`.
 4. Treat `event + sessionId` (for `checkout.completed`) and `event + orderId` (for `order.refunded`) as idempotency keys.

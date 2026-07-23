@@ -1,5 +1,9 @@
 ---
 name: portaly-payment
+# Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
+# regex is anchored to the start of a line, so it cannot read the indented
+# metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
+version: 0.6.0
 metadata:
   version: "0.6.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
@@ -211,7 +215,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 
 - Inspect the repository's language, framework, server/edge runtime, body parser, and existing verifier before generating code. Load `references/callback-signature-v1.md` and choose the matching Node, WebCrypto, Python, or Go adapter.
 - Run `scripts/check_callback_vectors.mjs` for that runtime before shipping. Passing self-generated signatures is not enough; the expected values come from a committed Portaly production signer.
-- Require all three callback headers. Use the exact ISO string from `x-portaly-timestamp`; reject it when invalid, older than five minutes, or in the future because the current contract defines no future-clock tolerance.
+- Require all three callback headers. Use the exact ISO string from `x-portaly-timestamp`; reject it when invalid or more than five minutes from now in either direction. The symmetric window tolerates ordinary clock skew — a strict "reject any future timestamp" rule would make legitimate callbacks fail intermittently.
 - Verify `x-portaly-signature` with the API key's `callbackSecret`, then require the authenticated body `event` to equal `x-portaly-event`.
 - V1 signs `stableJson(JSON.parse(wireBody))`, not the raw HTTP body. Never substitute code-point key sorting for JavaScript `localeCompare` semantics.
 - After verification, persist the minimum audit fields allowed by the application's data policy: `sessionId`, `subscriptionId` if present, `merchantOrderNumber`, payment identity, event, and status. Do not log the secret or full signing base.
