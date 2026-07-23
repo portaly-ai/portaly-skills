@@ -34,7 +34,7 @@ To work unmodified, a fork's backend must be wire-compatible with the Portaly RE
   - Payment: `/api/creator-subscription/{config,plans,checkout-sessions,subscriptions,orders,portal-sessions,discount-codes,...}`
   - Email templates (toggled from the payment flow): `/api/creator-email/templates/{name}`
   - Digital products: `/api/digital-products/{,{productId},checkout-sessions,orders}`
-- **Callback signatures**: HMAC-SHA256 of `${timestamp}.${stableJson(payload)}` using the merchant's `callbackSecret`. See `skills/portaly-payment/scripts/sign_callback.mjs` for the canonical implementation.
+- **Callback signatures**: HMAC-SHA256 of `${timestamp}.${stableJson(JSON.parse(wireBody))}` using the merchant's `callbackSecret`. The committed production-derived vectors and runtime routing live in `skills/portaly-payment/references/callback-signature-v1.md`; a backend must pass those vectors rather than translating the Node implementation by inspection.
 - **Response shapes**: The skills assume `{ data: ... }`-wrapped responses. See `skills/portaly-payment/references/api-contract.md` and `skills/portaly-product/references/api-contract.md` for the full contract.
 
 If your backend diverges from any of the above, `PORTALY_API_HOST` alone won't be enough — you'll need to fork the skills.
@@ -49,7 +49,7 @@ PORTALY_API_KEY=...        # the same auth token used by the default backend
 PORTALY_CALLBACK_SECRET=... # for verifying inbound payment callbacks
 ```
 
-The bundled scripts (`skills/*/scripts/sign_callback.{mjs,py}`) are host-agnostic — they only verify HMAC signatures and never call the API, so they don't reference the host at all.
+The bundled callback adapters (`.mjs`, `.py`, `.go`) and conformance runner are host-agnostic — they only verify HMAC signatures and never call the API, so they don't reference the host at all.
 
 When generating code that does call the API, the agent should read the host from this var:
 

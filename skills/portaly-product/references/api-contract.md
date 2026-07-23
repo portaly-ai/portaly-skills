@@ -174,7 +174,7 @@ Field rules:
 - `successRedirectUrl` / `cancelRedirectUrl`: optional. Used after the hosted checkout page completes / cancels.
 - `callbackUrl`: optional. Where Portaly sends signed webhooks for this session and its resulting orders. If omitted, you must poll the `GET /api/digital-products/checkout-sessions/{sessionId}` endpoint.
 - `merchantOrderNumber`: your internal reference. Echoed back in webhooks. Max 50 chars.
-- `metadata`: free-form string keys, max 20 keys, each value <= 500 chars. Echoed back. Do not put secrets here.
+- `metadata`: free-form string keys, max 20 keys, each value <= 500 chars. Echoed back. Do not put secrets here. **Because it is echoed into the signed callback body, keys outside the committed callback schema are only verifiable by the Node/WebCrypto adapters — the Python/Go v1 adapters fail closed on them.**
 
 **Response 200**:
 ```json
@@ -350,13 +350,14 @@ signature = HMAC_SHA256(
 )
 ```
 
-`stableJson` sorts object keys recursively and drops `undefined`. See `scripts/sign_callback.mjs` (Node.js). On an edge / WebCrypto runtime that can't import `node:crypto` (Cloudflare/Vercel Edge, Deno, or an InsForge edge function), use `scripts/sign_callback.webcrypto.mjs` instead — same scheme, byte-identical `stableJson`, verifies via the global `crypto.subtle`. The Node/edge scripts sort keys with `localeCompare` (matching the signing server); `scripts/sign_callback.py` sorts by Unicode code point, so for **mixed-case or non-ASCII object keys** it can diverge — keep merchant-supplied `metadata` keys lowercase ASCII, or use the JS scripts for those payloads.
+Inspect the repository's language, framework, and runtime before choosing an adapter. Node, server-side WebCrypto, Python, and Go implementations plus production-derived vectors are documented in `callback-signature-v1.md`. V1 signs `stableJson(JSON.parse(wireBody))`, not the raw body. Do not hand-roll code-point sorting: built-in mixed-case callback keys can diverge from the production `localeCompare` contract. Python and Go deliberately fail closed outside their proven key/number domain; other runtimes must pass the same vectors or use an explicit server-side Node bridge.
 
 **Verification rules** (your responsibility):
-1. Verify `x-portaly-timestamp` is not older than 5 minutes (prevents replay).
+1. Verify `x-portaly-timestamp` is valid and within 5 minutes of now in either direction (the symmetric window tolerates ordinary clock skew between sender and receiver).
 2. Recompute signature with your `callbackSecret` and timing-safe-compare to `x-portaly-signature`.
-3. Treat `sessionId` (for `checkout.completed`) and `orderId` (for `order.refunded`) as idempotency keys.
-4. Always serve `callbackUrl` over HTTPS.
+3. Require the authenticated body `event` to equal `x-portaly-event`.
+4. Treat `event + sessionId` (for `checkout.completed`) and `event + orderId` (for `order.refunded`) as idempotency keys.
+5. Always serve `callbackUrl` over HTTPS.
 
 ---
 

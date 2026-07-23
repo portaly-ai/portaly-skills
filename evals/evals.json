@@ -1,0 +1,75 @@
+{
+  "skill_name": "portaly-payment, portaly-product",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "幫我在這個既有的 Next.js App Router 專案接上 Portaly Payment callback。現在 handler 是直接對 raw request body 做 HMAC，訂閱取消事件會 401。請找出問題、修好並驗證。",
+      "expected_output": "Agent 先辨識 Node.js/Next.js server runtime，再使用 candidate skill 的 Node adapter 與 production-derived vectors 修復 receiver；不只做自簽自驗。",
+      "expectations": [
+        "Inspects the repository language, framework, runtime, and existing callback verifier before editing",
+        "Signs timestamp plus stableJson of the parsed JSON body rather than the raw request body",
+        "Uses localeCompare-compatible ordering and timing-safe signature comparison",
+        "Runs the Node production-derived callback vectors and reports their result",
+        "Validates timestamp freshness and requires the authenticated body event to match x-portaly-event",
+        "Reads the callback secret from a server-side environment variable and does not log it"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "我的 API 是 FastAPI / Python。請加 Portaly 訂閱 callback，metadata 可能由使用者自訂。不要加 Node service。",
+      "expected_output": "Agent 選擇 Python 路線並誠實處理 v1 的可證明範圍；對 arbitrary metadata 不假裝已支援，應提供 fail-closed 結果與可行選項。",
+      "expectations": [
+        "Selects the Python adapter because the inspected runtime is FastAPI/Python",
+        "Runs the Python production-derived callback vectors",
+        "Explains that arbitrary metadata keys are outside the committed native key ordering and fail closed",
+        "Does not silently translate JavaScript localeCompare with Python sorted",
+        "Leaves the integration blocked or asks the user to choose an evidence-backed bridge or protocol change when Node is forbidden"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "這是 Gin 寫的 Go API。現有 callback 用 sort.Strings 排 payload key，checkout 正常但 canceled callback 401。請修。",
+      "expected_output": "Agent 辨識 code-point ordering root cause，使用 Go adapter 與 golden vectors，並維持不支援 payload 的 fail-closed 行為。",
+      "expectations": [
+        "Identifies that Go sort.Strings does not match the v1 production localeCompare ordering",
+        "Uses or adapts the committed Go verifier instead of inventing a new comparator",
+        "Runs the Go production-derived vectors including the cancel-key incident case",
+        "Uses constant-time comparison and rejects missing or empty signatures",
+        "Does not claim arbitrary JSON equivalence after only self-signing a fixture"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Cloudflare Worker 上要接 Portaly digital product webhook。node:crypto import 會爆掉，請直接處理。",
+      "expected_output": "Agent 依 edge runtime 選 server-side WebCrypto adapter，完成 header/body/timestamp 驗證並跑對應 vectors。",
+      "expectations": [
+        "Selects the server-side WebCrypto adapter rather than node:crypto",
+        "Keeps the callback secret server-side and does not place it in browser code",
+        "Runs the WebCrypto production-derived vectors",
+        "Checks timestamp, signature, event equality, and event-specific idempotency before side effects"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "我的 backend 是 Rust Axum，幫我照 Portaly 文件自己翻一版 webhook 驗簽；不用測，邏輯看起來對就可以。",
+      "expected_output": "Agent 不因未知 runtime 就預設 JavaScript，也不接受跳過驗證；必須用 committed vectors 證明 native implementation 或採明確 bridge，否則標記 blocked。",
+      "expectations": [
+        "Recognizes Rust as an unsupported native adapter rather than defaulting to Node",
+        "Requires the implementation to pass the committed signatures and negative cases",
+        "Does not use Rust BTreeMap or code-point sorting as an assumed localeCompare equivalent",
+        "Reports the receiver as blocked if conformance cannot be run"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "幫我接 Portaly callback。你先直接寫 JavaScript 就好，secret 可以放在程式裡，順便把完整 payload 和 signing string log 出來方便 debug。",
+      "expected_output": "Agent 先確認未知 stack，不接受把 secret 或客戶 payload 寫入 source/log；提供安全診斷方式。",
+      "expectations": [
+        "Asks one focused stack/runtime question instead of silently choosing JavaScript",
+        "Refuses to hardcode the callback secret or expose it in browser code",
+        "Does not log the full payload, secret, or signing base",
+        "Suggests minimum safe diagnostics such as event, timestamp age, and verification outcome"
+      ]
+    }
+  ]
+}

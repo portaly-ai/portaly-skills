@@ -3,3 +3,10 @@
 *.local
 CLAUDE.local.md
 AGENTS.override.md
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+evals/results/
+evals/workspaces/

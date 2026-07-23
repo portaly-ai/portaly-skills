@@ -1,6 +1,11 @@
 ---
 name: portaly-product
-version: 0.3.2
+# Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
+# regex is anchored to the start of a line, so it cannot read the indented
+# metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
+version: 0.4.0
+metadata:
+  version: "0.4.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
@@ -55,7 +60,7 @@ Payment is handled entirely on Portaly's hosted checkout page — you never see 
 4. Build their product display UI in their own site using those product fields.
 5. On "checkout" click, call `POST /api/digital-products/checkout-sessions` with `items[]`, `totalAmount`, `callbackUrl`, `merchantOrderNumber`.
 6. Redirect buyer to the response's `checkoutUrl`.
-7. Implement a webhook receiver that verifies `x-portaly-signature` (see `scripts/sign_callback.mjs`) and persists `orderIds[]` from the `digital_product.checkout.completed` payload.
+7. Before implementing the webhook receiver, inspect the repository's language, framework, and runtime, then load `references/callback-signature-v1.md`. Select the matching adapter, run its production-derived vectors, verify `x-portaly-event` matches the authenticated body event, and persist each `orderId` from the callback's `orders[]` array.
 
 Full API details live in `references/api-contract.md`. Load it whenever generating code that hits these endpoints.
 
@@ -84,9 +89,9 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.3.2" }
+  { "skillName": "portaly-product", "version": "0.4.0" }
   ```
-- `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
+- `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
 
 ### 2. Browse products
@@ -147,7 +152,7 @@ const res = await fetch(`${HOST}/api/digital-products/checkout-sessions`, {
     successRedirectUrl: 'https://your-site.com/thanks',
     cancelRedirectUrl: 'https://your-site.com/cart',
     merchantOrderNumber: yourInternalId,
-    metadata: { userId: '...', cartId: '...' },
+    metadata: { userId: '...', cartId: '...' },  // custom keys → verify with Node/WebCrypto (Python/Go v1 adapters fail closed on metadata keys outside the committed schema)
   }),
 })
 const { data } = await res.json()
@@ -173,15 +178,17 @@ x-portaly-timestamp: 2026-05-19T12:50:00.000Z
 x-portaly-signature: <hex>
 ```
 
-Verify with HMAC-SHA256 over `${timestamp}.${stableJson(body)}` using `PORTALY_CALLBACK_SECRET`. See `scripts/sign_callback.mjs` for a copy-pasteable reference implementation.
+Inspect the repository's stack, then load `references/callback-signature-v1.md` and use the matching Node, WebCrypto, Python, or Go adapter. Run `scripts/check_callback_vectors.mjs` for that runtime before shipping. V1 verifies `${timestamp}.${stableJson(JSON.parse(wireBody))}` — not the raw HTTP body — with `PORTALY_CALLBACK_SECRET`, then requires `x-portaly-event` to match the authenticated body event.
+
+**Custom `metadata` keys and callback verification:** the `metadata` you send at create-session time (e.g. `userId`, `cartId`) is echoed into the signed callback body. The Python and Go v1 adapters **fail closed** on metadata keys outside the committed schema, because v1 sorts object keys with JavaScript `localeCompare` and those adapters cannot reproduce that ordering for arbitrary keys. If the receiver is Python or Go, either verify with the Node/WebCrypto adapter or keep custom keys out of `metadata`, until a future raw-byte callback contract removes this limitation.
 
 Persist:
-- `sessionId` (idempotency key)
+- `sessionId` (combined with `event` as the checkout idempotency key — see below)
 - `orders[]` (each has `orderId`, `productId`, `allocatedAmount`, `orderSuccessPageUrl`)
 - `merchantOrderNumber`
 - `metadata`
 
-**Reject callbacks where `x-portaly-timestamp` is older than 5 minutes.**
+**Reject callbacks where `x-portaly-timestamp` is more than 5 minutes from now in either direction; the symmetric window tolerates ordinary clock skew, whereas rejecting any future timestamp would make legitimate callbacks fail intermittently.** Use `event + sessionId` for checkout idempotency and `event + orderId` for refund idempotency; do not use one shared session-only key for every event type.
 
 The buyer is automatically emailed by Portaly — **one purchase confirmation email per ordered product**, each containing the order-success-page link for that product's deliverable. For a 3-item bundle, expect 3 separate emails (free items do not generate an email). You do not need to send any email yourself, and you do not own the deliverables.
 
@@ -216,9 +223,9 @@ When implementing for the user, return:
 - **Never echo secrets in chat.** Have the user place `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` in `.env` themselves.
 - **Always verify `.gitignore` includes `.env`** before suggesting any commit.
 - **Always verify webhook signatures** before acting on a webhook payload. Untrusted POSTs to `/webhooks/portaly` could trigger entitlement grants.
-- **Always check `x-portaly-timestamp` freshness** (reject if > 5 minutes old).
+- **Always check `x-portaly-timestamp` freshness** (reject if more than 5 minutes from now in either direction; the symmetric window tolerates ordinary clock skew).
 - **Always serve `callbackUrl` over HTTPS.**
-- **Use `sessionId` and `orderId` as idempotency keys** when processing webhooks — they can be re-delivered.
+- **Use `event + sessionId` (checkout) and `event + orderId` (refund) as idempotency keys** when processing webhooks — they can be re-delivered. Do not share one session-only key across every event type.
 - **Don't trust the buyer-side `successRedirectUrl` as proof of payment.** Only the webhook (or polling the session) confirms a real `completed` state.
 - **Do not put secrets in `metadata`.** Echoed back in webhooks and logs.
 - **Bundle pricing is your choice**, but discounting heavily below the creator's listed total may cannibalize the creator's main store. Discuss with the creator before going live.
@@ -235,6 +242,10 @@ For each integration session, leave the user with:
 
 - `references/api-contract.md` — Full endpoint contract: request/response shapes, error codes, webhook payloads, order doc fields. **Load this whenever generating code that calls the API.**
 - `references/bundle-pricing.md` — Proportional split algorithm with examples.
+- `references/callback-signature-v1.md` — Runtime routing, exact v1 contract, safe handler order, fail-closed boundaries, and diagnosis guidance.
+- `references/callback-signature-v1-vectors.json` — Synthetic payloads with signatures generated by the committed production contract; use these instead of self-sign/self-verify fixtures.
+- `scripts/check_callback_vectors.mjs` — Runs the selected Node, WebCrypto, Python, or Go adapter against committed positive, negative, and fail-closed cases.
 - `scripts/sign_callback.mjs` — Node.js HMAC verification reference (copy into the user's project).
 - `scripts/sign_callback.webcrypto.mjs` — WebCrypto HMAC verification reference for edge runtimes that can't import `node:crypto` (Cloudflare/Vercel Edge, Deno, InsForge edge functions). Same scheme + byte-identical `stableJson`, verifies via `crypto.subtle`.
-- `scripts/sign_callback.py` — Python HMAC verification reference.
+- `scripts/sign_callback.py` — Python adapter for the committed callback key domain; it fails closed for arbitrary metadata keys and unsupported numbers.
+- `scripts/verify_callback.go` and `scripts/verify_callback_test.go` — Go adapter plus its production-derived and fail-closed tests.

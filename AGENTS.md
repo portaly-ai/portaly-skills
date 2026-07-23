@@ -6,7 +6,7 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 A collection of skills for AI coding agents to help Portaly creators integrate payment and digital products services. Skills are packaged instructions, reference docs, and example scripts that extend an agent's capabilities.
 
-**This is not an application project** — no build system, no npm dependencies, no tests. Content is documentation-driven skill definitions, reference materials, and copy-ready example code.
+**This is not an application project** — there is no application build or npm dependency tree. Content is documentation-driven skill definitions, reference materials, copy-ready adapters, and a dependency-free conformance/eval harness.
 
 ## Directory Structure
 
@@ -17,11 +17,13 @@ skills/
   portaly-payment/            # Portaly Payment integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, checkout and renewal docs
-    scripts/                  # Callback verification examples (.mjs, .py)
+    scripts/                  # Callback adapters + production-derived conformance checks
   portaly-product/            # Portaly digital products integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, bundle pricing algorithm
-    scripts/                  # Callback verification examples (.mjs, .py)
+    scripts/                  # Callback adapters + production-derived conformance checks
+evals/                        # Cross-skill contract runner and fresh-agent prompt corpus
+.github/workflows/            # Deterministic skill eval gate
 ```
 
 ## Skill Architecture
@@ -30,7 +32,9 @@ Each skill follows the same structure:
 
 1. **SKILL.md** — Core skill definition with YAML frontmatter (name, description, triggers), workflow steps, guardrails, and output preferences
 2. **references/** — Detailed technical docs (API contracts, setup guides, event definitions)
-3. **scripts/** — Copy-ready reference implementations (`.mjs`, `.py`)
+3. **scripts/** — Copy-ready reference implementations (`.mjs`, `.py`, `.go`) plus local conformance checks
+
+Repository-level `evals/` verifies that both independently installable skills keep byte-identical callback artifacts and provides behavior prompts without shipping answer-bearing eval content inside either skill package.
 
 SKILL.md is the entry point when an agent loads a skill. References are loaded on-demand — do not read all of them upfront.
 

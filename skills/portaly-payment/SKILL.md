@@ -1,6 +1,11 @@
 ---
 name: portaly-payment
-version: 0.5.5
+# Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
+# regex is anchored to the start of a line, so it cannot read the indented
+# metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
+version: 0.6.0
+metadata:
+  version: "0.6.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -70,10 +75,12 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
    5. if the integration needs subscriber self-service (letting subscribers manage their own subscriptions), wire the portal session API
 3. Start with `references/api-contract.md`.
    Use it for endpoint lists, auth, request bodies, response bodies, and callback headers.
-4. Load `references/checkout-and-renewal.md` only when needed.
+4. Before generating or repairing a callback receiver, inspect the repository's language, framework, and runtime, then load `references/callback-signature-v1.md`.
+   Select the matching bundled adapter and run its production-derived vectors. For an unlisted runtime, use the documented server-side bridge or keep the integration blocked until a native implementation passes the vectors; never translate the Node signer from memory.
+5. Load `references/checkout-and-renewal.md` only when needed.
    Use it only as supplemental reference when the human user asks about post-checkout charging, renewal, payout, invoice, or bridge-order behavior.
-5. Return implementation-ready output.
-   Prefer numbered steps, API endpoint lists, request and response bullets, and Node.js or TypeScript examples.
+6. Return implementation-ready output.
+   Prefer numbered steps, API endpoint lists, request and response bullets, and examples that match the repository's existing stack.
 
 ## Output Style
 
@@ -88,7 +95,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
   - request fields
   - response fields
   - callback verification steps
-- Prefer concise code samples in JavaScript or TypeScript when the user does not ask for another stack.
+- For general API examples, prefer concise JavaScript or TypeScript when no stack is available. For callback verification, inspect or ask for the stack first and follow `references/callback-signature-v1.md`; do not default to JavaScript silently.
 - Keep Portaly-owned behavior and third-party-owned behavior clearly separated.
 
 ## Workflow
@@ -133,9 +140,9 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.5.5" }
+  { "skillName": "portaly-payment", "version": "0.6.0" }
   ```
-- `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
+- `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
 
 ### 2. Configure merchant settings
@@ -181,6 +188,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - Create a checkout session before the buyer initiates payment.
 - Call `POST /api/creator-subscription/checkout-sessions` with `Authorization: Bearer {api_key}`.
 - Send `planId` and optional `successRedirectUrl`, `cancelRedirectUrl`, `callbackUrl`, `subscriptionCallbackUrl`, `merchantOrderNumber`, and string-keyed `metadata`.
+  - **Custom `metadata` keys are echoed into the signed callback body. Only the Node and WebCrypto adapters can verify callbacks carrying metadata keys outside the committed schema; the Python and Go v1 adapters fail closed on them (v1 sorts keys with JavaScript `localeCompare`, which those adapters cannot reproduce for arbitrary keys). Use a Node/WebCrypto receiver, or omit custom metadata, until a future raw-byte callback contract removes this limitation.**
 - `callbackUrl` receives the `checkout.completed` callback and — unless `subscriptionCallbackUrl` is set — also the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle callbacks. Set `subscriptionCallbackUrl` to route renewal/lifecycle events to a dedicated endpoint instead.
 - **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`. When omitted, Portaly attempts to auto-apply a discount via the buyer's `signupRefCode` after their email is verified inside hosted checkout (no extra call needed from the merchant).
 - Persist `sessionId`, `checkoutToken`, `checkoutUrl`, and `expiresAt` on the third-party side.
@@ -205,14 +213,14 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 
 ### 7. Verify and persist
 
-- Verify `x-portaly-signature` with the API key's `callbackSecret`.
-- Use the exact timestamp from `x-portaly-timestamp`.
-- **Reject callbacks where `x-portaly-timestamp` is older than 5 minutes** to prevent replay attacks. Note: `x-portaly-timestamp` is an ISO datetime string, not Unix seconds.
-- Serialize the callback payload with stable key ordering before HMAC.
-- Reference implementations live in `scripts/sign_callback.py` and `scripts/sign_callback.mjs`.
-- After verification, persist `sessionId`, `subscriptionId` if present, `merchantOrderNumber`, `paymentReference`, `paymentMethod`, `status`, and the raw callback body for auditing.
+- Inspect the repository's language, framework, server/edge runtime, body parser, and existing verifier before generating code. Load `references/callback-signature-v1.md` and choose the matching Node, WebCrypto, Python, or Go adapter.
+- Run `scripts/check_callback_vectors.mjs` for that runtime before shipping. Passing self-generated signatures is not enough; the expected values come from a committed Portaly production signer.
+- Require all three callback headers. Use the exact ISO string from `x-portaly-timestamp`; reject it when invalid or more than five minutes from now in either direction. The symmetric window tolerates ordinary clock skew — a strict "reject any future timestamp" rule would make legitimate callbacks fail intermittently.
+- Verify `x-portaly-signature` with the API key's `callbackSecret`, then require the authenticated body `event` to equal `x-portaly-event`.
+- V1 signs `stableJson(JSON.parse(wireBody))`, not the raw HTTP body. Never substitute code-point key sorting for JavaScript `localeCompare` semantics.
+- After verification, persist the minimum audit fields allowed by the application's data policy: `sessionId`, `subscriptionId` if present, `merchantOrderNumber`, payment identity, event, and status. Do not log the secret or full signing base.
 - If the callback payload does not include `subscriptionId`, persist `sessionId` as the recurring subscription identifier because the current implementation uses `sessionId` as `subscriptionId`.
-- **Use `sessionId` as an idempotency key** — if a callback with the same `sessionId` has already been processed, skip duplicate handling to avoid double fulfillment.
+- Use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`. Do not permanently deduplicate all lifecycle events by `sessionId`/`subscriptionId`; the current lifecycle payload has no documented delivery identifier, so keep state assignments idempotent and flag stronger deduplication requirements as a product-contract gap.
 - **`callbackUrl` must use HTTPS.** Serving over plain HTTP exposes the `callbackSecret` signature and payload in transit.
 
 ### 8. Manage recurring subscriptions
@@ -329,9 +337,17 @@ When using this skill, aim to return one or more of:
   Use only as optional background for the high-level checkout lifecycle and renewal behavior.
 - `references/discount-code-examples.md`
   Example prompts, parameter cheatsheet, and ref-code usage for the Discount Code APIs.
+- `references/callback-signature-v1.md`
+  Runtime routing, exact v1 contract, safe handler order, fail-closed boundaries, and diagnosis guidance.
+- `references/callback-signature-v1-vectors.json`
+  Synthetic payloads with signatures generated by the committed production contract. Use these instead of self-sign/self-verify fixtures.
+- `scripts/check_callback_vectors.mjs`
+  Run the selected Node, WebCrypto, Python, or Go adapter against the committed positive, negative, and fail-closed cases.
 - `scripts/sign_callback.py`
-  Use when you need a deterministic example of Portaly callback signing and verification.
+  Python adapter for the committed callback key domain; it fails closed for arbitrary metadata keys and unsupported numbers.
 - `scripts/sign_callback.mjs`
   Prefer this for Node.js, JavaScript, TypeScript, Express, or Next.js integrations.
 - `scripts/sign_callback.webcrypto.mjs`
   Use on edge / WebCrypto runtimes that can't import `node:crypto` (Cloudflare/Vercel Edge, Deno, InsForge edge functions). Same scheme + byte-identical `stableJson`; verifies via the global `crypto.subtle`.
+- `scripts/verify_callback.go` and `scripts/verify_callback_test.go`
+  Go adapter plus its production-derived and fail-closed tests.

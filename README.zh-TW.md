@@ -68,7 +68,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 託管結帳 session 流程
 - 固定價格方案（`monthly` / `yearly` 訂閱）與**動態定價方案（dynamic plan）**：適用於單次購買、贊助，或任何金額需要由買家或系統動態決定的場景；實際金額於每次建立結帳 session 時傳入。年費方案採 12 個月遞延性撥款：買家一次付清、創作者每月收到 1/12 淨收入，第 1 期釋出後該訂單即無法退款。
 - 優惠碼（Discount Code）— 支援定額／折扣百分比／免費，可重複 N 期或永久，亦可作為註冊推薦碼於結帳時自動套用
-- HMAC-SHA256 callback 簽章驗證
+- 依 Node.js、server-side WebCrypto、Python、Go runtime 選路的 HMAC-SHA256 callback 驗證，並附 production-derived conformance vectors
 - 訂閱生命週期管理（取消 / 恢復）
 - 訂閱者自助入口（Self-Service Portal）
 
@@ -119,7 +119,7 @@ PORTALY_API_HOST=https://your-backend.example.com
 
 ## 版本回報（Telemetry）
 
-當環境中已有 Portaly Payment API 金鑰時，每個 skill 會送出一次性、非阻塞的版本回報至 `POST https://portaly.ai/api/creator-subscription/skill-version`。請求內容僅包含 skill 名稱與版本（例如 `{ "skillName": "portaly-payment", "version": "0.5.5" }`）——不含任何專案內容或使用者資料——用途是讓你的 Portaly Dashboard 能偵測已安裝的 skill 是否過期。Agent 會在第一次執行時告知使用者。若要關閉，移除該 skill `SKILL.md` 中的「Report the installed skill version」步驟即可。
+當環境中已有 Portaly Payment API 金鑰時，每個 skill 會送出一次性、非阻塞的版本回報至 `POST https://portaly.ai/api/creator-subscription/skill-version`。請求內容僅包含 skill 名稱與版本（例如 `{ "skillName": "portaly-payment", "version": "0.6.0" }`）——不含任何專案內容或使用者資料——用途是讓你的 Portaly Dashboard 能偵測已安裝的 skill 是否過期。Agent 會在第一次執行時告知使用者。若要關閉，移除該 skill `SKILL.md` 中的「Report the installed skill version」步驟即可。
 
 ## 從舊 Repo 遷移
 

@@ -397,7 +397,7 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `callbackUrl`: optional merchant callback endpoint. Receives `creator_subscription.checkout.completed`, and — unless `subscriptionCallbackUrl` is set — the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle (`active` / `cancel_requested` / `canceled`) callbacks too.
   - `subscriptionCallbackUrl`: optional. When set, recurring renewal and lifecycle callbacks are delivered here instead of `callbackUrl` (the checkout-completion callback still goes to `callbackUrl`). Falls back to `callbackUrl` when empty.
   - `merchantOrderNumber`: optional merchant-side order id
-  - `metadata`: optional string-keyed extra context
+  - `metadata`: optional string-keyed extra context. **Echoed into the signed callback body; keys outside the committed callback schema are only verifiable by the Node/WebCrypto adapters (the Python/Go v1 adapters fail closed on them).**
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied later via the buyer's `signupRefCode` once their email is verified inside hosted checkout.
   - `customerEmail`: optional pre-known buyer email. Currently informational only — the buyer-confirmed email captured during hosted checkout is the one used to look up the buyer's `signupRefCode` and to enforce the per-customer cap.
 
@@ -731,7 +731,7 @@ Payload example:
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Fired for any cancellation, including the 3rd-failure auto-cancel. |
 
-All events are signed and delivered the same way as `checkout.completed`. They are POSTed to the subscription's `subscriptionCallbackUrl` when set, otherwise to the checkout `callbackUrl`. Differentiate by the `x-portaly-event` header / payload `event` field, and use `subscriptionId` as the idempotency key.
+All events are signed and delivered the same way as `checkout.completed`. They are POSTed to the subscription's `subscriptionCallbackUrl` when set, otherwise to the checkout `callbackUrl`. Differentiate by the `x-portaly-event` header / payload `event` field. Idempotency is event-specific; see the callback notes below instead of globally deduplicating by `subscriptionId`.
 
 Renewal-success payload (`creator_subscription.payment.succeeded`):
 
@@ -789,10 +789,11 @@ Callback notes:
 
 - current implementation contract: `subscriptionId === sessionId`
 - if the callback payload consumed by the merchant side does not explicitly expose `subscriptionId`, the merchant may safely persist `sessionId` as the recurring subscription identifier
-- use `sessionId` as the idempotency key for callback processing
+- use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`
+- lifecycle callbacks do not currently document a delivery identifier; make status assignments idempotent and do not permanently suppress all later lifecycle transitions with one `sessionId` key
 - the `mode` field indicates whether this callback originated from a live or test checkout; merchants should use it to route test callbacks to sandbox order handling
 
-Use `scripts/sign_callback.mjs` for Node.js/TypeScript-oriented work and `scripts/sign_callback.py` for a language-agnostic reference. **On an edge / WebCrypto runtime that can't import `node:crypto`** (Cloudflare/Vercel Edge, Deno, or an InsForge edge function), use `scripts/sign_callback.webcrypto.mjs` instead — identical signing scheme and a byte-identical `stableJson`, but it verifies with the global `crypto.subtle` (no Node-only APIs). Do NOT hand-roll the key ordering: `stableJson` sorts with `localeCompare`, and a naive `.sort()` (UTF-16 order) silently rejects real callbacks. Note: `scripts/sign_callback.py` sorts keys by Unicode code point (not `localeCompare`), so for **mixed-case or non-ASCII object keys** it can diverge from the `.mjs`/`.webcrypto.mjs` scripts and the signing server — keep any merchant-supplied keys (e.g. a `metadata` map) lowercase ASCII, or use the JS scripts for those payloads.
+Inspect the repository's language, framework, and runtime before choosing an adapter. Node, server-side WebCrypto, Python, and Go implementations plus production-derived vectors are documented in `callback-signature-v1.md`. Do not hand-roll or translate the key ordering: the built-in `cancel*` keys already make code-point sorting diverge from the production `localeCompare` contract. Python and Go deliberately fail closed outside their proven key/number domain; other runtimes must pass the same vectors or use an explicit server-side Node bridge.
 
 Express-style callback example:
 
@@ -803,9 +804,21 @@ import { verifyPortalyCallback } from "../portaly/sign_callback.mjs";
 const app = express();
 app.use(express.json());
 
-app.post("/api/portaly/callback", (req, res) => {
+app.post("/api/portaly/callback", async (req, res) => {
+  const event = req.header("x-portaly-event") || "";
   const timestamp = req.header("x-portaly-timestamp") || "";
   const signature = req.header("x-portaly-signature") || "";
+  const timestampMs = Date.parse(timestamp);
+
+  if (!event || !signature || !Number.isFinite(timestampMs)) {
+    return res.status(400).json({ error: "missing callback headers" });
+  }
+  // Allow up to five minutes of clock skew in either direction so ordinary NTP
+  // drift between the sender and receiver does not reject legitimate callbacks.
+  const ageMs = Date.now() - timestampMs;
+  if (Math.abs(ageMs) > 5 * 60 * 1000) {
+    return res.status(401).json({ error: "stale callback" });
+  }
 
   const verified = verifyPortalyCallback({
     secret: process.env.PORTALY_CALLBACK_SECRET,
@@ -817,6 +830,9 @@ app.post("/api/portaly/callback", (req, res) => {
   if (!verified) {
     return res.status(401).json({ error: "invalid signature" });
   }
+  if (req.body.event !== event) {
+    return res.status(400).json({ error: "event mismatch" });
+  }
 
   const {
     sessionId,
@@ -826,14 +842,18 @@ app.post("/api/portaly/callback", (req, res) => {
     paymentReference,
   } = req.body;
 
-  // Persist the verified callback and reconcile your local order state here.
-  console.log({
+  // Apply event-specific idempotency, then reconcile local state. Do not log
+  // the callback secret, full signing base, or customer payload.
+  const callbackIdentity = {
     sessionId,
     subscriptionId,
     merchantOrderNumber,
     status,
     paymentReference,
-  });
+  };
+  // `reconcileVerifiedCallback` is a placeholder for your own persistence step:
+  // apply the event-specific idempotency key, then perform the state transition.
+  await reconcileVerifiedCallback(event, callbackIdentity);
 
   return res.status(200).json({ ok: true });
 });
