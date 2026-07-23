@@ -12,6 +12,8 @@ A collection of skills for AI coding agents to help Portaly creators integrate p
 
 ```
 skills/
+  portaly-overview/           # Orientation/navigation across Portaly's open APIs
+    SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
   portaly-payment/            # Portaly Payment integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, checkout and renewal docs
