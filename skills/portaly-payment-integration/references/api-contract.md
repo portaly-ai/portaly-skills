@@ -162,7 +162,7 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
   - base string: `{timestamp}.{stable_json(payload)}`
   - algorithm: `HMAC-SHA256`
   - secret: the key's `callbackSecret`
-- **Reject callbacks where `x-portaly-timestamp` is older than 5 minutes** (replay protection), and also reject one more than ~1 minute in the **future** (clock skew / forged timestamp). `x-portaly-timestamp` is an ISO datetime string, not Unix seconds.
+- **Reject callbacks whose `x-portaly-timestamp` is more than 5 minutes from now in either direction** — too old (stale/replay) or too far in the future (forged/badly-skewed). The symmetric ±5-minute window tolerates ordinary NTP drift; don't tighten the future side to "reject any future timestamp" (it 401s legitimate callbacks — see `callback-signature-v1.md`). `x-portaly-timestamp` is an ISO datetime string, not Unix seconds.
 - **Dedup on an event-specific key, not `sessionId` alone.** Because `subscriptionId === checkoutSessionId === sessionId` is identical across every event on a subscription, keying idempotency on it drops each later event (`payment.succeeded`, `cancel_requested`, `canceled`) as a false duplicate. Compose the key from the event type + subscription + the event's own timestamp/id — e.g. `` `${x-portaly-event}:${subscriptionId}:${x-portaly-timestamp}` `` — and skip only when that composite has already been processed.
 - Payload fields to persist: `sessionId`, `subscriptionId` (falls back to `sessionId` if absent), `mode`, `merchantOrderNumber`, `status`, `paymentReference`, `paymentMethod`, `customerEmail`, `completedAt`, `appliedDiscount?`.
 
