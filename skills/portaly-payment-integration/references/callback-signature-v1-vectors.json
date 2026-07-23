@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "contract": "portaly-callback-v1",
+  "provenance": {
+    "source": "committed Portaly production callback signer",
+    "fixtureData": "synthetic; no customer data or production secret",
+    "generatedAt": "2026-07-16",
+    "generatorRuntime": {
+      "node": "v26.5.0",
+      "icu": "78.3",
+      "locale": "en-US"
+    }
+  },
+  "limitations": [
+    "The v1 sender uses localeCompare without pinning locale or ICU.",
+    "The Python and Go adapters fail closed outside the committed callback key order, for arbitrary metadata keys, malformed Unicode, and for unsupported JSON numbers.",
+    "Passing these vectors proves only the committed cases, not arbitrary JSON equivalence."
+  ],
+  "vectors": [
+    {
+      "id": "incident-cancel-keys-html-unicode",
+      "secret": "portaly_fixture_secret_not_for_production",
+      "timestamp": "2026-07-01T07:00:00.000Z",
+      "payload": {
+        "cancelRequestedBy": "creator",
+        "status": "canceled",
+        "cancelReasonNote": "方案 A & B <manual> > retry",
+        "canceledAt": "2026-07-01T06:59:00.000Z",
+        "cancelRequestedAt": "2026-06-30T12:00:00.000Z",
+        "cancelReason": "requested_by_creator",
+        "amount": 8800,
+        "cancelEffectiveAt": "2026-07-31T00:00:00.000Z",
+        "metadata": {
+          "source": "網站",
+          "campaign": "夏季"
+        },
+        "flags": [
+          true,
+          null,
+          false
+        ]
+      },
+      "stableJson": "{\"amount\":8800,\"canceledAt\":\"2026-07-01T06:59:00.000Z\",\"cancelEffectiveAt\":\"2026-07-31T00:00:00.000Z\",\"cancelReason\":\"requested_by_creator\",\"cancelReasonNote\":\"方案 A & B <manual> > retry\",\"cancelRequestedAt\":\"2026-06-30T12:00:00.000Z\",\"cancelRequestedBy\":\"creator\",\"flags\":[true,null,false],\"metadata\":{\"campaign\":\"夏季\",\"source\":\"網站\"},\"status\":\"canceled\"}",
+      "signature": "16b288d414cc550e742f3b304b1cf8847dd1d5b1cfb149ce6bfa011af0f5dde8"
+    },
+    {
+      "id": "nested-insertion-order",
+      "secret": "portaly_fixture_secret_not_for_production",
+      "timestamp": "2026-07-01T07:00:00.000Z",
+      "payload": {
+        "zeta": 3,
+        "event": "creator_subscription.payment.succeeded",
+        "nested": {
+          "zebra": "last",
+          "alpha": "first",
+          "child": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "amount": 299,
+        "currency": "TWD",
+        "list": [
+          {
+            "beta": 2,
+            "alpha": 1
+          },
+          null,
+          "ok"
+        ]
+      },
+      "stableJson": "{\"amount\":299,\"currency\":\"TWD\",\"event\":\"creator_subscription.payment.succeeded\",\"list\":[{\"alpha\":1,\"beta\":2},null,\"ok\"],\"nested\":{\"alpha\":\"first\",\"child\":{\"alpha\":1,\"beta\":2},\"zebra\":\"last\"},\"zeta\":3}",
+      "signature": "c67e54c34f4ee194119dbdee89125c29c5ce8a97b079beab6c127baa8af7e6b0"
+    },
+    {
+      "id": "checkout-basic",
+      "secret": "portaly_fixture_secret_not_for_production",
+      "timestamp": "2026-07-01T07:00:00.000Z",
+      "payload": {
+        "sessionId": "session_fixture_1",
+        "profileId": "profile_fixture_1",
+        "event": "creator_subscription.checkout.completed",
+        "amount": 1,
+        "currency": "TWD",
+        "status": "completed",
+        "metadata": {
+          "cart_id": "cart_fixture_1",
+          "source": "web"
+        }
+      },
+      "stableJson": "{\"amount\":1,\"currency\":\"TWD\",\"event\":\"creator_subscription.checkout.completed\",\"metadata\":{\"cart_id\":\"cart_fixture_1\",\"source\":\"web\"},\"profileId\":\"profile_fixture_1\",\"sessionId\":\"session_fixture_1\",\"status\":\"completed\"}",
+      "signature": "0dc878cf16c164c9e766db38fa2b8029cafb7e8ca0026077ad1d15cb2ca4003b"
+    },
+    {
+      "id": "common-json-scalars",
+      "secret": "portaly_fixture_secret_not_for_production",
+      "timestamp": "2026-07-01T07:00:00.000Z",
+      "payload": {
+        "zero": 0,
+        "negative": -42,
+        "empty": "",
+        "enabled": true,
+        "absent": null
+      },
+      "stableJson": "{\"absent\":null,\"empty\":\"\",\"enabled\":true,\"negative\":-42,\"zero\":0}",
+      "signature": "e6483f9d59e642fa308e95242d2df5ea250e93020e684110c64ddf0dae3eef62"
+    },
+    {
+      "id": "known-callback-key-order",
+      "secret": "portaly_fixture_secret_not_for_production",
+      "timestamp": "2026-07-01T07:05:00.000Z",
+      "payload": {
+        "zeta": null,
+        "zero": null,
+        "zebra": null,
+        "willCancel": null,
+        "value": null,
+        "type": null,
+        "totalAmount": null,
+        "subscriptionId": null,
+        "status": null,
+        "source": null,
+        "sessionId": null,
+        "rule": null,
+        "refundedAt": null,
+        "profileId": null,
+        "productName": null,
+        "productId": null,
+        "planIds": null,
+        "planId": null,
+        "paymentReference": null,
+        "paymentMethod": null,
+        "paymentId": null,
+        "originalAmount": null,
+        "orderSuccessPageUrl": null,
+        "orders": null,
+        "orderId": null,
+        "nextRetryAt": null,
+        "nextBillingAt": null,
+        "nested": null,
+        "negative": null,
+        "mode": null,
+        "metadata": null,
+        "merchantOrderNumber": null,
+        "merchantConsumerId": null,
+        "list": null,
+        "lastPaymentReference": null,
+        "lastFailureReason": null,
+        "lastFailureAt": null,
+        "lastChargedAt": null,
+        "invoice": null,
+        "flags": null,
+        "finalAmount": null,
+        "failureReason": null,
+        "failureCount": null,
+        "failedAt": null,
+        "event": null,
+        "enabled": null,
+        "empty": null,
+        "duration": null,
+        "discountedAmount": null,
+        "discount": null,
+        "cycles": null,
+        "customerName": null,
+        "customerEmail": null,
+        "currentPeriodStartedAt": null,
+        "currency": null,
+        "completedAt": null,
+        "companyId": null,
+        "company": null,
+        "codeId": null,
+        "code": null,
+        "child": null,
+        "checkoutSessionId": null,
+        "chargedAt": null,
+        "cart_id": null,
+        "carrierType": null,
+        "carrierNumber": null,
+        "cancelRequestedBy": null,
+        "cancelRequestedAt": null,
+        "cancelReasonNote": null,
+        "cancelReason": null,
+        "cancelEffectiveAt": null,
+        "canceledAt": null,
+        "cancelAtPeriodEnd": null,
+        "campaign": null,
+        "buyerName": null,
+        "buyerEmail": null,
+        "bundleId": null,
+        "billingPeriod": null,
+        "beta": null,
+        "appliesTo": null,
+        "appliedDiscount": null,
+        "amount": null,
+        "alpha": null,
+        "allocatedAmount": null,
+        "absent": null
+      },
+      "stableJson": "{\"absent\":null,\"allocatedAmount\":null,\"alpha\":null,\"amount\":null,\"appliedDiscount\":null,\"appliesTo\":null,\"beta\":null,\"billingPeriod\":null,\"bundleId\":null,\"buyerEmail\":null,\"buyerName\":null,\"campaign\":null,\"cancelAtPeriodEnd\":null,\"canceledAt\":null,\"cancelEffectiveAt\":null,\"cancelReason\":null,\"cancelReasonNote\":null,\"cancelRequestedAt\":null,\"cancelRequestedBy\":null,\"carrierNumber\":null,\"carrierType\":null,\"cart_id\":null,\"chargedAt\":null,\"checkoutSessionId\":null,\"child\":null,\"code\":null,\"codeId\":null,\"company\":null,\"companyId\":null,\"completedAt\":null,\"currency\":null,\"currentPeriodStartedAt\":null,\"customerEmail\":null,\"customerName\":null,\"cycles\":null,\"discount\":null,\"discountedAmount\":null,\"duration\":null,\"empty\":null,\"enabled\":null,\"event\":null,\"failedAt\":null,\"failureCount\":null,\"failureReason\":null,\"finalAmount\":null,\"flags\":null,\"invoice\":null,\"lastChargedAt\":null,\"lastFailureAt\":null,\"lastFailureReason\":null,\"lastPaymentReference\":null,\"list\":null,\"merchantConsumerId\":null,\"merchantOrderNumber\":null,\"metadata\":null,\"mode\":null,\"negative\":null,\"nested\":null,\"nextBillingAt\":null,\"nextRetryAt\":null,\"orderId\":null,\"orders\":null,\"orderSuccessPageUrl\":null,\"originalAmount\":null,\"paymentId\":null,\"paymentMethod\":null,\"paymentReference\":null,\"planId\":null,\"planIds\":null,\"productId\":null,\"productName\":null,\"profileId\":null,\"refundedAt\":null,\"rule\":null,\"sessionId\":null,\"source\":null,\"status\":null,\"subscriptionId\":null,\"totalAmount\":null,\"type\":null,\"value\":null,\"willCancel\":null,\"zebra\":null,\"zero\":null,\"zeta\":null}",
+      "signature": "8daefc072b82466ca5fb2b7afe3038473fbef9505c88443bd1528621b5834c79"
+    }
+  ]
+}
