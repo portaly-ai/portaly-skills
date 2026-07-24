@@ -10,7 +10,11 @@ const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   ".."
 );
-const skillNames = ["portaly-payment", "portaly-product"];
+const skillNames = [
+  "portaly-payment",
+  "portaly-product",
+  "portaly-payment-integration",
+];
 const subprocessTimeoutMs = 120_000;
 const parityFiles = [
   "references/callback-signature-v1-vectors.json",
