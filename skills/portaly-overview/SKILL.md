@@ -51,6 +51,7 @@ The open API surface, by group. Endpoints listed here are representative, not ex
 | Subscriber portal | Self-service portal for subscribers | `POST /api/creator-subscription/portal-sessions` |
 | Digital products | List products, single-item / bundle checkout | `GET /api/digital-products`, `POST /api/digital-products/checkout-sessions` |
 | Webhooks | Signed callbacks for payment / subscription / product events | 8 event types (`creator_subscription.*`, `digital_product.*`) |
+| Reviews | Embed verified-buyer review widget (hosted iframe, not a JSON API) | `https://portaly.ai/embed/reviews/{slug}` (iframe embed, no API key) |
 
 **Do not treat this table as the full contract.** When the user needs the complete, always-current endpoint list, fetch it live instead of relying on this file:
 
@@ -71,6 +72,7 @@ The open API surface, by group. Endpoints listed here are representative, not ex
 | A custom multi-item bundle checkout | `portaly-product` | `POST /api/digital-products/checkout-sessions` with multiple `items[]` |
 | Reconciliation / "my purchases" or "my orders" panel | `portaly-payment` or `portaly-product` | `GET /api/creator-subscription/orders`, `GET /api/digital-products/orders` |
 | Invoice / e-invoice status lookups | `portaly-payment` | `GET /api/creator-subscription/invoices` |
+| Show verified ratings / social proof on my site | `portaly-review` | hosted iframe embed (no API key) |
 
 If a request spans more than one row (e.g. a membership site that also sells one-off templates), install both `portaly-payment` and `portaly-product` — they share the same API key.
 
@@ -93,6 +95,10 @@ When this skill's summaries and those docs disagree, **the docs at `https://port
 - **`portaly-product`** — install for anything involving listing and selling a creator's existing digital products, including bundle checkout.
   ```bash
   npx skills add portaly-ai/portaly-skills --skill portaly-product
+  ```
+- **`portaly-review`** — install for embedding Portaly's hosted, verified-buyer review widget (Trustpilot-style rating badge) on the user's own site. No API key needed.
+  ```bash
+  npx skills add portaly-ai/portaly-skills --skill portaly-review
   ```
 - If the user has no Portaly account or API key yet: they register at `https://portaly.cc/payment` and create an API key at `https://portaly.cc/admin/creator-subscription` (both are human-operated pages — open them in a browser for the user; the matching skill's workflow covers this step in detail).
 - Once installed, **follow that skill's own Workflow section** for the actual integration steps (API key setup, session creation, callback/webhook verification, etc.). This skill does not repeat those steps — it only tells you which one to load.

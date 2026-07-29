@@ -30,7 +30,9 @@ npx skills update portaly-payment
 |-------|-------------|----------|
 | **portaly-overview** | Orientation and navigation across Portaly's open APIs — an API catalog by capability group, a feature-to-API mapping table, and where to find the full API docs | `what can Portaly do`, `what APIs does Portaly have`, `list Portaly APIs`, `Portaly API docs`, `which Portaly skill do I need`, evaluating Portaly before integrating |
 | **portaly-payment** | Portaly Payment hosted checkout, subscription plans, dynamic / one-time pricing, discount codes, and callback verification | `Portaly Payment`, `subscription`, `checkout`, `discount code`, `one-time`, `dynamic pricing` |
+| **portaly-payment-integration** | Team/engineer integration using a merchant-issued integration-scope key (`pcs_*_itg_*`) — read active plans at runtime, create checkout sessions, verify signed callbacks; cannot manage plans, merchant config, or discount codes | `Portaly Payment team integration`, `integration API key`, `pcs_*_itg_ key` |
 | **portaly-product** | Sell a creator's Portaly digital products from your own vibe-coded site — list products, build single or bundle checkout sessions, hosted payment + email, signed webhooks | `Portaly digital products`, `bundle checkout`, `digital downloads`, `creator product API` |
+| **portaly-review** | Embed Portaly's hosted, verified-buyer review widget (Trustpilot-style rating badge) on your own site via a Portaly-hosted iframe — no API key needed | `embed Portaly reviews`, `review widget`, `show my ratings`, `Trustpilot-style badge`, `social proof from Portaly` |
 
 ## Portaly Overview
 
@@ -83,6 +85,26 @@ Helps users integrate Portaly Payment hosted checkout, including merchant setup,
 - "Add a one-time purchase or pay-what-you-want flow with Portaly"
 - "Set up a tip jar / donation checkout with Portaly Payment"
 
+## Portaly Payment Integration (Team / Integration-Scope)
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-payment-integration
+```
+
+For an engineer wiring Portaly Payment into an existing merchant's app using an integration-scope key (`pcs_test_itg_*` / `pcs_live_itg_*`) that merchant issued — not for setting up your own Portaly account.
+
+- Read active plans at runtime and create checkout sessions against a merchant-issued integration key
+- Verify signed callbacks the same way `portaly-payment` does (runtime-aware HMAC-SHA256 adapters + production-derived conformance vectors)
+- Optional subscriber self-service: cancel / resume, portal sessions, subscription/order queries
+- Cannot create or modify plans, merchant config, or discount codes — those stay in the merchant's own Portaly dashboard (`403 KEY_SCOPE_FORBIDDEN` by design, not a bug to work around)
+
+**Prerequisites:** an integration-scope API key (`pcs_test_itg_*` / `pcs_live_itg_*`) and callback secret handed to you by the merchant — you don't register your own account for this one.
+
+**Skill triggers:**
+- "Integrate Portaly Payment using our integration key"
+- "I have a pcs_*_itg_ key from a merchant"
+- "Wire up Portaly Payment for this client's account"
+
 ## Portaly Digital Products Integration
 
 ```bash
@@ -106,6 +128,29 @@ Helps vibe coders sell a creator's Portaly digital products from their own site 
 - "List a creator's downloads / templates / courses on my site"
 - "Add a 'powered by Portaly' storefront"
 - "Set up Portaly digital product webhooks"
+
+## Portaly Review
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-review
+```
+
+Embeds Portaly's hosted, verified-buyer review widget — a Trustpilot-style rating badge — onto your own site via a Portaly-hosted iframe. Ratings stay Portaly-hosted and verifiable; this skill never rebuilds the UI or hardcodes a score.
+
+- One-line iframe embed: `https://portaly.ai/embed/reviews/{slug}?theme=light&locale=zh-TW`
+- `theme` (`light`/`dark`) and `locale` (`zh-TW`/`en-US`) params, matched to your site
+- Click-through backlink to the public review page opens in a new tab — required for the score to stay verifiable
+- No API key needed — a public, unauthenticated embed keyed by your public Portaly slug
+- Zero JS API by design — MVP ships one score-badge layout; no restyling or scripting from the host page
+
+**Prerequisites:** a Portaly account with Portaly Payment enabled and a public slug (`portaly.cc/{slug}`). Verified buyers get review links automatically after checkout — this skill doesn't create them.
+
+**Skill triggers:**
+- "Embed Portaly reviews on my site"
+- "Add a review widget"
+- "Show my ratings"
+- "Trustpilot-style badge"
+- "Social proof from Portaly"
 
 ## Using a Different Backend
 
