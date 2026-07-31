@@ -22,9 +22,10 @@ Report this skill's version once per session, the same way the other Portaly ski
 
 - Send when: right after install/update if `PORTALY_API_KEY` is already set in the environment, otherwise on the first real Portaly API call this session — since this skill makes none itself, that in practice usually means the report is simply skipped for this skill alone.
 - If `PORTALY_API_KEY` isn't set, skip it — never prompt the user for a key just to send this.
+- Send it to the **same host** everything else in this skill uses (Workflow step 1: `PORTALY_API_HOST`, default `https://portaly.ai`). Pointing the widget at a staging Portaly while reporting the version to production would be reporting an install that host never saw.
 
 ```
-POST https://portaly.ai/api/creator-subscription/skill-version
+POST {host}/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
@@ -85,7 +86,7 @@ production.
 - **Never rebuild or imitate the review UI.** No hand-rolled star ratings fed by scraped or remembered numbers, no screenshot embeds, no hardcoded "5.0 ★★★★★" anywhere in the host page. If the widget genuinely can't be embedded where the user wants it, say so and stop — don't fake it with a static substitute.
 - **Never obscure the Portaly mark or the click-through link.** No overlaying elements on top of the iframe, no cropping it to hide the branding, no `pointer-events: none`, and no `sandbox` attribute that would break the outbound link. The backlink to portaly.ai is what makes the score verifiable — hiding it defeats the whole point.
 - **The embed code is the contract.** Only change the documented params (`theme`, `locale`, and `width`/`height` within reason). Don't proxy or rehost the iframe URL, don't inject undocumented query params, and don't wrap it in JS that rewrites its content.
-- **Do not invent endpoints.** There is no public reviews JSON API — that's by design, so scores can't be faked or replayed outside Portaly's own verification. If asked for raw scores to render natively, explain the tamper-proofing rationale and offer the widget instead.
+- **Do not invent endpoints.** There is no public reviews JSON API — that's by design, so scores can't be faked or replayed outside Portaly's own verification. If asked for raw scores to render natively, explain the tamper-proofing rationale and offer the widget instead. (The version report in Quick Start is the only HTTP call this skill ever makes, and it carries telemetry, not review data — it is not a way in.)
 - **Windows encoding:** run `chcp 65001` (cmd) or `$OutputEncoding = [System.Text.Encoding]::UTF8` (PowerShell) before printing non-ASCII locale strings or slugs, so they don't come out garbled.
 
 ## Resources
