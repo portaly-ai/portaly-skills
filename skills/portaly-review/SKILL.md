@@ -13,7 +13,7 @@ Use this skill to help a human user (or their agent) embed Portaly's hosted revi
 > **Precondition — the merchant needs a Portaly account with Portaly Payment enabled and a public slug.** Reviews only exist for merchants already taking payments through Portaly Payment (verified buyers get review links automatically post-checkout) and who have a claimed `portaly.cc/{slug}` handle. If the user doesn't have that yet, point them at `portaly-payment` or `portaly-payment-integration` to get set up first — this skill only embeds the widget, it doesn't create the underlying review program.
 
 - Ask the user to open their Portaly admin dashboard (`https://portaly.cc/admin/creator-subscription`) → **Portaly Payment** → **評價** (Reviews) tab, and paste the exact embed code shown there.
-- If they don't have it handy, ask for their public slug instead and construct the iframe from the documented template (Workflow step 1) — always confirm the slug with the user before using it; a wrong slug embeds someone else's ratings.
+- If they don't have it handy, ask for their public slug instead and construct the iframe from the documented template (Workflow step 2) — always confirm the slug with the user before using it; a wrong slug embeds someone else's ratings.
 - No API key is required for this skill — the iframe is a public, unauthenticated embed keyed only by the public slug.
 
 ### 1.5 Report the installed skill version
@@ -35,28 +35,43 @@ Content-Type: application/json
 
 ## Workflow
 
-### 1. Get the embed code
+### 1. Resolve the Portaly host
 
-- Preferred: ask the user to copy the exact embed code from their Portaly admin dashboard's **評價 (Reviews)** tab and paste it here. Use it verbatim.
-- Fallback: if they only have their slug, confirm it with them, then construct:
+The widget and the public review page are served from the same origin as the API,
+so both honour the repo-wide override:
+
+```
+PORTALY_API_HOST   # default: https://portaly.ai
+```
+
+Read it once at the start and use it everywhere below in place of the literal
+`https://portaly.ai`. It is normally unset — leave it alone and take the default.
+Set it only when the user is pointing at a non-production Portaly (a staging or
+preview deployment, or a self-hosted fork); if it is set, say which host you are
+embedding so a stray value can't silently ship to production.
+
+### 2. Get the embed code
+
+- Preferred: ask the user to copy the exact embed code from their Portaly admin dashboard's **評價 (Reviews)** tab and paste it here. Use it verbatim — but if `PORTALY_API_HOST` is set and the pasted code points elsewhere, tell the user and confirm which host they want before changing anything.
+- Fallback: if they only have their slug, confirm it with them, then construct (`{host}` = the value resolved in step 1):
   ```html
-  <iframe src="https://portaly.ai/embed/reviews/{slug}?theme=light&locale=zh-TW" width="320" height="80" style="border:0" title="Portaly Reviews"></iframe>
+  <iframe src="{host}/embed/reviews/{slug}?theme=light&locale=zh-TW" width="320" height="80" style="border:0" title="Portaly Reviews"></iframe>
   ```
 - Adjust `theme` (`light`|`dark`, default `light`) and `locale` (`zh-TW`|`en-US`, default `zh-TW`) to match the host page. Leave everything else as-is.
 
-### 2. Choose placement
+### 3. Choose placement
 
 - Common spots: site footer, product/pricing page, or checkout-adjacent social proof. Pick a placement with enough background contrast for the chosen `theme` — switch `theme` to match the surrounding page rather than trying to restyle the iframe.
 - Set `locale` to match the page's primary language.
 
-### 3. Embed the iframe verbatim
+### 4. Embed the iframe verbatim
 
-- Drop the `<iframe>` tag exactly where decided in step 2. The only edits allowed are the documented params (`theme`, `locale`) and `width`/`height` within reason — the badge is a fixed compact layout in MVP; don't stretch it into a full-width banner or squeeze it so the Portaly mark becomes unreadable.
+- Drop the `<iframe>` tag exactly where decided in step 3. The only edits allowed are the documented params (`theme`, `locale`) and `width`/`height` within reason — the badge is a fixed compact layout in MVP; don't stretch it into a full-width banner or squeeze it so the Portaly mark becomes unreadable.
 
-### 4. Verify
+### 5. Verify
 
 - Load the page and confirm the widget renders: average stars, review count, and the Portaly mark.
-- Click the widget and confirm it opens `https://portaly.ai/{locale}/reviews/{slug}` in a new tab — this is the trust backlink, not incidental chrome.
+- Click the widget and confirm it opens `{host}/{locale}/reviews/{slug}` in a new tab — this is the trust backlink, not incidental chrome.
 
 ## Guardrails
 

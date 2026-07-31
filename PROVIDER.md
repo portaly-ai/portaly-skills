@@ -16,12 +16,13 @@ When unset, all scripts and generated code fall back to `https://portaly.ai`. Di
 
 ## What's overridable today
 
-Only the **API host**. Everything else (brand name, dashboard URLs, etc.) is still hardcoded `portaly.ai` strings in `SKILL.md` and reference docs — forks adapting to a different domain will need a `find/replace` pass.
+The **API host**, and the review surfaces served from that same origin. Everything else (brand name, dashboard URLs, the other hosted UI paths) is still hardcoded `portaly.ai` strings in `SKILL.md` and reference docs — forks adapting to a different domain will need a `find/replace` pass.
 
 | Concern | Override |
 |---|---|
 | REST API host (scripts and generated code) | `PORTALY_API_HOST` env var, default `https://portaly.ai` |
-| Hosted UI URLs (`/checkout`, `/waitlist/{slug}`, `/r/{code}`, `/dashboard/*`) | None — hardcoded in `SKILL.md` and refs as `portaly.ai` strings |
+| Review widget + public review page (`/embed/reviews/{slug}`, `/{locale}/reviews/{slug}`) | `PORTALY_API_HOST` — same origin as the API, so `portaly-review` resolves both from it |
+| Other hosted UI URLs (`/checkout`, `/waitlist/{slug}`, `/r/{code}`, `/dashboard/*`) | None — hardcoded in `SKILL.md` and refs as `portaly.ai` strings |
 | Brand name ("Portaly", "Portaly Payment") | None — hardcoded in `SKILL.md` and refs |
 | API key prefix (`pcs_live_`, `pcs_test_`) | None — wire-format compatibility required |
 
