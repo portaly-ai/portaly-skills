@@ -41,14 +41,21 @@ The widget and the public review page are served from the same origin as the API
 so both honour the repo-wide override:
 
 ```
-PORTALY_API_HOST   # default: https://portaly.ai
+PORTALY_API_HOST=https://portaly.ai      # the default; omit the line entirely to use it
 ```
 
-Read it once at the start and use it everywhere below in place of the literal
-`https://portaly.ai`. It is normally unset — leave it alone and take the default.
-Set it only when the user is pointing at a non-production Portaly (a staging or
-preview deployment, or a self-hosted fork); if it is set, say which host you are
-embedding so a stray value can't silently ship to production.
+Resolve it once at the start and use it everywhere below in place of the literal
+`https://portaly.ai`. Read it the same way the other Portaly skills read
+`PORTALY_API_KEY`: from the project's `.env` / `.env.local` (whichever the project
+already uses), falling back to `process.env`, and finally to the default. Unlike
+the key, this is not a secret — but keep it in the same file so there is one place
+to change.
+
+It is normally absent, and that is the correct state — take the default and move
+on. Set it only when the user is deliberately pointing at a non-production Portaly
+(a staging or preview deployment, or a self-hosted fork). Whenever it *is* set,
+state the host you are embedding, so a leftover test value can't silently ship to
+production.
 
 ### 2. Get the embed code
 
