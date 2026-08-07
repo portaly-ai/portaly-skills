@@ -115,6 +115,7 @@ production.
 ### 3. Choose placement
 
 - Common spots: site footer, product/pricing page, or checkout-adjacent social proof. Pick a placement with enough background contrast for the chosen `theme` — switch `theme` to match the surrounding page rather than trying to restyle the iframe.
+- The badge draws **no background and no border of its own** — it is transparent and sits directly on whatever is behind it, so it inherits the host page's surface. `theme` only sets the text and star colours: `light` for light backgrounds, `dark` for dark ones. Don't wrap it in a card or panel to "finish" it; blending in is the intended look.
 - Set `locale` to match the page's primary language.
 
 ### 4. Embed the iframe verbatim
