@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.4.0
+version: 0.5.0
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
@@ -89,7 +89,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.4.0" }
+  { "skillName": "portaly-product", "version": "0.5.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -148,6 +148,8 @@ const res = await fetch(`${HOST}/api/digital-products/checkout-sessions`, {
     totalAmount: cart.totalPrice,         // for bundle, your discounted price
     currency: 'TWD',
     customerEmail: form.email,             // optional, pre-fill on hosted page
+    customerName: user.displayName,        // optional, pre-fill the name field (buyer can still edit)
+    emailVerified: true,                   // optional: you already verified this email → buyer skips the code
     callbackUrl: 'https://your-site.com/webhooks/portaly',
     successRedirectUrl: 'https://your-site.com/thanks',
     cancelRedirectUrl: 'https://your-site.com/cart',

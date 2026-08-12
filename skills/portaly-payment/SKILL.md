@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.6.0
+version: 0.7.0
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -140,7 +140,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.6.0" }
+  { "skillName": "portaly-payment", "version": "0.7.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -188,6 +188,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - Create a checkout session before the buyer initiates payment.
 - Call `POST /api/creator-subscription/checkout-sessions` with `Authorization: Bearer {api_key}`.
 - Send `planId` and optional `successRedirectUrl`, `cancelRedirectUrl`, `callbackUrl`, `subscriptionCallbackUrl`, `merchantOrderNumber`, and string-keyed `metadata`.
+- **If the buyer already signed in to the merchant's own product, skip making them re-enter anything**: send `customerEmail` + `customerName` to pre-fill the checkout form, and `emailVerified: true` to declare that the merchant already verified that email, which drops the emailed verification code. `emailVerified` is accepted **only** on this API-key-authenticated call — never from the buyer's browser — and is ignored without a non-blank `customerEmail`. The email field becomes read-only at checkout. See `references/api-contract.md` for the full field rules.
   - **Custom `metadata` keys are echoed into the signed callback body. Only the Node and WebCrypto adapters can verify callbacks carrying metadata keys outside the committed schema; the Python and Go v1 adapters fail closed on them (v1 sorts keys with JavaScript `localeCompare`, which those adapters cannot reproduce for arbitrary keys). Use a Node/WebCrypto receiver, or omit custom metadata, until a future raw-byte callback contract removes this limitation.**
 - `callbackUrl` receives the `checkout.completed` callback and — unless `subscriptionCallbackUrl` is set — also the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle callbacks. Set `subscriptionCallbackUrl` to route renewal/lifecycle events to a dedicated endpoint instead.
 - **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`. When omitted, Portaly attempts to auto-apply a discount via the buyer's `signupRefCode` after their email is verified inside hosted checkout (no extra call needed from the merchant).

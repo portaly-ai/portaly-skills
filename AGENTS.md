@@ -58,6 +58,28 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Webhook events: `digital_product.checkout.completed` (per session), `digital_product.order.refunded` (per order)
 - HMAC-SHA256 webhook signature verification, ISO-datetime timestamp valid within 5 minutes
 
+## These Skills Mirror a Backend That Ships Without Them
+
+The APIs documented here are implemented in a **separate repo** (`portaly-vibe`, the Portaly
+Payment backend). Nothing in that repo's build can see this one, so a shipped API change does
+**not** automatically reach the skill docs. It has already gone wrong once: POR-4373 added
+`customerName` / `emailVerified` to both create-checkout-session calls, the feature went live,
+and integrators had no way to discover it.
+
+That repo now carries a tripwire test (`lib/api-docs/__tests__/public-checkout-fields.test.ts`)
+that goes red when a merchant-facing checkout field is added or removed, pointing back here.
+When that test sends you here, or when you otherwise learn of an API change:
+
+1. Update `references/api-contract.md` — field rules **and** the JSON request example.
+2. Update `SKILL.md` — the workflow bullet and any copy-ready code snippet. Agents act on
+   SKILL.md first and often never open the reference.
+3. Do all of the above for **every** skill that touches the endpoint. Checkout-session fields
+   land in three: `portaly-payment`, `portaly-payment-integration` (both the subscription
+   endpoint), and `portaly-product` (digital products).
+4. Bump that skill's version — the top-level `version:`, `metadata.version` if present, and the
+   literal in its "Report the installed skill version" example. The dashboard uses it to flag
+   stale installs, so an unbumped skill looks current while being wrong.
+
 ## Provider Abstraction
 
 API host defaults to `https://portaly.ai`, overridable via `PORTALY_API_HOST`. See `PROVIDER.md` for the backend compatibility contract.
