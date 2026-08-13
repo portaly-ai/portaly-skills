@@ -79,6 +79,11 @@ When that test sends you here, or when you otherwise learn of an API change:
 4. Bump that skill's version — the top-level `version:`, `metadata.version` if present, and the
    literal in its "Report the installed skill version" example. The dashboard uses it to flag
    stale installs, so an unbumped skill looks current while being wrong.
+5. Mirror that version into `portaly-vibe`'s `packages/skills-catalog/src/entries.ts`
+   (`latestVersion`) — it feeds the public `llms.txt` skill table, and nothing links the two
+   repos, so it has drifted before. Once this repo's change is on `main`, that side has
+   `npx tsx scripts/sync-skills.ts --apply` (dry-run without `--apply`) to pull the versions
+   across; before then it is a hand edit.
 
 ## Provider Abstraction
 

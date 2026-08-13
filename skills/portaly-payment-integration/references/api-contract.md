@@ -91,7 +91,7 @@ Use this when the buyer is ready to go to Portaly hosted checkout.
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up front. **Do not create or manage discount codes yourself** — the merchant issues codes in the Portaly dashboard; you only ever pass a code a buyer typed in, verbatim, to this field.
   - `customerEmail`: optional pre-known buyer email, pre-filled on the hosted checkout page. On its own it is informational only — the buyer still confirms it with an emailed verification code, and that confirmed email is the one used to look up the buyer's `signupRefCode` and to enforce a discount code's per-customer redemption cap. Send `emailVerified: true` alongside it to skip that code.
   - `customerName`: optional. The buyer's name from your own system, pre-filled on the hosted checkout page so they need not retype it. Still editable by the buyer; the name they submit is what lands on the order and invoice. Max 100 chars; control and formatting characters are stripped.
-  - `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; it is rejected on every request the buyer's browser can make, so never pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy is your responsibility.
+  - `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; every request the buyer's browser can make silently drops the field (no error is returned, so there is nothing to handle — it simply has no effect). Never pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy is your responsibility.
 
 If your users already sign in to your product, send all three (`customerEmail`, `customerName`, `emailVerified: true`) — the buyer then lands on checkout with nothing to fill in but payment details.
 
@@ -104,6 +104,9 @@ Request body (fixed pricing plan):
   "successRedirectUrl": "https://merchant.example/success",
   "cancelRedirectUrl": "https://merchant.example/cancel",
   "merchantOrderNumber": "order_001",
+  "customerEmail": "buyer@example.com",
+  "customerName": "Mary Smith-Jones",
+  "emailVerified": true,
   "metadata": { "source": "web" }
 }
 ```
@@ -115,7 +118,7 @@ Request body (fixed pricing plan):
   - `data.checkoutToken`: server-side token for manual completion (rare)
   - `data.expiresAt`: session expiry timestamp
   - `data.amount`: the amount the buyer will be charged — the **post-discount** total (`appliedDiscount.finalAmount`) when a discount applied, otherwise the plan's `amount`
-  - `data.appliedDiscount?`: present when a `discountCode` was validated and applied. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. When present, `data.amount` is the **post-discount** amount.
+  - `data.appliedDiscount?`: present when a discount applied at session creation. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. When present, `data.amount` is the **post-discount** amount. Either the `discountCode` you passed (`source: 'manual'`), or — **new with `emailVerified: true`** — the buyer's `signupRefCode` resolved right away because their email is already known and trusted (`source: 'ref_code'`). **So adopting `emailVerified` can change `data.amount` for sessions where you send no `discountCode` at all**; without it, that same lookup just happens later, after the buyer verifies their email inside hosted checkout.
 
 ```json
 {

@@ -147,9 +147,15 @@ const res = await fetch(`${HOST}/api/digital-products/checkout-sessions`, {
     items: cart.map(p => ({ productId: p.id })),
     totalAmount: cart.totalPrice,         // for bundle, your discounted price
     currency: 'TWD',
-    customerEmail: form.email,             // optional, pre-fill on hosted page
-    customerName: user.displayName,        // optional, pre-fill the name field (buyer can still edit)
-    emailVerified: true,                   // optional: you already verified this email → buyer skips the code
+    // Only declare `emailVerified` for an email YOU actually verified — never for one
+    // the buyer just typed into a form. Declaring it removes the emailed code entirely.
+    ...(user?.emailVerified
+      ? {
+          customerEmail: user.email,       // your verified email → buyer skips the code
+          customerName: user.displayName,  // pre-fills the name field (buyer can still edit)
+          emailVerified: true,
+        }
+      : { customerEmail: form.email }),    // optional, pre-fill only — buyer still gets the code
     callbackUrl: 'https://your-site.com/webhooks/portaly',
     successRedirectUrl: 'https://your-site.com/thanks',
     cancelRedirectUrl: 'https://your-site.com/cart',

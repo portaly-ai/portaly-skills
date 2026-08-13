@@ -157,6 +157,8 @@ Create a hosted checkout session for one or more products.
   "totalAmount": 999,
   "currency": "TWD",
   "customerEmail": "buyer@example.com",
+  "customerName": "Mary Smith-Jones",
+  "emailVerified": true,
   "successRedirectUrl": "https://your-site.com/thank-you",
   "cancelRedirectUrl": "https://your-site.com/cart",
   "callbackUrl": "https://your-site.com/webhooks/portaly",
@@ -172,7 +174,7 @@ Field rules:
 - `totalAmount`: the **buyer-paid total** in `currency` minor unit (TWD = whole dollars, no cents). For a single item, it is typically equal to the product price. For a bundle, this is the discounted bundle price set by you.
 - `customerEmail`: optional. If omitted, the buyer enters it on the hosted checkout page. If supplied, the field is pre-filled — but the buyer still confirms it with an emailed verification code unless you also send `emailVerified: true`.
 - `customerName`: optional. The buyer's name from your own system, pre-filled on the hosted checkout page so they need not retype it. The buyer can still edit it, and the name they submit is what lands on the order and invoice. Max 100 chars; control and formatting characters are stripped.
-- `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; it is rejected on every request the buyer's browser can make, so never pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy is your responsibility.
+- `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; every request the buyer's browser can make silently drops the field (no error is returned, so there is nothing to handle — it simply has no effect). Never pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy is your responsibility.
 - `successRedirectUrl` / `cancelRedirectUrl`: optional. Used after the hosted checkout page completes / cancels.
 - `callbackUrl`: optional. Where Portaly sends signed webhooks for this session and its resulting orders. If omitted, you must poll the `GET /api/digital-products/checkout-sessions/{sessionId}` endpoint.
 - `merchantOrderNumber`: your internal reference. Echoed back in webhooks. Max 50 chars.

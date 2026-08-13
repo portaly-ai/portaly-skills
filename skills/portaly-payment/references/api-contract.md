@@ -407,10 +407,10 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `subscriptionCallbackUrl`: optional. When set, recurring renewal and lifecycle callbacks are delivered here instead of `callbackUrl` (the checkout-completion callback still goes to `callbackUrl`). Falls back to `callbackUrl` when empty.
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context. **Echoed into the signed callback body; keys outside the committed callback schema are only verifiable by the Node/WebCrypto adapters (the Python/Go v1 adapters fail closed on them).**
-  - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied later via the buyer's `signupRefCode` once their email is verified inside hosted checkout.
+  - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied via the buyer's `signupRefCode`: at session creation when you send `emailVerified: true` with a `customerEmail`, otherwise once the buyer verifies their email inside hosted checkout.
   - `customerEmail`: optional pre-known buyer email, pre-filled on the hosted checkout page. On its own it is informational only — the buyer still confirms it with an emailed verification code, and that buyer-confirmed email is the one used to look up the buyer's `signupRefCode` and to enforce the per-customer cap. Send `emailVerified: true` alongside it to skip that code.
   - `customerName`: optional. The buyer's name from your own system, pre-filled on the hosted checkout page so they need not retype it. The buyer can still edit it, and the name they submit is what lands on the order and invoice. Max 100 chars; control and formatting characters are stripped.
-  - `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; it is rejected on every request the buyer's browser can make, so never try to pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy, and the consequences of getting it wrong, are yours.
+  - `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; every request the buyer's browser can make silently drops the field (no error is returned, so there is nothing to handle — it simply has no effect). Never pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy, and the consequences of getting it wrong, are yours.
 
 Request body (fixed pricing plan):
 
@@ -421,6 +421,9 @@ Request body (fixed pricing plan):
   "cancelRedirectUrl": "https://merchant.example/cancel",
   "callbackUrl": "https://merchant.example/api/portaly/callback",
   "merchantOrderNumber": "order_001",
+  "customerEmail": "buyer@example.com",
+  "customerName": "Mary Smith-Jones",
+  "emailVerified": true,
   "metadata": {
     "source": "web",
     "cartId": "cart_123"
@@ -438,6 +441,9 @@ Request body (dynamic pricing plan):
   "cancelRedirectUrl": "https://merchant.example/cancel",
   "callbackUrl": "https://merchant.example/api/portaly/callback",
   "merchantOrderNumber": "order_002",
+  "customerEmail": "buyer@example.com",
+  "customerName": "Mary Smith-Jones",
+  "emailVerified": true,
   "metadata": {
     "source": "web"
   }
@@ -450,8 +456,9 @@ Request body (dynamic pricing plan):
   - `data.checkoutUrl`: URL the buyer should visit
   - `data.checkoutToken`: server-side token for provider routes or manual completion
   - `data.expiresAt`: session expiry timestamp
-  - `data.appliedDiscount?`: present when a manual `discountCode` was validated and applied at session creation. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. When the field is present, `session.amount` is the **post-discount** total (`finalAmount`).
-  - `data.pendingRefCodeLookup?`: `true` whenever no manual `discountCode` was passed. Portaly will attempt the `signupRefCode` lookup once the buyer's email is verified inside hosted checkout; on a hit the session is updated with `appliedDiscount` and `amount` becomes the post-discount total.
+  - `data.amount`: the amount the buyer will be charged — the **post-discount** total when a discount applied at creation, otherwise the plan's amount.
+  - `data.appliedDiscount`: `null` when no discount applied at session creation. Otherwise `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`, and `data.amount` is the post-discount total (`finalAmount`). Two ways it can be present: a `discountCode` you passed (`source: 'manual'`), or — **new with `emailVerified`** — the buyer's `signupRefCode` resolved on the spot, because a declared-verified email is known and trusted at creation time (`source: 'ref_code'`).
+  - **If you reconcile against `data.amount`, note that adopting `emailVerified: true` can change it**: a session that previously came back at the plan price may now come back already ref-code discounted, without you sending any `discountCode`. Without `emailVerified`, that lookup still happens — just later, after the buyer verifies their email inside hosted checkout, and the session `amount` is updated then.
 
 ```json
 {
@@ -460,7 +467,9 @@ Request body (dynamic pricing plan):
     "status": "checkout_ready",
     "checkoutUrl": "https://payment-host/checkout/subscription/session_123",
     "checkoutToken": "hex_token",
-    "expiresAt": "2026-03-20T12:30:00.000Z"
+    "expiresAt": "2026-03-20T12:30:00.000Z",
+    "amount": 500,
+    "appliedDiscount": null
   }
 }
 ```

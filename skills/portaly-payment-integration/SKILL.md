@@ -80,7 +80,7 @@ Content-Type: application/json
 ### 3. Create a checkout session
 
 - `POST /api/creator-subscription/checkout-sessions` with `planId`, `callbackUrl` (must be HTTPS), and optionally `successRedirectUrl` / `cancelRedirectUrl` / `metadata` / `discountCode` (pass through a buyer-entered code verbatim — never generate or manage codes yourself).
-- If your users are already signed in to your product, also send `customerEmail` + `customerName` (pre-fills the checkout form) and `emailVerified: true` (drops the emailed verification code, because you already verified that email). Server-side only — `emailVerified` is rejected on anything the buyer's browser can call, and ignored without a non-blank `customerEmail`.
+- If your users are already signed in to your product, also send `customerEmail` + `customerName` (pre-fills the checkout form) and `emailVerified: true` (drops the emailed verification code, because you already verified that email). Server-side only — the buyer-facing routes silently drop `emailVerified` (no error to handle), and it is ignored here without a non-blank `customerEmail`.
 - Redirect the buyer to the returned `data.checkoutUrl`. Treat it as authoritative; never reconstruct it.
 - Persist `sessionId`, `checkoutToken`, `expiresAt`.
 - See `references/api-contract.md` → "Session Creation" for the full request/response shape.
