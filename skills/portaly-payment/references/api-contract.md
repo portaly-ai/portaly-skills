@@ -953,7 +953,10 @@ Use this when the human user needs to query payment/order records for a profile.
 - Query parameters:
   - `profileId`: optional for API key auth (derived from key), required for Firebase auth
   - `mode`: optional, `live` (default) or `test` — only used with Firebase auth; API key auth derives mode from the key
-  - `status`: optional, filter by order status (e.g., `paid`)
+  - `status`: optional, filter by order status. Comma-separate for multiple values (e.g., `paid,liquid`). Allowed values: `pending`, `awaiting_atm`, `paid`, `liquid`, `refund`, `failed`, `tracked` — anything else returns `400`
+  - `startDate`: optional, only orders on or after this point. Filters `createdAt` — for creator-subscription orders that **is** the payment time, since the order is only written once payment succeeds (`createdAt === paidAt`), so this is what you reconcile a payout period against. `YYYY-MM-DD` is read as a Taipei (UTC+8) calendar day starting 00:00:00; a datetime with no timezone offset is also read as Taipei — pass `Z` or `±HH:MM` to override
+  - `endDate`: optional, only orders on or before this point. Same field and same Taipei rules; `YYYY-MM-DD` ends at 23:59:59.999. A `startDate` later than `endDate` returns `400` rather than an empty list
+  - `planId`: optional, filter by `creatorSubscriptionPlanId` (exact match)
   - `limit`: optional, number of results per page (default 20, max 100)
   - `startAfter`: optional, cursor from previous page's `pagination.nextCursor`
 - Response fields:

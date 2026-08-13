@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.7.0
+version: 0.8.0
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -140,7 +140,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.7.0" }
+  { "skillName": "portaly-payment", "version": "0.8.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -241,7 +241,7 @@ Recurring management APIs:
 
 Order query API:
 
-- `GET /api/creator-subscription/orders` — list payment/order records with pagination
+- `GET /api/creator-subscription/orders` — list payment/order records, filterable by `startDate`/`endDate`, `status` (comma-separated for multiple), and `planId`, with cursor pagination. The dates filter `createdAt`, which for these orders is the payment time (`createdAt === paidAt`), so this is the endpoint for reconciling a payout period
 
 Recurring management rules:
 
