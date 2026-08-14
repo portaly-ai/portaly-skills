@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.1.0
+version: 0.2.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Does not create or manage plans, merchant config, or discount codes; those stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.1.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.2.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -80,6 +80,7 @@ Content-Type: application/json
 ### 3. Create a checkout session
 
 - `POST /api/creator-subscription/checkout-sessions` with `planId`, `callbackUrl` (must be HTTPS), and optionally `successRedirectUrl` / `cancelRedirectUrl` / `metadata` / `discountCode` (pass through a buyer-entered code verbatim — never generate or manage codes yourself).
+- If your users are already signed in to your product, also send `customerEmail` + `customerName` (pre-fills the checkout form) and `emailVerified: true` (drops the emailed verification code, because you already verified that email). Server-side only — the buyer-facing routes silently drop `emailVerified` (no error to handle), and it is ignored here without a non-blank `customerEmail`.
 - Redirect the buyer to the returned `data.checkoutUrl`. Treat it as authoritative; never reconstruct it.
 - Persist `sessionId`, `checkoutToken`, `expiresAt`.
 - See `references/api-contract.md` → "Session Creation" for the full request/response shape.
