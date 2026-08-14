@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.2.0
+version: 0.3.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Does not create or manage plans, merchant config, or discount codes; those stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.2.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.3.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -107,7 +107,7 @@ If the integration needs subscription lifecycle management, these are available 
 
 - `POST /subscriptions/{id}/cancel` / `POST /subscriptions/{id}/resume` — stop or restore future renewals (not a refund; current period stays active until `cancelEffectiveAt`).
 - `POST /portal-sessions` → redirect the subscriber to `portalUrl` for a hosted self-service page (view/cancel/resume/payment history). Server-to-server only — never expose the API key client-side.
-- `GET /subscriptions`, `GET /subscriptions/{id}`, `GET /orders` for query and reconciliation.
+- `GET /subscriptions`, `GET /subscriptions/{id}`, `GET /orders` for query and reconciliation. For a payout period, `GET /orders?startDate=&endDate=&status=paid,liquid` — the dates filter `createdAt`, which for these orders is the payment time (`createdAt === paidAt`).
 - See `references/api-contract.md` → "Subscription Query And Lifecycle", "Portal Session", "Order Query".
 
 ### 7. Go live

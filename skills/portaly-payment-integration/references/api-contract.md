@@ -238,7 +238,7 @@ Lets a subscriber manage their own subscription without you building cancel/resu
 
 - Endpoint: `GET /api/creator-subscription/orders`
 - Required headers: `Authorization: Bearer {portaly_payment_api_key}`
-- Query parameters: `status`, `limit` (default 20, max 100), `startAfter` (cursor)
+- Query parameters: `status` (comma-separate for multiple, e.g. `paid,liquid`; allowed: `pending`, `awaiting_atm`, `paid`, `liquid`, `refund`, `failed`, `tracked` — anything else returns `400`), `startDate`/`endDate` (filters `createdAt`, which for these orders **is** the payment time — the order is only written once payment succeeds, so `createdAt === paidAt`; `YYYY-MM-DD` or a datetime with no offset is read as Taipei/UTC+8, pass `Z`/`±HH:MM` to override; `startDate` later than `endDate` returns `400`), `planId` (exact match on `creatorSubscriptionPlanId`), `limit` (default 20, max 100), `startAfter` (cursor)
 - Response fields per order: `id`, `amount`, `netTotal`, `currency`, `status`, `name`, `email`, `paymentMethod`, `merchantOrderNumber`, `creatorSubscriptionId`, `creatorSubscriptionPlanId`, `createdAt`, `paidAt`, plus `pagination.hasMore` / `pagination.nextCursor` / `pagination.count`
 
 ## Skill Version Report
