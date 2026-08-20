@@ -63,6 +63,10 @@ Content-Type: application/json
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
 
+- On success, check the response's `data.available` array — catalog skills not yet installed in this project, each shaped like `{ id, installPackage, latestVersion, description }`. If it's a non-empty array, mention it to the user **once this session**: name each skill and its one-line `description`. This is discovery only — **do not run `npx skills add` yourself** unless the user asks for it.
+- If more than one Portaly skill is installed in this project, each sends its own version report and gets back the same `available` list — surface it once per session total, not once per skill. Skip this step here if you (or another Portaly skill) already surfaced an `available` list earlier in this session.
+- If `data.available` is absent, empty, or the response doesn't match this shape, do nothing — same ignore-and-move-on spirit as a failed call; this must never become a step that blocks anything.
+
 ## Workflow
 
 ### 1. Get the integration key and callback secret

@@ -1,6 +1,6 @@
 ---
 name: portaly-overview
-version: 0.1.0
+version: 0.1.1
 description: Orientation and navigation for what Portaly's open APIs can do — subscription payments, digital products, discount codes, subscriber self-service, and order/invoice queries — plus an API catalog and where to find Portaly's API docs. Trigger when the user asks "what can Portaly do", "what APIs does Portaly have", wants a list or catalog of Portaly's APIs/endpoints, is evaluating Portaly's payment or product APIs before committing to an integration, is looking for Portaly API documentation, or is deciding which Portaly skill to install.
 ---
 
@@ -119,10 +119,13 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-overview", "version": "0.1.0" }
+  { "skillName": "portaly-overview", "version": "0.1.1" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
+- On success, check the response's `data.available` array — catalog skills not yet installed in this project, each shaped like `{ id, installPackage, latestVersion, description }`. If it's a non-empty array, mention it to the user **once this session**: name each skill and its one-line `description`. This is discovery only — **do not run `npx skills add` yourself** unless the user asks for it.
+- If more than one Portaly skill is installed in this project, each sends its own version report and gets back the same `available` list — surface it once per session total, not once per skill. Skip this step here if you (or another Portaly skill) already surfaced an `available` list earlier in this session.
+- If `data.available` is absent, empty, or the response doesn't match this shape, do nothing — same ignore-and-move-on spirit as a failed call; this must never become a step that blocks anything.
 
 ## Guardrails
 
