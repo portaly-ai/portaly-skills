@@ -22,6 +22,8 @@ skills/
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, bundle pricing algorithm
     scripts/                  # Callback adapters + production-derived conformance checks
+  portaly-review/             # Embed Portaly's hosted review widget (Trustpilot-style badge)
+    SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
 evals/                        # Cross-skill contract runner and fresh-agent prompt corpus
 .github/workflows/            # Deterministic skill eval gate
 ```

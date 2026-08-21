@@ -30,7 +30,9 @@ npx skills update portaly-payment
 |-------|------|-----------|
 | **portaly-overview** | Portaly 開放 API 總覽與導航 — 依能力分組的 API 目錄、功能對照 API 的速查表、以及完整 API 文件位置 | `Portaly 能做什麼`、`Portaly 有哪些 API`、`列出 Portaly API`、`Portaly API 文件`、`該裝哪個 Portaly skill`、評估是否要串接 Portaly |
 | **portaly-payment** | Portaly Payment 託管結帳、訂閱方案、單次購買、動態金額定價、優惠碼、callback 驗證 | `Portaly Payment 支付`、`訂閱`、`結帳`、`優惠碼`、`單次購買`、`動態定價`、`贊助` |
+| **portaly-payment-integration** | 團隊／工程師使用商家核發的 integration-scope 金鑰（`pcs_*_itg_*`）串接 — 即時讀取方案、建立結帳 session、驗證簽章 callback；無法管理方案、商家設定或優惠碼 | `Portaly Payment 團隊串接`、`integration API key`、`pcs_*_itg_ 金鑰` |
 | **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
+| **portaly-review** | 透過 Portaly 託管的 iframe，在你的網站上嵌入已驗證買家的評價徽章（Trustpilot 風格）— 不需要 API 金鑰 | `嵌入 Portaly 評價`、`評價 widget`、`顯示我的評分`、`Trustpilot 風格徽章`、`Portaly 的社會認同` |
 
 ## Portaly Overview
 
@@ -83,6 +85,26 @@ npx skills add portaly-ai/portaly-skills --skill portaly-payment
 - 「在 Portaly Payment 加上單次購買或自訂金額的結帳流程」
 - 「在 Portaly Payment 加上贊助功能」
 
+## Portaly Payment Integration（團隊 / Integration-Scope）
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-payment-integration
+```
+
+適用於工程師使用商家核發的 integration-scope 金鑰（`pcs_test_itg_*` / `pcs_live_itg_*`）將 Portaly Payment 串進既有商家的 app — 不是拿來自己註冊帳號用的。
+
+- 用商家核發的 integration key 即時讀取方案、建立結帳 session
+- 驗證簽章 callback，方式與 `portaly-payment` 相同（依 runtime 選路的 HMAC-SHA256 adapter + production-derived conformance vectors）
+- 選用的訂閱者自助服務：取消／恢復、portal session、訂閱／訂單查詢
+- 無法建立或修改方案、商家設定、優惠碼 — 這些都留在商家自己的 Portaly Dashboard（回傳 `403 KEY_SCOPE_FORBIDDEN` 是設計如此，不是 bug，不要想辦法繞過）
+
+**前置條件：** 由商家提供的 integration-scope API 金鑰（`pcs_test_itg_*` / `pcs_live_itg_*`）與 callback secret — 這個 skill 不需要自己註冊帳號。
+
+**Skill 觸發條件：**
+- 「用我們的 integration key 串接 Portaly Payment」
+- 「我有商家給的 pcs_*_itg_ 金鑰」
+- 「幫這個客戶的帳號接上 Portaly Payment」
+
 ## Portaly Digital Products Integration
 
 ```bash
@@ -106,6 +128,29 @@ npx skills add portaly-ai/portaly-skills --skill portaly-product
 - 「在我的網站上列出創作者的下載/模板/課程」
 - 「打造一個 powered by Portaly 的商店」
 - 「設定 Portaly 數位商品的 webhook」
+
+## Portaly Review
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-review
+```
+
+透過 Portaly 託管的 iframe，在你自己的網站嵌入已驗證買家的評價徽章 — Trustpilot 風格的評分徽章。分數維持 Portaly 託管、可驗證；這個 skill 絕不會自己重做 UI 或寫死分數。
+
+- 一行 iframe 就能嵌入：`https://portaly.ai/embed/reviews/{slug}?theme=light&locale=zh-TW`
+- `theme`（`light`/`dark`）與 `locale`（`zh-TW`/`en-US`）參數，依你的網站調整
+- 點擊會在新分頁開啟公開評價頁的回連連結 — 這是分數維持可驗證的關鍵，不是裝飾
+- 不需要 API 金鑰 — 這是用你公開的 Portaly slug 存取的公開、免驗證 embed
+- 設計上沒有 JS API — MVP 只有一種評分徽章版型，無法從主網站重新調整樣式或用程式操控
+
+**前置條件：** 已啟用 Portaly Payment 的 Portaly 帳號，並擁有公開 slug（`portaly.cc/{slug}`）。已驗證買家結帳後會自動收到評價連結 — 這個 skill 不負責建立評價連結。
+
+**Skill 觸發條件：**
+- 「在我的網站嵌入 Portaly 評價」
+- 「加上評價 widget」
+- 「顯示我的評分」
+- 「Trustpilot 風格徽章」
+- 「Portaly 的社會認同」
 
 ## 串接到自己的 Server
 
