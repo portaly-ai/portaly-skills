@@ -214,7 +214,8 @@ All events are signed and delivered the same way. Use `scripts/sign_callback.mjs
 Use when the integration needs to let subscribers cancel/resume, or needs to reconcile subscription state. Current identifier contract: `subscriptionId === checkoutSessionId === sessionId`.
 
 - `GET /api/creator-subscription/subscriptions` — list, with `status`, `customerEmail`, `limit`, `startAfter` (pagination)
-- `GET /api/creator-subscription/subscriptions/{subscriptionId}` — single subscription (`status`, `cancelAtPeriodEnd`, `nextBillingAt`, `cancelEffectiveAt`, `canceledAt`, `failureCount`, …)
+- `GET /api/creator-subscription/subscriptions/{subscriptionId}` — single subscription (`status`, `cancelAtPeriodEnd`, `nextBillingAt`, `cancelEffectiveAt`, `canceledAt`, `failureCount`, `discount`, …)
+- **`amount` on a subscription is its base price, not what the buyer pays.** It is frozen at checkout (repricing the plan later does not change it) and renewals charge off it. When the subscription carries a `discount` snapshot (`code`, `appliedRule`, `startedAt`, `endsAt` — `null` = forever, `source`) and that discount is still in effect, the real charge is lower. Reconcile money against the renewal callback's `amount`, or `GET /orders`, never against `subscriptions[].amount`.
 - `POST /api/creator-subscription/subscriptions/{subscriptionId}/cancel` — body `{ "reason": "customer_requested", "reasonNote": "optional" }`. Stops the next recurring charge; not a refund; current period stays active until `cancelEffectiveAt`. Only for `billingPeriod = monthly | yearly`.
 - `POST /api/creator-subscription/subscriptions/{subscriptionId}/resume` — body `{}`. Only works before the subscription is fully `canceled`.
 

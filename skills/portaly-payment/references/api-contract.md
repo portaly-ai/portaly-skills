@@ -605,7 +605,7 @@ Current identifier contract:
   - `cancelEffectiveAt`
   - `canceledAt`
   - `discount` — the discount snapshot frozen at checkout, or `null` when none was applied. Later edits to the discount code do not change it.
-- **`amount` is the plan price this subscription renews at, not the amount charged.** When `discount` is present and still in effect, the actual charge is lower. To reconcile what was really collected, read the per-payment `amount` from the orders/invoices records rather than recomputing from the subscription.
+- **`amount` is this subscription's base price, not the amount charged.** It is frozen at checkout — repricing the plan later does not change it — and renewals charge off it. When `discount` is present and still in effect, the actual charge is lower. To reconcile what was really collected, use the renewal callback's `amount` (preferred, see below) or the per-payment `amount` in the orders/invoices records — never recompute from the subscription.
 - `discount` shape:
 
 ```jsonc
