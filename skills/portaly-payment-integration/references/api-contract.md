@@ -207,6 +207,8 @@ Payload example (`creator_subscription.checkout.completed`):
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Includes the 3rd-failure auto-cancel. |
 
+- `amount` on `payment.succeeded` / `payment.failed` is the **charged (or attempted) post-discount** amount, not the plan price. The lifecycle events (`active` / `cancel_requested` / `canceled`) carry the subscription's undiscounted base amount in that same field — they move no money, so never reconcile from them.
+
 All events are signed and delivered the same way. Use `scripts/sign_callback.mjs` (Node/TypeScript), `scripts/sign_callback.py` (reference/other stacks), or `scripts/sign_callback.webcrypto.mjs` (edge / WebCrypto runtimes — Cloudflare/Vercel Edge, Deno, InsForge edge functions, no `node:crypto`). Do not hand-roll the key ordering: `stableJson` sorts with `localeCompare`; a naive `.sort()` is UTF-16 order and silently rejects real callbacks. Note `sign_callback.py` sorts by Unicode code point, which can diverge from the `.mjs` scripts for mixed-case/non-ASCII keys — keep merchant-supplied `metadata` keys lowercase ASCII, or use a JS script for those payloads.
 
 ## Subscription Query And Lifecycle (Optional)
@@ -214,9 +216,10 @@ All events are signed and delivered the same way. Use `scripts/sign_callback.mjs
 Use when the integration needs to let subscribers cancel/resume, or needs to reconcile subscription state. Current identifier contract: `subscriptionId === checkoutSessionId === sessionId`.
 
 - `GET /api/creator-subscription/subscriptions` — list, with `status`, `customerEmail`, `limit`, `startAfter` (pagination)
-- `GET /api/creator-subscription/subscriptions/{subscriptionId}` — single subscription (`status`, `cancelAtPeriodEnd`, `nextBillingAt`, `cancelEffectiveAt`, `canceledAt`, `failureCount`, …)
+- `GET /api/creator-subscription/subscriptions/{subscriptionId}` — single subscription (`status`, `cancelAtPeriodEnd`, `nextBillingAt`, `cancelEffectiveAt`, `canceledAt`, `failureCount`, `discount`, …)
 - `POST /api/creator-subscription/subscriptions/{subscriptionId}/cancel` — body `{ "reason": "customer_requested", "reasonNote": "optional" }`. Stops the next recurring charge; not a refund; current period stays active until `cancelEffectiveAt`. Only for `billingPeriod = monthly | yearly`.
 - `POST /api/creator-subscription/subscriptions/{subscriptionId}/resume` — body `{}`. Only works before the subscription is fully `canceled`.
+- **`amount` on a subscription is its base price, not what the buyer pays.** It is frozen at checkout (repricing the plan later does not change it) and renewals charge off it. When the subscription carries a `discount` snapshot (`code`, `appliedRule`, `startedAt`, `endsAt` — `null` = forever, `source`) and that discount is still in effect, the real charge is lower (exception: dynamic-priced plans, always one-time, store the already-discounted session amount in `amount`). Reconcile money against the renewal callback's `amount`, or `GET /orders`, never against `subscriptions[].amount`.
 
 These are unaffected by the integration scope — cancel/resume are explicitly allowed for this key.
 

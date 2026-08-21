@@ -604,6 +604,21 @@ Current identifier contract:
   - `cancelRequestedAt`
   - `cancelEffectiveAt`
   - `canceledAt`
+  - `discount` — the discount snapshot frozen at checkout, or `null` when none was applied. Later edits to the discount code do not change it.
+- **`amount` is this subscription's base price, not the amount charged.** It is frozen at checkout — repricing the plan later does not change it — and renewals charge off it. When `discount` is present and still in effect the actual charge is lower; the exception is a dynamic-priced plan (always `one-time`), where `amount` is the session amount and is already discounted. To reconcile what was really collected, use the renewal callback's `amount` (preferred, see below) or the per-payment `amount` in the orders/invoices records — never recompute from the subscription.
+- `discount` shape:
+
+```jsonc
+{
+  "codeId": "code_123",
+  "code": "EARLYBIRD",
+  "appliedRule": { "appliesTo": {...}, "discount": {...}, "duration": {...} },  // same shape as a rule in the discount code
+  "startedAt": "2026-08-01T00:00:00.000Z",
+  "endsAt": "2026-11-01T00:00:00.000Z",   // null = forever
+  "source": "manual"                       // "manual" = discountCode sent at checkout; "ref_code" = auto-applied from the buyer's signupRefCode
+}
+```
+
 - Renewal reconciliation by polling: a successful renewal advances `nextBillingAt` and updates `lastChargedAt`; a failed renewal increments `failureCount` and sets `status: past_due` (or `canceled` on the 3rd failure). Prefer the renewal callbacks below over polling when possible.
 
 `POST /api/creator-subscription/subscriptions/{subscriptionId}/cancel`
@@ -804,6 +819,7 @@ Renewal-failure payload (`creator_subscription.payment.failed`):
 ```
 
 - `willCancel` is `true` and `nextRetryAt` is `null` on the final (3rd) failure; `status` is then `canceled`.
+- `amount` on `payment.succeeded` / `payment.failed` is the **charged (or attempted) post-discount** amount, not the plan price. The lifecycle events (`active` / `cancel_requested` / `canceled`) carry the subscription's undiscounted base amount in that same field — they move no money, so never reconcile from them.
 
 Verification rule:
 
@@ -915,6 +931,7 @@ Use this when the human user needs to list all subscriptions for a profile, with
   - `data[].customerName`
   - `data[].customerEmail`
   - `data[].createdAt`
+  - `data[].discount`: discount snapshot or `null` — see the shape under **Subscription Query And Lifecycle**, along with why `data[].amount` is not the amount charged.
   - `pagination.hasMore`: boolean
   - `pagination.nextCursor`: string or null
   - `pagination.count`: number of items in current page
