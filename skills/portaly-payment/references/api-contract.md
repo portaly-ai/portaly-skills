@@ -604,6 +604,21 @@ Current identifier contract:
   - `cancelRequestedAt`
   - `cancelEffectiveAt`
   - `canceledAt`
+  - `discount` — the discount snapshot frozen at checkout, or `null` when none was applied. Later edits to the discount code do not change it.
+- **`amount` is the plan price this subscription renews at, not the amount charged.** When `discount` is present and still in effect, the actual charge is lower. To reconcile what was really collected, read the per-payment `amount` from the orders/invoices records rather than recomputing from the subscription.
+- `discount` shape:
+
+```jsonc
+{
+  "codeId": "code_123",
+  "code": "EARLYBIRD",
+  "appliedRule": { "appliesTo": {...}, "discount": {...}, "duration": {...} },  // same shape as a rule in the discount code
+  "startedAt": "2026-08-01T00:00:00.000Z",
+  "endsAt": "2026-11-01T00:00:00.000Z",   // null = forever
+  "source": "manual"                       // "manual" = discountCode sent at checkout; "ref_code" = auto-applied from the buyer's signupRefCode
+}
+```
+
 - Renewal reconciliation by polling: a successful renewal advances `nextBillingAt` and updates `lastChargedAt`; a failed renewal increments `failureCount` and sets `status: past_due` (or `canceled` on the 3rd failure). Prefer the renewal callbacks below over polling when possible.
 
 `POST /api/creator-subscription/subscriptions/{subscriptionId}/cancel`
@@ -915,6 +930,7 @@ Use this when the human user needs to list all subscriptions for a profile, with
   - `data[].customerName`
   - `data[].customerEmail`
   - `data[].createdAt`
+  - `data[].discount`: discount snapshot or `null` — see the shape under **Subscription Query And Lifecycle**. `data[].amount` is the plan price, not the discounted charge.
   - `pagination.hasMore`: boolean
   - `pagination.nextCursor`: string or null
   - `pagination.count`: number of items in current page

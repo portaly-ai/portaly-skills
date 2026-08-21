@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.8.0
+version: 0.9.0
 metadata:
-  version: "0.8.0"
+  version: "0.9.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -140,7 +140,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.8.0" }
+  { "skillName": "portaly-payment", "version": "0.9.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -248,6 +248,7 @@ Recurring management rules:
 - These APIs only accept `Authorization: Bearer {api_key}`
 - Do not use Firebase auth for merchant-system integrations
 - `billingPeriod = one-time` does not support cancel or resume
+- **A subscription's `amount` is the plan price, not what the buyer pays.** When a discount was applied at checkout the subscription carries a `discount` snapshot (`code`, `appliedRule`, `startedAt`, `endsAt`, `source`) and the real charge is lower until `endsAt` (`null` = forever). Reconcile against the order records, not against `amount`.
 - `cancel` marks the subscription as `cancelAtPeriodEnd = true`
 - `resume` only works before the subscription has become fully `canceled`
 
