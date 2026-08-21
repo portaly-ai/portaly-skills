@@ -819,6 +819,7 @@ Renewal-failure payload (`creator_subscription.payment.failed`):
 ```
 
 - `willCancel` is `true` and `nextRetryAt` is `null` on the final (3rd) failure; `status` is then `canceled`.
+- `amount` on `payment.succeeded` / `payment.failed` is the **charged (or attempted) post-discount** amount, not the plan price. The lifecycle events (`active` / `cancel_requested` / `canceled`) carry the subscription's undiscounted base amount in that same field — they move no money, so never reconcile from them.
 
 Verification rule:
 

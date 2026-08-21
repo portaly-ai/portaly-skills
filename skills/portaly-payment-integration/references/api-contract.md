@@ -207,6 +207,8 @@ Payload example (`creator_subscription.checkout.completed`):
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Includes the 3rd-failure auto-cancel. |
 
+- `amount` on `payment.succeeded` / `payment.failed` is the **charged (or attempted) post-discount** amount, not the plan price. The lifecycle events (`active` / `cancel_requested` / `canceled`) carry the subscription's undiscounted base amount in that same field — they move no money, so never reconcile from them.
+
 All events are signed and delivered the same way. Use `scripts/sign_callback.mjs` (Node/TypeScript), `scripts/sign_callback.py` (reference/other stacks), or `scripts/sign_callback.webcrypto.mjs` (edge / WebCrypto runtimes — Cloudflare/Vercel Edge, Deno, InsForge edge functions, no `node:crypto`). Do not hand-roll the key ordering: `stableJson` sorts with `localeCompare`; a naive `.sort()` is UTF-16 order and silently rejects real callbacks. Note `sign_callback.py` sorts by Unicode code point, which can diverge from the `.mjs` scripts for mixed-case/non-ASCII keys — keep merchant-supplied `metadata` keys lowercase ASCII, or use a JS script for those payloads.
 
 ## Subscription Query And Lifecycle (Optional)
