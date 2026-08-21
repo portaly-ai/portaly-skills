@@ -605,7 +605,7 @@ Current identifier contract:
   - `cancelEffectiveAt`
   - `canceledAt`
   - `discount` — the discount snapshot frozen at checkout, or `null` when none was applied. Later edits to the discount code do not change it.
-- **`amount` is this subscription's base price, not the amount charged.** It is frozen at checkout — repricing the plan later does not change it — and renewals charge off it. When `discount` is present and still in effect, the actual charge is lower. To reconcile what was really collected, use the renewal callback's `amount` (preferred, see below) or the per-payment `amount` in the orders/invoices records — never recompute from the subscription.
+- **`amount` is this subscription's base price, not the amount charged.** It is frozen at checkout — repricing the plan later does not change it — and renewals charge off it. When `discount` is present and still in effect the actual charge is lower; the exception is a dynamic-priced plan (always `one-time`), where `amount` is the session amount and is already discounted. To reconcile what was really collected, use the renewal callback's `amount` (preferred, see below) or the per-payment `amount` in the orders/invoices records — never recompute from the subscription.
 - `discount` shape:
 
 ```jsonc
@@ -930,7 +930,7 @@ Use this when the human user needs to list all subscriptions for a profile, with
   - `data[].customerName`
   - `data[].customerEmail`
   - `data[].createdAt`
-  - `data[].discount`: discount snapshot or `null` — see the shape under **Subscription Query And Lifecycle**. `data[].amount` is the plan price, not the discounted charge.
+  - `data[].discount`: discount snapshot or `null` — see the shape under **Subscription Query And Lifecycle**, along with why `data[].amount` is not the amount charged.
   - `pagination.hasMore`: boolean
   - `pagination.nextCursor`: string or null
   - `pagination.count`: number of items in current page

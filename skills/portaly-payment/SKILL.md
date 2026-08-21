@@ -248,7 +248,7 @@ Recurring management rules:
 - These APIs only accept `Authorization: Bearer {api_key}`
 - Do not use Firebase auth for merchant-system integrations
 - `billingPeriod = one-time` does not support cancel or resume
-- **A subscription's `amount` is its base price, not what the buyer pays.** It is frozen at checkout and renewals charge off it. When a discount was applied the subscription carries a `discount` snapshot (`code`, `appliedRule`, `startedAt`, `endsAt`, `source`) and the real charge is lower until `endsAt` (`null` = forever). Reconcile against the renewal callback's `amount` or the order records — never against the subscription's `amount`.
+- **A subscription's `amount` is its base price, not a payment record.** It is frozen at checkout and renewals charge off it. A subscription that was discounted carries a `discount` snapshot (`code`, `appliedRule`, `startedAt`, `endsAt` — `null` = forever, `source`) and is charged less than `amount` while it is in effect. Reconcile against the renewal callback's `amount` or the order records — never against the subscription's `amount`.
 - `cancel` marks the subscription as `cancelAtPeriodEnd = true`
 - `resume` only works before the subscription has become fully `canceled`
 

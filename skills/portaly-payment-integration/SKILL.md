@@ -108,7 +108,7 @@ If the integration needs subscription lifecycle management, these are available 
 - `POST /subscriptions/{id}/cancel` / `POST /subscriptions/{id}/resume` — stop or restore future renewals (not a refund; current period stays active until `cancelEffectiveAt`).
 - `POST /portal-sessions` → redirect the subscriber to `portalUrl` for a hosted self-service page (view/cancel/resume/payment history). Server-to-server only — never expose the API key client-side.
 - `GET /subscriptions`, `GET /subscriptions/{id}`, `GET /orders` for query and reconciliation. For a payout period, `GET /orders?startDate=&endDate=&status=paid,liquid` — the dates filter `createdAt`, which for these orders is the payment time (`createdAt === paidAt`).
-- **Never reconcile against a subscription's `amount`** — that is the frozen base price, and a subscription with a `discount` snapshot is charged less. Money comes from the renewal callback's `amount` or `GET /orders`.
+- **Never reconcile against a subscription's `amount`** — that is the frozen base price, not a payment record; a subscription with a `discount` snapshot is charged less. Money comes from the renewal callback's `amount` or `GET /orders`.
 - See `references/api-contract.md` → "Subscription Query And Lifecycle", "Portal Session", "Order Query".
 
 ### 7. Go live
