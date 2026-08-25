@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.5.0
+version: 0.6.0
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
@@ -18,7 +18,7 @@ Pattern is the same as Stripe Checkout:
 1. User's site fetches the creator's products via API and displays them however they want.
 2. When a buyer is ready to pay, user's site creates a checkout session via API and redirects the buyer to the returned `checkoutUrl`.
 3. Portaly handles payment, sends the buyer a confirmation email, and serves the post-purchase deliverables page.
-4. Portaly POSTs a signed webhook to the user's callback URL when the purchase completes (and when a creator later refunds).
+4. Portaly POSTs a signed webhook to the user's callback URL when the purchase completes, when a payment attempt fails, and when a creator later refunds.
 
 ## Portaly Digital Products Environments
 
@@ -89,7 +89,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.5.0" }
+  { "skillName": "portaly-product", "version": "0.6.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -203,7 +203,21 @@ Persist:
 
 The buyer is automatically emailed by Portaly — **one purchase confirmation email per ordered product**, each containing the order-success-page link for that product's deliverable. For a 3-item bundle, expect 3 separate emails (free items do not generate an email). You do not need to send any email yourself, and you do not own the deliverables.
 
-### 6. Handle refunds (webhook)
+### 6. Handle failed payments (webhook)
+
+When a buyer's payment attempt is declined, Portaly sends:
+
+```
+x-portaly-event: digital_product.checkout.failed
+```
+
+The payload carries `sessionId`, `profileId`, `merchantOrderNumber`, `mode`, `paymentProvider`, `totalAmount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. No order exists, so there is no `orders[]` — use `event + sessionId` as the idempotency key. **`test`-mode sessions emit it too** (check `mode`), so a sandbox endpoint starts receiving it as soon as you deploy a handler.
+
+Use it to follow up with the buyer (retry link, reminder email) instead of silently losing the sale. Portaly retries a failing endpoint with exponential backoff, up to 5 attempts.
+
+There is **no** webhook when a buyer simply walks away without paying — see step 8 for how to find those.
+
+### 7. Handle refunds (webhook)
 
 When the creator refunds an order in the Portaly admin, you'll receive:
 
@@ -215,9 +229,11 @@ The payload contains `orderId`, `sessionId`, `amount`. **Refund events are per-o
 
 Use this to revoke any entitlement you granted in your system (e.g., remove user access, decrement license counts).
 
-### 7. Optional: list orders
+### 8. Optional: list orders and unfinished checkouts
 
 `GET /api/digital-products/orders` returns orders created via this API key. Useful for reconciliation / a "my purchases" panel in the user's admin.
+
+`GET /api/digital-products/checkout-sessions` returns checkout sessions **including the ones that never became an order** — the only way to see failed and abandoned checkouts, since `/orders` only holds successful purchases. Filter with `?outcome=failed|abandoned|pending|completed`, page with `?limit=` (1–200) and `?startAfter=` (from `pagination.startAfter`). It is scoped to the account and mode the key belongs to, not the key itself, so rotating a key does not hide its history. See `references/api-contract.md` for the response shape and the one live-mode blind spot to know about.
 
 ## Preferred Response Shape
 
@@ -226,7 +242,7 @@ When implementing for the user, return:
 2. Backend endpoint(s) they need to add (with copy-pasteable code)
 3. Webhook handler code (with signature verification)
 4. The minimum schema for whatever they persist on their side (orders table)
-5. A short test plan: "create a test session with one item, then with two items, then trigger refund in Portaly admin"
+5. A short test plan: "create a test session with one item, then with two items, then fail a payment with a declined test card, then trigger refund in Portaly admin"
 
 ## Guardrails
 
@@ -236,7 +252,7 @@ When implementing for the user, return:
 - **Always verify webhook signatures** before acting on a webhook payload. Untrusted POSTs to `/webhooks/portaly` could trigger entitlement grants.
 - **Always check `x-portaly-timestamp` freshness** (reject if more than 5 minutes from now in either direction; the symmetric window tolerates ordinary clock skew).
 - **Always serve `callbackUrl` over HTTPS.**
-- **Use `event + sessionId` (checkout) and `event + orderId` (refund) as idempotency keys** when processing webhooks — they can be re-delivered. Do not share one session-only key across every event type.
+- **Use `event + sessionId` (checkout completed/failed) and `event + orderId` (refund) as idempotency keys** when processing webhooks — they can be re-delivered. Do not share one session-only key across every event type.
 - **Don't trust the buyer-side `successRedirectUrl` as proof of payment.** Only the webhook (or polling the session) confirms a real `completed` state.
 - **Do not put secrets in `metadata`.** Echoed back in webhooks and logs.
 - **Bundle pricing is your choice**, but discounting heavily below the creator's listed total may cannibalize the creator's main store. Discuss with the creator before going live.

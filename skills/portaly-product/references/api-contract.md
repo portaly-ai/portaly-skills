@@ -239,9 +239,63 @@ Polling fallback for session status. Same fields as the create response, plus:
 
 `orderIds` populated when `status === "completed"`.
 
+### GET `/api/digital-products/checkout-sessions`
+
+List checkout sessions, most recent first — **including the ones that never became an order**. `GET /orders` only reads the orders collection and an order only exists after a successful payment, so this is the only way to see failed and abandoned checkouts.
+
+Scoped to the account and mode (test/live) your API key belongs to, **not to the key itself** — rotating or disabling a key does not hide the sessions it created.
+
+Query params:
+
+| Param | Notes |
+|---|---|
+| `outcome` | `failed` \| `abandoned` \| `pending` \| `completed`. Applied as a database query, so you get a full page of the requested outcome no matter how many other sessions exist. |
+| `limit` | Integer 1–200, default 50. Anything else returns `400 INVALID_REQUEST`. |
+| `startAfter` | `pagination.startAfter` from a previous response. |
+
+```json
+{
+  "data": [
+    {
+      "id": "dps_xxx",
+      "status": "failed",
+      "outcome": "failed",
+      "mode": "live",
+      "paymentProvider": "tappay",
+      "totalAmount": 990,
+      "currency": "TWD",
+      "customerEmail": "buyer@example.com",
+      "customerName": "Buyer",
+      "merchantOrderNumber": "your-order-id",
+      "failureReason": "Card declined",
+      "orderIds": [],
+      "itemSummary": [{ "productId": "prod_abc", "name": "Widget", "quantity": 1 }],
+      "createdAt": "2026-05-19T12:45:00Z",
+      "updatedAt": "2026-05-19T12:50:00Z",
+      "expiresAt": "2026-05-19T13:15:00Z",
+      "completedAt": null
+    }
+  ],
+  "pagination": { "hasMore": false, "startAfter": null }
+}
+```
+
+`outcome` is derived from the session, never stored separately:
+
+| `outcome` | Means |
+|---|---|
+| `failed` | A payment attempt was made and declined. `failureReason` says why. |
+| `abandoned` | The buyer never paid and the 30-minute checkout window lapsed. |
+| `pending` | Checkout is still open, or the charge is in flight. |
+| `completed` | Paid; `orderIds` is populated. |
+
+The response is a whitelist — `callbackSecret`, `checkoutToken`, and the full `productSnapshot` are never included.
+
+**Known blind spot (live only):** the live gateway charges via redirect, so a session whose payment succeeded but whose gateway callback was lost stays open and lands in `abandoned` after 30 minutes — indistinguishable here from a buyer who never started. Reconcile against `GET /orders` before treating an `abandoned` row as unpaid.
+
 ### GET `/api/digital-products/orders`
 
-List orders created via this API key (i.e., orders whose `metadata.vibeApiKeyId` matches).
+List orders created via this API key (i.e., orders whose `metadata.vibeApiKeyId` matches). Note this one **is** key-scoped, unlike the checkout-sessions list above.
 
 **Query params**: `limit`, `startAfter`, `status` (`paid` | `liquid` | `refund`)
 
@@ -291,6 +345,7 @@ x-portaly-signature: <hex string>
 |---|---|
 | `digital_product.checkout.completed` | All orders in the bundle are `paid`. Fired once per session. |
 | `digital_product.order.refunded` | An individual order is refunded. Fired once **per order** (so a bundle of 5 can fire 5 times if all refunded). |
+| `digital_product.checkout.failed` | The buyer's payment attempt failed. Fired once per session, idempotency key `sessionId`. Sent in `test` mode too (`mode` says which). |
 | `digital_product.order.canceled` | Reserved. Currently not emitted. |
 
 ### Payload — `checkout.completed`
@@ -322,6 +377,28 @@ x-portaly-signature: <hex string>
   "metadata": { "your_field": "value" }
 }
 ```
+
+### Payload — `checkout.failed`
+
+```json
+{
+  "event": "digital_product.checkout.failed",
+  "sessionId": "dps_xxx",
+  "profileId": "profile_xxx",
+  "merchantOrderNumber": "your-order-id",
+  "mode": "live",
+  "paymentProvider": "tappay",
+  "totalAmount": 990,
+  "currency": "TWD",
+  "customerEmail": "buyer@example.com",
+  "failureReason": "Card declined",
+  "failedAt": "2026-05-19T12:50:00Z"
+}
+```
+
+No order was created, so there are no `orders[]` and no `orderId`. `failureReason` is a short merchant-facing message — the raw gateway response is never included. There is **no** callback for an abandoned checkout (buyer never paid and the 30-minute window lapsed); query `GET /api/digital-products/checkout-sessions?outcome=abandoned` for those.
+
+If your endpoint was down when this fired, Portaly retries with exponential backoff (up to 5 attempts) before giving up.
 
 ### Payload — `order.refunded`
 
@@ -360,7 +437,7 @@ Inspect the repository's language, framework, and runtime before choosing an ada
 1. Verify `x-portaly-timestamp` is valid and within 5 minutes of now in either direction (the symmetric window tolerates ordinary clock skew between sender and receiver).
 2. Recompute signature with your `callbackSecret` and timing-safe-compare to `x-portaly-signature`.
 3. Require the authenticated body `event` to equal `x-portaly-event`.
-4. Treat `event + sessionId` (for `checkout.completed`) and `event + orderId` (for `order.refunded`) as idempotency keys.
+4. Treat `event + sessionId` (for `checkout.completed` / `checkout.failed`) and `event + orderId` (for `order.refunded`) as idempotency keys.
 5. Always serve `callbackUrl` over HTTPS.
 
 ---

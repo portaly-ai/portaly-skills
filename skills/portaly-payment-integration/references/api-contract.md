@@ -200,7 +200,8 @@ Payload example (`creator_subscription.checkout.completed`):
 
 | `x-portaly-event` | When | Notes |
 |---|---|---|
-| `creator_subscription.checkout.completed` | Initial hosted checkout completes | The only checkout-time callback. |
+| `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge. |
+| `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | Payload: `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. **No `subscriptionId`** — none was created; dedup on `sessionId`. Sent in `test` mode too. Re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds | Not sent for the first checkout charge. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on every failed attempt; `willCancel: true` + `status: canceled` on the 3rd consecutive failure. |
 | `creator_subscription.active` | Subscription transitions into active | Not re-sent for an already-active renewal. |
