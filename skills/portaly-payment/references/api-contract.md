@@ -780,7 +780,8 @@ Payload example:
 
 | `x-portaly-event` | When | Notes |
 |---|---|---|
-| `creator_subscription.checkout.completed` | Initial hosted checkout completes | The only checkout-time callback. |
+| `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge. |
+| `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Sent in `test` mode too. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds (monthly/yearly) | Not sent for the first checkout charge — that is `checkout.completed`. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
 | `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal. |
@@ -788,6 +789,29 @@ Payload example:
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Fired for any cancellation, including the 3rd-failure auto-cancel. |
 
 All events are signed and delivered the same way as `checkout.completed`. They are POSTed to the subscription's `subscriptionCallbackUrl` when set, otherwise to the checkout `callbackUrl`. Differentiate by the `x-portaly-event` header / payload `event` field. Idempotency is event-specific; see the callback notes below instead of globally deduplicating by `subscriptionId`.
+
+Failed-first-charge payload (`creator_subscription.checkout.failed`):
+
+```json
+{
+  "event": "creator_subscription.checkout.failed",
+  "sessionId": "session_123",
+  "profileId": "profile_123",
+  "planId": "plan_123",
+  "planName": "Pro Plan",
+  "mode": "live",
+  "amount": 299,
+  "currency": "TWD",
+  "customerEmail": "buyer@example.com",
+  "failureReason": "TapPay payment failed",
+  "failedAt": "2026-03-12T10:05:00.000Z"
+}
+```
+
+- **No `subscriptionId`, on purpose.** Every other `creator_subscription.*` event follows `subscriptionId === checkoutSessionId === sessionId`, but a declined first charge never creates a subscription. Key this event on `sessionId` alone; do not synthesize a subscription record from it.
+- Covers both payment paths (TapPay and 91APP). Not to be confused with `creator_subscription.payment.failed`, which is a **renewal** failure on an existing subscription and does carry `subscriptionId`.
+- **`test` mode dispatches it too** — check `mode` before acting on it in production systems.
+- Re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback` (body `{}`). The subscription-keyed `/subscriptions/{subscriptionId}/retry-callback` cannot reach a failed first charge.
 
 Renewal-success payload (`creator_subscription.payment.succeeded`):
 

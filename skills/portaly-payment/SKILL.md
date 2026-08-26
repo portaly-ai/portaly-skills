@@ -209,8 +209,11 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 ### 6. Consume the result
 
 - The primary external confirmation is the signed callback to `callbackUrl`.
-- **The checkout callback (`creator_subscription.checkout.completed`) is only dispatched when checkout status is `completed`.** Non-completed outcomes (failed, canceled, expired) do not trigger a checkout callback.
-- For non-completed outcomes, poll `GET /api/creator-subscription/checkout-sessions/{sessionId}` as a fallback.
+- **Two checkout-time callbacks exist**: `creator_subscription.checkout.completed` when the first charge succeeds, and `creator_subscription.checkout.failed` when it is declined. Handle both — a merchant who only listens for `.completed` never learns which buyers failed to pay.
+- `creator_subscription.checkout.failed` carries `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. It **deliberately has no `subscriptionId`** — a failed first charge means no subscription was ever created, so use `sessionId` as both the identifier and the idempotency key.
+- **`test`-mode sessions emit it too** (the payload's `mode` says which), so a sandbox endpoint will start receiving `checkout.failed` as soon as you deploy a handler.
+- Cancelled and expired checkouts still have no callback — poll `GET /api/creator-subscription/checkout-sessions/{sessionId}` for those.
+- To re-deliver a checkout callback your endpoint missed: `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. Use the session-keyed route for a failed first charge; `/subscriptions/{id}/retry-callback` cannot find it, because there is no subscription.
 - **Recurring renewals also emit signed callbacks** (same signing/verification as the checkout callback): `creator_subscription.payment.succeeded` on each successful renewal and `creator_subscription.payment.failed` on each failed renewal. They are delivered to the subscription's `subscriptionCallbackUrl` if set, otherwise to the same `callbackUrl`. Lifecycle events (`creator_subscription.active` / `.cancel_requested` / `.canceled`) are delivered the same way. Switch on the `x-portaly-event` header. See `references/api-contract.md` → Signed Callback for the full event table and payloads, and `references/checkout-and-renewal.md` for renewal behavior.
 - Use manual `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` only as an exception flow when the user is building a non-hosted or recovery flow.
 - **Current implementation contract:** `subscriptionId === checkoutSessionId === sessionId`.
