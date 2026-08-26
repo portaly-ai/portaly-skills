@@ -22,7 +22,10 @@ Use this when the human user asks how to authenticate third-party requests.
 - Header:
   - `Authorization: Bearer {portaly_payment_api_key}`
 - Notes:
-  - the API key is tied to one `profileId`
+  - the API key is tied to one `profileId`, which here means one **Payment product (merchant scope)** — not a Firebase UID, and not guaranteed to be a creator profile id:
+    - for a merchant's first product it equals their creator `profileId`
+    - from the second product onward it can be a generated id in the form `merch_<uuid>`
+    - so do **not** reuse this value as a creator identity or account owner. When you need the person behind the product, ask the merchant — there is no API that maps a `merch_<uuid>` back to its owner for third parties
   - each key has a fixed `mode`: `live` or `test`
   - live keys start with `pcs_live_`, test keys start with `pcs_test_`
   - mode is derived from the key; it is not passed per-request
@@ -41,7 +44,7 @@ Use this when the human user is creating a new API key from the Portaly Payment 
   - `mode`: optional, `live` (default) or `test`
 - Response fields:
   - `data.apiKey.id`
-  - `data.apiKey.profileId`
+  - `data.apiKey.profileId` — the product (merchant scope) this key is bound to; same caveat as **Bearer Auth** above, it is not necessarily a creator profile id
   - `data.apiKey.status`
   - `data.apiKey.mode`
   - `data.apiKey.keyPrefix`
@@ -55,6 +58,18 @@ Mode behavior:
 - Test mode orders are stored in a separate `sandboxOrders` collection
 - A single `profileId` can have both a live and a test key active simultaneously
 - Mode is fixed at creation time and cannot be changed
+- Omitting `mode` creates a **live** key — pass `mode: "test"` explicitly for a test key
+
+Error codes:
+
+- `400 Invalid mode. Use 'live' or 'test'.` — `mode` was present but not one of the two values; it is case-sensitive, so `"LIVE"` is rejected.
+- `400 Invalid scope. Use 'full' or 'integration'.` — same for the optional `scope` field.
+- `403 PREMIUM_REQUIRED` — a **live** key needs a Portaly premium membership or a Portaly Vibe subscription. A verified free member is still blocked; they upgrade first. A `test` key keeps working meanwhile.
+- `403 PAYMENT_KYC_NOT_VERIFIED` — a **live** key needs the merchant (the person) to pass Portaly payment verification (金流審核 / KYC). Point them at the "金流審核" entry in the dashboard.
+- `403 PRODUCT_REVIEW_NOT_VERIFIED` — the person is already verified, but **this product** has not passed its own payment review. Every product after the first is reviewed separately (service URL + business description). Do **not** send them back through identity verification — that part is done; they submit *this product* for review in the dashboard (Payment > 金流審核) and wait for approval.
+
+None of the three `403`s apply to `mode: "test"` — a test key is available to every
+member, verified or not, which is why the recommended path is test first.
 
 ## Merchant Config
 
