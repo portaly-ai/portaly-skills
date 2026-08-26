@@ -261,7 +261,7 @@ Query params:
       "status": "failed",
       "outcome": "failed",
       "mode": "live",
-      "paymentProvider": "tappay",
+      "paymentProvider": "91app",
       "totalAmount": 990,
       "currency": "TWD",
       "customerEmail": "buyer@example.com",
@@ -291,7 +291,12 @@ Query params:
 
 The response is a whitelist — `callbackSecret`, `checkoutToken`, and the full `productSnapshot` are never included.
 
-**Known blind spot (live only):** the live gateway charges via redirect, so a session whose payment succeeded but whose gateway callback was lost stays open and lands in `abandoned` after 30 minutes — indistinguishable here from a buyer who never started. Reconcile against `GET /orders` before treating an `abandoned` row as unpaid.
+`paymentProvider` is decided by Portaly, not by you: `live` mode is always `91app`, `test` mode is always `tappay`.
+
+**Known blind spots — don't reconcile off an `?outcome=` filtered list alone:**
+
+- **Live redirect flow:** the live gateway charges via redirect, so a session whose payment succeeded but whose gateway callback was lost stays open and lands in `abandoned` after 30 minutes — indistinguishable here from a buyer who never started. Reconcile against `GET /orders` before treating an `abandoned` row as unpaid.
+- **Charged but not finalized:** if the charge succeeds and Portaly then fails to finish writing the orders, the session is deliberately parked mid-flight so it can be reconciled — and in that state it matches **none** of the four `outcome` values. It only appears in the unfiltered list (reported as `pending`). This is exactly the state that most needs a human to check, so sweep the unfiltered list periodically instead of only polling `?outcome=failed` and `?outcome=abandoned`.
 
 ### GET `/api/digital-products/orders`
 
@@ -387,7 +392,7 @@ x-portaly-signature: <hex string>
   "profileId": "profile_xxx",
   "merchantOrderNumber": "your-order-id",
   "mode": "live",
-  "paymentProvider": "tappay",
+  "paymentProvider": "91app",
   "totalAmount": 990,
   "currency": "TWD",
   "customerEmail": "buyer@example.com",

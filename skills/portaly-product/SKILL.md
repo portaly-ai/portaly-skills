@@ -233,7 +233,9 @@ Use this to revoke any entitlement you granted in your system (e.g., remove user
 
 `GET /api/digital-products/orders` returns orders created via this API key. Useful for reconciliation / a "my purchases" panel in the user's admin.
 
-`GET /api/digital-products/checkout-sessions` returns checkout sessions **including the ones that never became an order** — the only way to see failed and abandoned checkouts, since `/orders` only holds successful purchases. Filter with `?outcome=failed|abandoned|pending|completed`, page with `?limit=` (1–200) and `?startAfter=` (from `pagination.startAfter`). It is scoped to the account and mode the key belongs to, not the key itself, so rotating a key does not hide its history. See `references/api-contract.md` for the response shape and the one live-mode blind spot to know about.
+`GET /api/digital-products/checkout-sessions` returns checkout sessions **including the ones that never became an order** — the only way to see failed and abandoned checkouts, since `/orders` only holds successful purchases. Filter with `?outcome=failed|abandoned|pending|completed`, page with `?limit=` (1–200) and `?startAfter=` (from `pagination.startAfter`). It is scoped to the account and mode the key belongs to, not the key itself, so rotating a key does not hide its history.
+
+**When reconciling, sweep the unfiltered list too, not just `?outcome=`.** Two states hide from the outcome filters: a live payment whose gateway callback was lost looks `abandoned`, and a charge that succeeded but wasn't finalized matches no `outcome` at all (it shows up only in the unfiltered list). Both are exactly the rows a human needs to look at. See `references/api-contract.md` → Known blind spots.
 
 ## Preferred Response Shape
 
