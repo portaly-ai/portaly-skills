@@ -62,6 +62,7 @@ function checkArtifactParity() {
 function checkRefundContractDocumentation() {
   const requiredContractTerms = [
     "GET /api/creator-subscription/orders/{orderId}",
+    "POST /api/creator-subscription/orders/{orderId}/refund",
     "creator_subscription.payment.refunded",
     "creator_subscription.payment.refund_failed",
     "refundFailureRetryable",
