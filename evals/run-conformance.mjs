@@ -80,6 +80,19 @@ function checkRefundContractDocumentation() {
         `${skillName}: refund contract is missing ${term}`
       );
     }
+
+    for (const document of [skill, contract]) {
+      assert.ok(
+        document.includes("up to three daily scheduled attempts"),
+        `${skillName}: delayed refund retry window is missing`
+      );
+      assert.ok(
+        !document.includes(
+          "refundRequestedAt is over 30 minutes old with neither terminal timestamp"
+        ),
+        `${skillName}: delayed refunds must not be treated as missing after 30 minutes`
+      );
+    }
   }
 
   const paymentSkill = fs.readFileSync(
@@ -96,6 +109,16 @@ function checkRefundContractDocumentation() {
   assert.ok(
     paymentSkill.includes(`"skillName": "portaly-payment", "version": "${paymentVersion}"`),
     "portaly-payment: report example must match top-level version"
+  );
+  const paymentContract = fs.readFileSync(
+    skillPath("portaly-payment", "references/api-contract.md"),
+    "utf8"
+  );
+  assert.ok(
+    paymentContract.includes(
+      "`REFUND_ATTEMPT_FAILED`: a previous refund attempt reached terminal failure; contact Portaly support"
+    ),
+    "portaly-payment: terminal refund failure guidance is missing"
   );
 
   const integrationSkill = fs.readFileSync(

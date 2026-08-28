@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.11.0
+version: 0.11.1
 metadata:
-  version: "0.11.0"
+  version: "0.11.1"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -142,7 +142,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.11.0" }
+  { "skillName": "portaly-payment", "version": "0.11.1" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -253,7 +253,7 @@ Order query API:
 - `GET /api/creator-subscription/orders/{orderId}` — poll one order's `refundRequestedAt`, `refundedAt`, `refundFailedAt`, and `refundFailureReason` without scanning the list
 - `POST /api/creator-subscription/orders/{orderId}/refund` — request a full refund with a **live full-scope key**. Body: `{ "reason": "customer_requested", "reasonNote": "optional", "amount": 400 }`; `reason` is required for API-key callers and `amount` may only equal the full order amount. A new request returns `202`; an already-complete or already-processing request returns `200`. Test keys return `409 TEST_MODE_REFUND_UNSUPPORTED`; integration-scope keys return `403 KEY_SCOPE_FORBIDDEN`.
 
-After a `202`, handle `creator_subscription.payment.refunded` or `.refund_failed` and keep `GET /orders/{orderId}` as the reconciliation fallback. If `refundRequestedAt` is over 30 minutes old with neither terminal timestamp, contact Portaly support. A refund can independently emit `creator_subscription.canceled`; there is no ordering guarantee, so sort by payload timestamps and deduplicate canceled by `subscriptionId` and refund outcomes by `orderId`.
+After a `202`, handle `creator_subscription.payment.refunded` or `.refund_failed` and keep `GET /orders/{orderId}` as the reconciliation fallback. A delayed TapPay refund can remain pending through up to three daily scheduled attempts. Keep polling while both terminal timestamps are null; contact Portaly support if `refundFailedAt` appears or neither terminal outcome arrives after that retry window. A refund can independently emit `creator_subscription.canceled`; there is no ordering guarantee, so sort by payload timestamps and deduplicate canceled by `subscriptionId` and refund outcomes by `orderId`.
 
 Recurring management rules:
 

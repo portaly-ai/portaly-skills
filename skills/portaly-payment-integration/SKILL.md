@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.6.0
+version: 0.6.1
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.6.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.6.1" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -97,7 +97,7 @@ Content-Type: application/json
 - Pick the adapter that matches the repo's runtime — `scripts/sign_callback.mjs` (Node/TS), `scripts/sign_callback.webcrypto.mjs` (edge/WebCrypto runtimes without `node:crypto`), or `scripts/sign_callback.py` (Python). Don't translate the signer from memory: the key ordering is `localeCompare`, and a naive code-point/`.sort()` silently 401s real callbacks. For an unlisted runtime, use a documented server-side bridge or keep the receiver blocked until a native implementation passes the vectors — see `references/callback-signature-v1.md`.
 - Before shipping the receiver, run `scripts/check_callback_vectors.mjs --runtime <node|webcrypto|python|go>` against the committed production-derived vectors (`references/callback-signature-v1-vectors.json`). Passing self-signed fixtures is not enough — sender and receiver can share the same ordering bug.
 - **Handle `creator_subscription.checkout.failed`, not just `.completed`.** A declined first charge emits its own callback carrying `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. It has **no `subscriptionId`** (none was created), so dedup it on `sessionId`. `test`-mode sessions emit it too — check `mode` before acting. If your endpoint was down, re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`; the subscription-keyed retry route cannot reach a failed first charge.
-- **Handle refund terminal events even though this key cannot initiate them.** Merchant/admin refunds emit `creator_subscription.payment.refunded` or `.refund_failed`; deduplicate each on `orderId`, and reconcile with `GET /api/creator-subscription/orders/{orderId}`. A separate `creator_subscription.canceled` event has no ordering guarantee. Never call `POST /orders/{orderId}/refund` with this integration-scope key; it deliberately returns `403 KEY_SCOPE_FORBIDDEN` and requires a live full-scope key.
+- **Handle refund terminal events even though this key cannot initiate them.** Merchant/admin refunds emit `creator_subscription.payment.refunded` or `.refund_failed`; deduplicate each on `orderId`, and reconcile with `GET /api/creator-subscription/orders/{orderId}`. A delayed TapPay refund can remain pending through up to three daily scheduled attempts; keep polling until a terminal timestamp appears, and contact Portaly support only after terminal failure or that retry window passes without an outcome. A separate `creator_subscription.canceled` event has no ordering guarantee. Never call `POST /orders/{orderId}/refund` with this integration-scope key; it deliberately returns `403 KEY_SCOPE_FORBIDDEN` and requires a live full-scope key.
 - See `references/api-contract.md` → "Signed Callback" for the event table and payload shapes.
 
 ### 5. Handle checkout errors

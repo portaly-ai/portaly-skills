@@ -248,7 +248,7 @@ Lets a subscriber manage their own subscription without you building cancel/resu
 - Required headers: `Authorization: Bearer {portaly_payment_api_key}`
 - Query parameters: `status` (comma-separate for multiple, e.g. `paid,liquid`; allowed: `pending`, `awaiting_atm`, `paid`, `liquid`, `refund`, `failed`, `tracked` — anything else returns `400`), `startDate`/`endDate` (filters `createdAt`, which for these orders **is** the payment time — the order is only written once payment succeeds, so `createdAt === paidAt`; `YYYY-MM-DD` or a datetime with no offset is read as Taipei/UTC+8, pass `Z`/`±HH:MM` to override; `startDate` later than `endDate` returns `400`), `planId` (exact match on `creatorSubscriptionPlanId`), `limit` (default 20, max 100), `startAfter` (cursor)
 - Response fields per order: `id`, `amount`, `netTotal`, `currency`, `status`, `name`, `email`, `paymentMethod`, `merchantOrderNumber`, `creatorSubscriptionId`, `creatorSubscriptionPlanId`, `refundRequestedAt`, `refundedAt`, `refundFailedAt`, `refundFailureReason`, `createdAt`, `paidAt`, plus list-only `pagination.hasMore` / `pagination.nextCursor` / `pagination.count`
-- Use the single-order endpoint to reconcile a missing refund event without scanning the list. If `refundRequestedAt` is over 30 minutes old with neither terminal timestamp, contact Portaly support.
+- Use the single-order endpoint to reconcile a missing refund event without scanning the list. A delayed TapPay refund can remain pending through up to three daily scheduled attempts. Keep polling while both terminal timestamps are null; contact Portaly support if `refundFailedAt` appears or neither terminal outcome arrives after that retry window.
 
 ## Skill Version Report
 

@@ -1083,8 +1083,9 @@ Use this when the human user needs to query payment/order records for a profile.
 - `200`: the order was already refunded or is already processing, including a delayed provider retry; no second provider refund starts.
 - `400 PARTIAL_REFUND_NOT_SUPPORTED`: `amount` does not equal the full order amount.
 - `409`: `ORDER_NOT_REFUNDABLE`, `ZERO_AMOUNT_NOT_REFUNDABLE`, `REFUND_LOCKED_DEFERRED_RELEASED`, `REFUND_ATTEMPT_FAILED`, or `TEST_MODE_REFUND_UNSUPPORTED`.
+- `REFUND_ATTEMPT_FAILED`: a previous refund attempt reached terminal failure; contact Portaly support for help completing the refund.
 - `404`: missing order, other profile, non-subscription order, or mode mismatch all look identical.
-- Reconciliation: poll `GET /api/creator-subscription/orders/{orderId}`. If `refundRequestedAt` is over 30 minutes old and both terminal timestamps remain null, contact Portaly support.
+- Reconciliation: poll `GET /api/creator-subscription/orders/{orderId}`. A delayed TapPay refund can remain pending through up to three daily scheduled attempts. Keep polling while both terminal timestamps are null; contact Portaly support if `refundFailedAt` appears or neither terminal outcome arrives after that retry window.
 - Mode caveat: a sandbox id listed with `GET /orders?mode=test` returns 404 when sent to this live-only refund endpoint; a dashboard credential given a sandbox id also returns 404.
 
 ## Invoice Query
