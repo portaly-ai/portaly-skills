@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.10.0
+version: 0.11.0
 metadata:
-  version: "0.10.0"
+  version: "0.11.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -42,7 +42,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 - Mode is set at API key creation time and cannot be changed after creation.
 - A single merchant (`profileId`) can have both a live key and a test key active at the same time.
-- All API endpoints accept both live and test keys. The mode is derived from the key, not from a request parameter.
+- API endpoints accept both live and test keys except order refund: `POST /orders/{orderId}/refund` currently requires a live full-scope key. The mode is derived from the key, not from a request parameter.
 - Test mode is intended for integration testing. Real charges are not made in test mode when using TapPay sandbox credentials.
 - **Plans and merchant config are shared across modes.** They belong to the merchant (`profileId`), not to the API key mode. A plan created with a live key is visible and usable with a test key, and vice versa. Do **not** create duplicate plans when switching between live and test keys — query existing plans first with `GET /api/creator-subscription/plans` and reuse them.
 
@@ -142,7 +142,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.10.0" }
+  { "skillName": "portaly-payment", "version": "0.11.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -214,7 +214,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - **`test`-mode sessions emit it too** (the payload's `mode` says which), so a sandbox endpoint will start receiving `checkout.failed` as soon as you deploy a handler.
 - Cancelled and expired checkouts still have no callback — poll `GET /api/creator-subscription/checkout-sessions/{sessionId}` for those.
 - To re-deliver a checkout callback your endpoint missed: `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. Use the session-keyed route for a failed first charge; `/subscriptions/{id}/retry-callback` cannot find it, because there is no subscription.
-- **Recurring renewals also emit signed callbacks** (same signing/verification as the checkout callback): `creator_subscription.payment.succeeded` on each successful renewal and `creator_subscription.payment.failed` on each failed renewal. They are delivered to the subscription's `subscriptionCallbackUrl` if set, otherwise to the same `callbackUrl`. Lifecycle events (`creator_subscription.active` / `.cancel_requested` / `.canceled`) are delivered the same way. Switch on the `x-portaly-event` header. See `references/api-contract.md` → Signed Callback for the full event table and payloads, and `references/checkout-and-renewal.md` for renewal behavior.
+- **Recurring renewals and refunds also emit signed callbacks** (same signing/verification as the checkout callback): `creator_subscription.payment.succeeded` / `.failed` cover renewal charges; `creator_subscription.payment.refunded` / `.refund_failed` are terminal outcomes for one payment order. Refund events deduplicate on `orderId`, not `subscriptionId`. Lifecycle events (`creator_subscription.active` / `.cancel_requested` / `.canceled`) are delivered the same way. Switch on the `x-portaly-event` header. See `references/api-contract.md` → Signed Callback for the full event table and payloads, and `references/checkout-and-renewal.md` for renewal behavior.
 - Use manual `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` only as an exception flow when the user is building a non-hosted or recovery flow.
 - **Current implementation contract:** `subscriptionId === checkoutSessionId === sessionId`.
 - When a recurring checkout succeeds, human user's system may use the callback's `sessionId` directly as the `subscriptionId` for later cancel or resume API calls.
@@ -229,7 +229,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - V1 signs `stableJson(JSON.parse(wireBody))`, not the raw HTTP body. Never substitute code-point key sorting for JavaScript `localeCompare` semantics.
 - After verification, persist the minimum audit fields allowed by the application's data policy: `sessionId`, `subscriptionId` if present, `merchantOrderNumber`, payment identity, event, and status. Do not log the secret or full signing base.
 - If the callback payload does not include `subscriptionId`, persist `sessionId` as the recurring subscription identifier because the current implementation uses `sessionId` as `subscriptionId`.
-- Use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`. Do not permanently deduplicate all lifecycle events by `sessionId`/`subscriptionId`; the current lifecycle payload has no documented delivery identifier, so keep state assignments idempotent and flag stronger deduplication requirements as a product-contract gap.
+- Use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`; refund success/failure uses `event + orderId`. Do not permanently deduplicate all lifecycle events by `sessionId`/`subscriptionId`; the current lifecycle payload has no documented delivery identifier, so keep state assignments idempotent and flag stronger deduplication requirements as a product-contract gap.
 - **`callbackUrl` must use HTTPS.** Serving over plain HTTP exposes the `callbackSecret` signature and payload in transit.
 
 ### 8. Manage recurring subscriptions
@@ -250,6 +250,10 @@ Recurring management APIs:
 Order query API:
 
 - `GET /api/creator-subscription/orders` — list payment/order records, filterable by `startDate`/`endDate`, `status` (comma-separated for multiple), and `planId`, with cursor pagination. The dates filter `createdAt`, which for these orders is the payment time (`createdAt === paidAt`), so this is the endpoint for reconciling a payout period
+- `GET /api/creator-subscription/orders/{orderId}` — poll one order's `refundRequestedAt`, `refundedAt`, `refundFailedAt`, and `refundFailureReason` without scanning the list
+- `POST /api/creator-subscription/orders/{orderId}/refund` — request a full refund with a **live full-scope key**. Body: `{ "reason": "customer_requested", "reasonNote": "optional", "amount": 400 }`; `reason` is required for API-key callers and `amount` may only equal the full order amount. A new request returns `202`; an already-complete or already-processing request returns `200`. Test keys return `409 TEST_MODE_REFUND_UNSUPPORTED`; integration-scope keys return `403 KEY_SCOPE_FORBIDDEN`.
+
+After a `202`, handle `creator_subscription.payment.refunded` or `.refund_failed` and keep `GET /orders/{orderId}` as the reconciliation fallback. If `refundRequestedAt` is over 30 minutes old with neither terminal timestamp, contact Portaly support. A refund can independently emit `creator_subscription.canceled`; there is no ordering guarantee, so sort by payload timestamps and deduplicate canceled by `subscriptionId` and refund outcomes by `orderId`.
 
 Recurring management rules:
 

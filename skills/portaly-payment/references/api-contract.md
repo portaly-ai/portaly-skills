@@ -784,6 +784,8 @@ Payload example:
 | `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Sent in `test` mode too. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds (monthly/yearly) | Not sent for the first checkout charge — that is `checkout.completed`. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
+| `creator_subscription.payment.refunded` | A payment order is fully refunded | Deduplicate on `orderId`. `amount` and `refundedAmount` are the same post-discount order amount. |
+| `creator_subscription.payment.refund_failed` | A refund reaches a terminal failure | Deduplicate on `orderId`. No money moved; statistics reversal and subscription cancellation are not rolled back, so Portaly must handle it manually. |
 | `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal. |
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Fired for any cancellation, including the 3rd-failure auto-cancel. |
@@ -860,6 +862,30 @@ Renewal-failure payload (`creator_subscription.payment.failed`):
 - `willCancel` is `true` and `nextRetryAt` is `null` on the final (3rd) failure; `status` is then `canceled`.
 - `amount` on `payment.succeeded` / `payment.failed` is the **charged (or attempted) post-discount** amount, not the plan price. The lifecycle events (`active` / `cancel_requested` / `canceled`) carry the subscription's undiscounted base amount in that same field — they move no money, so never reconcile from them.
 
+Refund terminal payload fields shared by both events: `event`, the subscription lifecycle base fields, `orderId`, `paymentId`, `paymentReference`, `orderMerchantOrderNumber`, `amount`, `currency`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, and `subscriptionCanceledByRefund`. Successful refunds add `refundedAt` and `refundReference`; failures add `refundFailedAt`, `refundFailureReason`, and nullable `refundFailureRetryable`.
+
+```json
+{
+  "event": "creator_subscription.payment.refunded",
+  "subscriptionId": "session_123",
+  "orderId": "creatorSubscription_pay_456",
+  "paymentId": "pay_456",
+  "amount": 249,
+  "currency": "TWD",
+  "refundedAmount": 249,
+  "refundRequestedAt": "2026-08-20T05:00:00.000Z",
+  "refundRequestedBy": "api",
+  "refundReason": "customer_requested",
+  "refundReasonNote": "Buyer asked for a refund",
+  "refundProvider": "tappay",
+  "refundReference": "refund_789",
+  "refundedAt": "2026-08-20T05:02:00.000Z",
+  "subscriptionCanceledByRefund": true
+}
+```
+
+`creator_subscription.canceled` and the refund outcome are emitted by independent backend processes, so either can arrive first or fail independently. Sort by `canceledAt` / `refundedAt`, deduplicate them separately on `subscriptionId` / `orderId`, and never treat one as proof of the other. The older orders webhook can also send a legacy `refund` event with a different payload and signature; it is a separate product with separate deduplication.
+
 Verification rule:
 
 - base string: `{timestamp}.{stable_json(payload)}`
@@ -870,7 +896,7 @@ Callback notes:
 
 - current implementation contract: `subscriptionId === sessionId`
 - if the callback payload consumed by the merchant side does not explicitly expose `subscriptionId`, the merchant may safely persist `sessionId` as the recurring subscription identifier
-- use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`
+- use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`; refund success/failure uses `event + orderId`
 - lifecycle callbacks do not currently document a delivery identifier; make status assignments idempotent and do not permanently suppress all later lifecycle transitions with one `sessionId` key
 - the `mode` field indicates whether this callback originated from a live or test checkout; merchants should use it to route test callbacks to sandbox order handling
 
@@ -1004,6 +1030,7 @@ Use this when the human user needs to query payment/order records for a profile.
 
 - Endpoint:
   - `GET /api/creator-subscription/orders`
+  - `GET /api/creator-subscription/orders/{orderId}` for one order without pagination
 - Required headers:
   - `Authorization: Bearer {portaly_payment_api_key}`
 - Query parameters:
@@ -1033,6 +1060,10 @@ Use this when the human user needs to query payment/order records for a profile.
   - `data[].merchantOrderNumber`
   - `data[].creatorSubscriptionId`
   - `data[].creatorSubscriptionPlanId`
+  - `data[].refundRequestedAt`: request acceptance time, or null
+  - `data[].refundedAt`: provider-confirmed success time, or null
+  - `data[].refundFailedAt`: terminal failure time, or null
+  - `data[].refundFailureReason`: failure reason, or null
   - `data[].createdAt`
   - `data[].paidAt`
   - `pagination.hasMore`: boolean
@@ -1042,6 +1073,19 @@ Use this when the human user needs to query payment/order records for a profile.
   - API key auth automatically routes to the correct order collection based on the key's mode (live → `orders`, test → `sandboxOrders`)
   - Only returns orders with `projectId = 'creatorSubscription'`
   - Supports cursor-based pagination
+
+## Order Refund
+
+- Endpoint: `POST /api/creator-subscription/orders/{orderId}/refund`
+- Authentication: live full-scope API key only. Integration-scope keys return `403 KEY_SCOPE_FORBIDDEN`; test keys return `409 TEST_MODE_REFUND_UNSUPPORTED` before the order is read.
+- Body: `reason` (`customer_requested` | `duplicate` | `fraudulent` | `manual` | `other`) is required for API-key callers; optional `reasonNote` is limited to 500 characters; optional positive integer `amount` must exactly equal the order amount because partial refunds are unsupported.
+- `202`: this request changed a `paid` / `liquid` order to `refund`. A terminal `creator_subscription.payment.refunded` or `.refund_failed` event will follow.
+- `200`: the order was already refunded or is already processing, including a delayed provider retry; no second provider refund starts.
+- `400 PARTIAL_REFUND_NOT_SUPPORTED`: `amount` does not equal the full order amount.
+- `409`: `ORDER_NOT_REFUNDABLE`, `ZERO_AMOUNT_NOT_REFUNDABLE`, `REFUND_LOCKED_DEFERRED_RELEASED`, `REFUND_ATTEMPT_FAILED`, or `TEST_MODE_REFUND_UNSUPPORTED`.
+- `404`: missing order, other profile, non-subscription order, or mode mismatch all look identical.
+- Reconciliation: poll `GET /api/creator-subscription/orders/{orderId}`. If `refundRequestedAt` is over 30 minutes old and both terminal timestamps remain null, contact Portaly support.
+- Mode caveat: a sandbox id listed with `GET /orders?mode=test` returns 404 when sent to this live-only refund endpoint; a dashboard credential given a sandbox id also returns 404.
 
 ## Invoice Query
 
@@ -1090,8 +1134,8 @@ All creator-subscription API endpoints are rate limited **except** checkout sess
 
 | Group | Window | Max requests | Applies to |
 |---|---|---|---|
-| read | 1 minute | 120 | GET checkout-sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders, GET invoices |
-| write | 1 minute | 20 | POST cancel, POST resume, PUT plans/{id}, PUT config, POST plans |
+| read | 1 minute | 120 | GET checkout-sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders, GET orders/{id}, GET invoices |
+| write | 1 minute | 20 | POST cancel, POST resume, POST orders/{id}/refund, PUT plans/{id}, PUT config, POST plans |
 | api-keys | 1 minute | 10 | POST/GET/DELETE api-keys |
 
 ### Rate limit scope
