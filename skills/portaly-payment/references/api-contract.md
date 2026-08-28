@@ -630,7 +630,9 @@ Current identifier contract:
   "appliedRule": { "appliesTo": {...}, "discount": {...}, "duration": {...} },  // same shape as a rule in the discount code
   "startedAt": "2026-08-01T00:00:00.000Z",
   "endsAt": "2026-11-01T00:00:00.000Z",   // null = forever
-  "source": "manual"                       // "manual" = discountCode sent at checkout; "ref_code" = auto-applied from the buyer's signupRefCode
+  "source": "manual",                      // "manual" = discountCode sent at checkout; "ref_code" = auto-applied from the buyer's signupRefCode
+  "originalAmount": 1000,                  // undiscounted price at checkout; absent on subscriptions created before this was recorded
+  "finalAmount": 700                       // price actually charged at checkout; absent on subscriptions created before this was recorded
 }
 ```
 
