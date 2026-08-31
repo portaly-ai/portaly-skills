@@ -33,7 +33,7 @@ npx skills update portaly-payment
 | **portaly-payment-integration** | 團隊／工程師使用商家核發的 integration-scope 金鑰（`pcs_*_itg_*`）串接 — 即時讀取方案、建立結帳 session、驗證簽章 callback；無法管理方案、商家設定或優惠碼 | `Portaly Payment 團隊串接`、`integration API key`、`pcs_*_itg_ 金鑰` |
 | **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
 | **portaly-review** | 透過 Portaly 託管的 iframe，在你的網站上嵌入已驗證買家的評價徽章（Trustpilot 風格）— 不需要 API 金鑰 | `嵌入 Portaly 評價`、`評價 widget`、`顯示我的評分`、`Trustpilot 風格徽章`、`Portaly 的社會認同` |
-| **portaly-affiliate** | 讓創作者自己的買家推薦其他買家並抽成（限一次性方案）——開啟推廣、設定分潤比例，並在自己的網站上接住推廣碼；連結由 Portaly 發放，分潤也由 Portaly 計算與撥付 | `affiliate program`、`referral program`、`分潤`、`推廣連結`、`聯盟行銷`、`推廣夥伴` |
+| **portaly-affiliate** | 讓創作者自己的買家推薦其他買家並抽成——為整個產品開啟推廣、設定一個所有合格一次性方案共用的分潤比例，並在自己的網站上接住推廣碼；連結由 Portaly 發放，分潤也由 Portaly 計算與撥付 | `affiliate program`、`referral program`、`分潤`、`推廣連結`、`聯盟行銷`、`推廣夥伴` |
 
 ## Portaly Overview
 
