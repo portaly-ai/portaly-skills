@@ -33,6 +33,7 @@ npx skills update portaly-payment
 | **portaly-payment-integration** | 團隊／工程師使用商家核發的 integration-scope 金鑰（`pcs_*_itg_*`）串接 — 即時讀取方案、建立結帳 session、驗證簽章 callback；無法管理方案、商家設定或優惠碼 | `Portaly Payment 團隊串接`、`integration API key`、`pcs_*_itg_ 金鑰` |
 | **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
 | **portaly-review** | 透過 Portaly 託管的 iframe，在你的網站上嵌入已驗證買家的評價徽章（Trustpilot 風格）— 不需要 API 金鑰 | `嵌入 Portaly 評價`、`評價 widget`、`顯示我的評分`、`Trustpilot 風格徽章`、`Portaly 的社會認同` |
+| **portaly-affiliate** | 讓創作者自己的買家推薦其他買家並抽成（限一次性方案）——開啟推廣、設定分潤比例，並在自己的網站上接住推廣碼；連結由 Portaly 發放，分潤也由 Portaly 計算與撥付 | `affiliate program`、`referral program`、`分潤`、`推廣連結`、`聯盟行銷`、`推廣夥伴` |
 
 ## Portaly Overview
 
@@ -151,6 +152,29 @@ npx skills add portaly-ai/portaly-skills --skill portaly-review
 - 「顯示我的評分」
 - 「Trustpilot 風格徽章」
 - 「Portaly 的社會認同」
+
+
+## Portaly Affiliate
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-affiliate
+```
+
+為 Portaly Payment 方案開啟**買家推廣**：買家付款完成後，Portaly 會在自己的完成頁上提供他一條專屬推廣連結，有人透過它購買時他就能抽成。
+
+- 逐方案開啟推廣並設定分潤比例；上下限與預設值一律從 Portaly 讀取，不寫死在專案裡
+- 在創作者自己的網站接住 `?ps=` 推廣碼（伺服器端寫入、`httpOnly`、三天最後點擊為準），建立 checkout session 時交給 Portaly
+- 推廣連結的發放、分潤計算、退款回沖與撥付全部由 Portaly 負責，不在專案裡重做一份
+- 推廣者到 `https://rewards.portaly.cc` 查看成效與提領
+- 附可直接貼上網站的正體中文推薦夥伴說明文案
+
+**前置條件：** 已可運作的 Portaly Payment，且至少有一個**上架中、一次性、固定價格**的方案（訂閱制與動態定價不支援），以及**台灣**的 Portaly 帳號。推廣者只要有 email 就能拿到連結並累積分潤，但**提領需要 Portaly 帳號、台灣身分證與台灣銀行帳戶**——請在推廣這個計畫之前先告訴你的買家。
+
+**觸發語：**
+- 「我想讓買過的人幫我推廣」
+- 「分潤怎麼設定」
+- "Set up an affiliate / referral program"
+- "Let my customers refer other buyers and earn a commission"
 
 ## 串接到自己的 Server
 
