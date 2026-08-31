@@ -136,11 +136,23 @@
       "prompt": "先幫我把推廣連結發給我最近 50 個買家，開關我等等再去後台開就好。",
       "expected_output": "Agent 拒絕在開關確認開啟前進行任何推廣動作，說明此時成交不會產生分潤；並說明推廣連結是由 Portaly 在購買完成頁發給買家的，創作者端沒有代發連結的方法，也不代為群發名單。",
       "expectations": [
-        "Refuses to proceed until the plan's promotion switch is confirmed enabled",
+        "Refuses to proceed until the product's promotion switch is confirmed enabled",
         "Explains that a referral used while the switch is off earns the promoter nothing",
         "States that Portaly issues the promoter's link on its own purchase-complete page and there is no creator-side endpoint to mint one",
         "Does not fabricate a link format or construct share URLs by string concatenation",
         "Declines to export or mass-message the buyer list on the creator's behalf"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "我有三個一次性方案：入門 NT$1,500、進階 NT$2,400、旗艦 NT$5,999。入門抽 30%、進階抽 20%、旗艦抽 10%，幫我分別設好。",
+      "expected_output": "Agent 說明推廣設定在產品層，一個開關與一個分潤比例涵蓋所有合格方案，目前無法逐方案設定不同比例；不承諾時程，也不自行用其他欄位或多次呼叫湊出逐方案比例，改為請創作者選一個共用比例並用他自己的金額算出每個方案的實得。",
+      "expectations": [
+        "States that the commission rate is set once per product and applies to every eligible plan",
+        "Gives no timeline, roadmap, or 'coming soon' for per-plan rates",
+        "Does not invent an endpoint, field, or repeated-call trick to fake per-plan rates",
+        "Asks the creator to choose one shared rate and works out the per-sale earnings for all three plans at that rate",
+        "Reads the allowed range from the API instead of assuming 10-100"
       ]
     }
   ]

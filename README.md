@@ -33,7 +33,7 @@ npx skills update portaly-payment
 | **portaly-payment-integration** | Team/engineer integration using a merchant-issued integration-scope key (`pcs_*_itg_*`) — read active plans at runtime, create checkout sessions, verify signed callbacks; cannot manage plans, merchant config, or discount codes | `Portaly Payment team integration`, `integration API key`, `pcs_*_itg_ key` |
 | **portaly-product** | Sell a creator's Portaly digital products from your own vibe-coded site — list products, build single or bundle checkout sessions, hosted payment + email, signed webhooks | `Portaly digital products`, `bundle checkout`, `digital downloads`, `creator product API` |
 | **portaly-review** | Embed Portaly's hosted, verified-buyer review widget (Trustpilot-style rating badge) on your own site via a Portaly-hosted iframe — no API key needed | `embed Portaly reviews`, `review widget`, `show my ratings`, `Trustpilot-style badge`, `social proof from Portaly` |
-| **portaly-affiliate** | Let the creator's own buyers earn a commission for referring other buyers on a one-time plan — switch promotion on, set the rate, and capture the referral code on your own site; Portaly issues the link and owns the payout | `affiliate program`, `referral program`, `buyer promotion`, `分潤`, `推廣連結`, `聯盟行銷`, `推廣夥伴` |
+| **portaly-affiliate** | Let the creator's own buyers earn a commission for referring other buyers — switch promotion on for the product, set the one rate every eligible one-time plan shares, and capture the referral code on your own site; Portaly issues the link and owns the payout | `affiliate program`, `referral program`, `buyer promotion`, `分潤`, `推廣連結`, `聯盟行銷`, `推廣夥伴` |
 
 ## Portaly Overview
 
