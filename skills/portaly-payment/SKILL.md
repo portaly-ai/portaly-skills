@@ -367,3 +367,5 @@ When using this skill, aim to return one or more of:
   Use on edge / WebCrypto runtimes that can't import `node:crypto` (Cloudflare/Vercel Edge, Deno, InsForge edge functions). Same scheme + byte-identical `stableJson`; verifies via the global `crypto.subtle`.
 - `scripts/verify_callback.go` and `scripts/verify_callback_test.go`
   Go adapter plus its production-derived and fail-closed tests.
+- `../portaly-affiliate/SKILL.md`
+  Read it when the merchant wants their own buyers to refer others and earn a commission. It builds on the plans and checkout sessions set up here, and adds one field to session creation.
