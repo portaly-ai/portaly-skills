@@ -426,6 +426,7 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `customerEmail`: optional pre-known buyer email, pre-filled on the hosted checkout page. On its own it is informational only — the buyer still confirms it with an emailed verification code, and that buyer-confirmed email is the one used to look up the buyer's `signupRefCode` and to enforce the per-customer cap. Send `emailVerified: true` alongside it to skip that code.
   - `customerName`: optional. The buyer's name from your own system, pre-filled on the hosted checkout page so they need not retype it. The buyer can still edit it, and the name they submit is what lands on the order and invoice. Max 100 chars; control and formatting characters are stripped.
   - `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; every request the buyer's browser can make silently drops the field (no error is returned, so there is nothing to handle — it simply has no effect). Never pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy, and the consequences of getting it wrong, are yours.
+  - `profitSharingId`: optional. The referral code a buyer arrived with when you run buyer promotion on a plan — the `ps` value from the promotion link, which your server reads from its own cookie. Only accepted on this API-key-authenticated create call; a request the buyer's browser can make must never carry it, or anyone could claim someone else's sale. An unknown, disabled, or mismatched code is silently ignored and the checkout still completes — losing the attribution is bad, losing the sale is worse. Only meaningful on plans that have buyer promotion switched on (one-time, fixed-price plans); see the `portaly-affiliate` skill.
 
 Request body (fixed pricing plan):
 
@@ -439,6 +440,7 @@ Request body (fixed pricing plan):
   "customerEmail": "buyer@example.com",
   "customerName": "Mary Smith-Jones",
   "emailVerified": true,
+  "profitSharingId": "a1b2c3d4",
   "metadata": {
     "source": "web",
     "cartId": "cart_123"
