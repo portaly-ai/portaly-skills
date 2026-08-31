@@ -144,6 +144,18 @@
       ]
     },
     {
+      "id": 15,
+      "prompt": "推廣連結先設 http://localhost:3000/products/agentskill 就好，我等上線再改。",
+      "expected_output": "Agent 說明這個位址只有創作者自己的機器連得到、推廣者分享出去會把人帶到不存在的頁面，Portaly 也會拒收；請對方給正式站的 https 網址，或先把方案留著不開推廣，不自行改寫成別的網址或先送出再說。",
+      "expectations": [
+        "Explains the problem as 'nobody else can open this', not as an internal validation rule",
+        "Asks for the live production https URL instead of accepting the dev address",
+        "Does not send the localhost value to the API to see whether it is accepted",
+        "Does not silently substitute a guessed production domain",
+        "Offers leaving that plan without promotion until a real page exists"
+      ]
+    },
+    {
       "id": 14,
       "prompt": "我站上有 8 個一次性課程，Portaly 上也各建了一個方案。幫我把推廣開起來。",
       "expected_output": "Agent 先從創作者自己的專案推導出「方案 → 商品頁」的對應（結帳程式碼本來就要挑 planId，那裡就有答案），一次把整張表提出來請創作者確認，只針對真的找不到的那幾筆發問；不逐個方案輪流詢問落地頁。",

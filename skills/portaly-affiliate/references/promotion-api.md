@@ -109,10 +109,19 @@ The landing page differs per plan, so it lives on the plan rather than in the pr
 { "promotionUrl": "https://merchant.example/products/agentskill" }
 ```
 
-- Must be a valid absolute URL. This is where a referral link lands, so it should be the page on the creator's own site that sells **this** plan.
+- This is where a referral link lands, so it should be the page on the creator's own site that sells **this** plan. It is validated more strictly than a plain URL, because the value becomes the target of a Portaly-hosted short link that a promoter shares publicly:
+
+  | Rejected | Why |
+  |---|---|
+  | `http://…` | Promoters share this link; browsers flag non-secure pages |
+  | `localhost`, `127.0.0.1`, a private IP, a name with no dot, `*.local` | Only reachable from the creator's own machine — the link would go nowhere for everyone else |
+  | `javascript:`, `data:`, `ftp:` | Not a web page |
+  | `https://user:pass@host/…` | Reads as one domain, resolves to another |
+
+  **Use their live production address, never the dev server the project is running on.** This is the mistake to watch for: you are working inside their repo, where `localhost:3000` is in every config file. The rejection message names the actual problem and is safe to show verbatim.
 - Accepted on plan create as well — set it there and you save a round trip per plan.
 - One call per plan. With several plans, derive the whole plan → page mapping from the creator's project (their checkout code already picks a `planId` per product, so it already knows which page each plan belongs to), confirm the table once, then send the calls. Do not ask about them one at a time.
-- If it is unset, Portaly falls back to the plan's `externalInformationUrl`, then to the merchant's configured site URL. A plan with no usable landing page anywhere is reported as `PROMOTION_URL_REQUIRED` in `GET .../promotion` and stays excluded.
+- If it is unset, Portaly falls back to the plan's `externalInformationUrl`, then to the merchant's configured site URL — but each fallback has to pass the same checks, so a plan can still end up with nothing usable. That plan is reported as `PROMOTION_URL_REQUIRED` in `GET .../promotion` and stays excluded until you set a real one.
 - Setting it does **not** turn promotion on. The switch is `PUT /promotion`.
 
 ---

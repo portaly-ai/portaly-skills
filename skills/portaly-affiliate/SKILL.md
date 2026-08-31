@@ -3,9 +3,9 @@ name: portaly-affiliate
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.2.0
+version: 0.3.0
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 description: Set up buyer promotion on Portaly Payment so the creator's own customers earn a commission for referring other buyers — switch promotion on for the product and set the one commission rate every eligible plan shares, then capture the referral code on the creator's own site and attach it to the checkout session server-side. Portaly hosts the promoter-facing part: buyers get their referral link on Portaly's own purchase-complete page, and Portaly computes, records and pays every commission. One-time fixed-price plans only, Taiwan accounts only. Trigger when the user wants an affiliate, referral, ambassador or partner program, wants their customers, students, members or buyers to promote a product for a cut, or mentions 分潤 / 推廣連結 / 聯盟行銷 / 佣金 / 推廣夥伴 / 推薦獎金 on top of Portaly Payment.
 ---
 
@@ -69,7 +69,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-affiliate", "version": "0.2.0" }
+{ "skillName": "portaly-affiliate", "version": "0.3.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -118,7 +118,9 @@ Then propose the whole thing at once and ask for **one** confirmation:
 > | Claude Code 深度工程手冊 (`plan_456`) | `https://cabai.example/products/handbook` |
 > | 一對一諮詢 (`plan_789`) | ❓ couldn't find a page — is there one? |"
 
-Ask only about the rows you genuinely could not resolve, and get the base URL (the production domain, not `localhost`) once rather than repeating it in every row.
+Ask only about the rows you genuinely could not resolve, and get the base URL once rather than repeating it in every row.
+
+**It has to be their live production address.** Portaly rejects `http://`, `localhost`, private IPs, `.local` names, and anything that is not a plain web page — the value becomes the target of a Portaly-hosted short link that promoters share publicly, so a dev address would send every visitor nowhere. You are working inside their repo, where `localhost:3000` sits in every config file; do not let it become the answer. If you only know the dev URL, ask for the live one.
 
 Then write them:
 
@@ -239,17 +241,18 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 1. **Never compute or pay a commission in the creator's code.** No `amount * rate`, no earnings ledger, no "paid out" flag — Portaly holds the only copy, and a second one will disagree and become a dispute the creator has to answer.
 2. **Never hardcode the rate, the range or the service fee.** Read them from `GET .../promotion`; a number frozen into the project keeps saying 15% long after the creator changed it.
 3. **Never put `PORTALY_API_KEY` in client code.** `NEXT_PUBLIC_`, `VITE_`, `REACT_APP_` prefixed variables are inlined into the browser bundle; putting the key there publishes it.
-4. **Never trust an attribution code from the browser.** Server-set `httpOnly` cookie, read server-side; reject a repeated parameter; ignore anything malformed.
-5. **Never invent an earnings figure.** If you have no number from Portaly, show no number and link to `https://rewards.portaly.cc` — a placeholder that ships is a number a promoter will try to reconcile.
-6. **Subscription and dynamic-pricing plans: state the limit, offer the alternative, promise nothing.** No timelines, no roadmap, no "should be supported soon".
-7. **Never hand out a referral link before the switch is confirmed on.** Sales through it would earn the promoter nothing.
-8. **Say the withdrawal requirements before the creator promotes the program**, not after someone has earned money they can't collect.
-9. **Never claim a test run earned anything.** Test-mode purchases produce no commission at all.
-10. **Never invent endpoints or fields.** This skill uses exactly the two promotion endpoints above, `promotionUrl` on the plan, and `profitSharingId` on checkout-session creation. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
-11. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
-12. **Never mass-message the creator's buyers for them.** Exporting a customer list or sending the invitation is theirs to decide and theirs to do.
-13. **Never interrogate the creator field by field.** Derive what you can from their project, propose the whole mapping in one table, and ask once. A creator with ten plans must not be asked ten questions.
-14. **Windows:** run `chcp 65001` (cmd) or set `$OutputEncoding` to UTF-8 (PowerShell) before commands carrying Chinese plan names, or they arrive as mojibake.
+4. **Never point a landing page at a dev address.** `localhost`, a private IP or an `http://` URL is refused, and for good reason: promoters share these links with other people.
+5. **Never trust an attribution code from the browser.** Server-set `httpOnly` cookie, read server-side; reject a repeated parameter; ignore anything malformed.
+6. **Never invent an earnings figure.** If you have no number from Portaly, show no number and link to `https://rewards.portaly.cc` — a placeholder that ships is a number a promoter will try to reconcile.
+7. **Subscription and dynamic-pricing plans: state the limit, offer the alternative, promise nothing.** No timelines, no roadmap, no "should be supported soon".
+8. **Never hand out a referral link before the switch is confirmed on.** Sales through it would earn the promoter nothing.
+9. **Say the withdrawal requirements before the creator promotes the program**, not after someone has earned money they can't collect.
+10. **Never claim a test run earned anything.** Test-mode purchases produce no commission at all.
+11. **Never invent endpoints or fields.** This skill uses exactly the two promotion endpoints above, `promotionUrl` on the plan, and `profitSharingId` on checkout-session creation. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
+12. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
+13. **Never mass-message the creator's buyers for them.** Exporting a customer list or sending the invitation is theirs to decide and theirs to do.
+14. **Never interrogate the creator field by field.** Derive what you can from their project, propose the whole mapping in one table, and ask once. A creator with ten plans must not be asked ten questions.
+15. **Windows:** run `chcp 65001` (cmd) or set `$OutputEncoding` to UTF-8 (PowerShell) before commands carrying Chinese plan names, or they arrive as mojibake.
 
 ## Deliverables
 
