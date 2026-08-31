@@ -144,6 +144,18 @@
       ]
     },
     {
+      "id": 14,
+      "prompt": "我站上有 8 個一次性課程，Portaly 上也各建了一個方案。幫我把推廣開起來。",
+      "expected_output": "Agent 先從創作者自己的專案推導出「方案 → 商品頁」的對應（結帳程式碼本來就要挑 planId，那裡就有答案），一次把整張表提出來請創作者確認，只針對真的找不到的那幾筆發問；不逐個方案輪流詢問落地頁。",
+      "expectations": [
+        "Reads the creator's project to derive the plan-to-page mapping instead of asking for each URL",
+        "Presents the whole mapping as one table and asks for a single confirmation",
+        "Asks only about the plans it genuinely could not resolve",
+        "Does not send eight separate questions, one per plan",
+        "Sets promotionUrl per plan only after the mapping is confirmed, and does not treat that as turning promotion on"
+      ]
+    },
+    {
       "id": 13,
       "prompt": "我有三個一次性方案：入門 NT$1,500、進階 NT$2,400、旗艦 NT$5,999。入門抽 30%、進階抽 20%、旗艦抽 10%，幫我分別設好。",
       "expected_output": "Agent 說明推廣設定在產品層，一個開關與一個分潤比例涵蓋所有合格方案，目前無法逐方案設定不同比例；不承諾時程，也不自行用其他欄位或多次呼叫湊出逐方案比例，改為請創作者選一個共用比例並用他自己的金額算出每個方案的實得。",
