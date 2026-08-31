@@ -104,17 +104,35 @@ For anything else, `excludedMessage` is written for them and safe to quote.
 
 ### 2. Give each plan a landing page
 
-A referral link has to open something. That page differs per plan, so it lives on the plan:
+A referral link has to open something, and Portaly hosts no public page for a Payment plan — so each plan needs a URL on the creator's own site. Only plans reported as `PROMOTION_URL_REQUIRED` need one; anything with a usable `promotionUrl` already is left alone.
+
+**Work the mapping out from their project first. Do not interview them plan by plan.** You are running inside their codebase, and it already contains the answer: the code that creates checkout sessions has to pick a `planId`, so wherever that choice is made — a product constant, a CMS field, a database column, a route param — is also where the product's own page is defined. Read that, plus their route structure, and derive the mapping yourself.
+
+Then propose the whole thing at once and ask for **one** confirmation:
+
+> "I found these three one-time plans and matched each to a page on your site. Say the word and I'll set them:
+>
+> | Plan | Landing page |
+> |---|---|
+> | AgentSkill 入門 (`plan_123`) | `https://cabai.example/products/agentskill` |
+> | Claude Code 深度工程手冊 (`plan_456`) | `https://cabai.example/products/handbook` |
+> | 一對一諮詢 (`plan_789`) | ❓ couldn't find a page — is there one? |"
+
+Ask only about the rows you genuinely could not resolve, and get the base URL (the production domain, not `localhost`) once rather than repeating it in every row.
+
+Then write them:
 
 ```
 PUT {PORTALY_API_HOST}/api/creator-subscription/plans/{planId}
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "promotionUrl": "https://theirsite.example/products/course" }
+{ "promotionUrl": "https://theirsite.example/products/agentskill" }
 ```
 
-Do this for every plan reported as `PROMOTION_URL_REQUIRED`. Setting it does not turn promotion on. If a plan already has a sensible `promotionUrl` in the `GET` response, leave it alone.
+One call per plan, but the creator only answered once. Setting this does **not** turn promotion on — that is step 4.
+
+If a plan genuinely has no page of its own, say so and leave it unset rather than pointing it at the home page: Portaly already falls back to the site root on its own, and a promoter whose link dumps visitors on a generic landing page converts badly. Better to tell the creator that plan needs a real page first.
 
 ### 3. Agree on the commission rate
 
@@ -230,11 +248,13 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 10. **Never invent endpoints or fields.** This skill uses exactly the two promotion endpoints above, `promotionUrl` on the plan, and `profitSharingId` on checkout-session creation. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
 11. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
 12. **Never mass-message the creator's buyers for them.** Exporting a customer list or sending the invitation is theirs to decide and theirs to do.
-13. **Windows:** run `chcp 65001` (cmd) or set `$OutputEncoding` to UTF-8 (PowerShell) before commands carrying Chinese plan names, or they arrive as mojibake.
+13. **Never interrogate the creator field by field.** Derive what you can from their project, propose the whole mapping in one table, and ask once. A creator with ten plans must not be asked ten questions.
+14. **Windows:** run `chcp 65001` (cmd) or set `$OutputEncoding` to UTF-8 (PowerShell) before commands carrying Chinese plan names, or they arrive as mojibake.
 
 ## Deliverables
 
 - which plans qualify, which don't, and the reason for each
+- a plan → landing page table derived from their own project, confirmed in one pass rather than interrogated plan by plan
 - the product promotion switch result, read back from Portaly, naming every plan it did and did not cover
 - attribution wired into their actual stack: URL capture, cookie persistence, and the server-side hand-off at checkout-session creation
 - a short, publishable explanation of the program for their own site, including the withdrawal requirements

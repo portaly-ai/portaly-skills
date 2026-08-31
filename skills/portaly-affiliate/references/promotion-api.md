@@ -110,7 +110,8 @@ The landing page differs per plan, so it lives on the plan rather than in the pr
 ```
 
 - Must be a valid absolute URL. This is where a referral link lands, so it should be the page on the creator's own site that sells **this** plan.
-- Accepted on plan create as well.
+- Accepted on plan create as well — set it there and you save a round trip per plan.
+- One call per plan. With several plans, derive the whole plan → page mapping from the creator's project (their checkout code already picks a `planId` per product, so it already knows which page each plan belongs to), confirm the table once, then send the calls. Do not ask about them one at a time.
 - If it is unset, Portaly falls back to the plan's `externalInformationUrl`, then to the merchant's configured site URL. A plan with no usable landing page anywhere is reported as `PROMOTION_URL_REQUIRED` in `GET .../promotion` and stays excluded.
 - Setting it does **not** turn promotion on. The switch is `PUT /promotion`.
 
