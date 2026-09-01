@@ -221,8 +221,8 @@ Their earnings and withdrawals live at `https://rewards.portaly.cc`.
 3. Open `https://{their-site}/{their product page}?ps=test-code` in a private window. In DevTools → Application → Cookies, `portaly:profitSharing` exists and expires in ~3 days.
 4. Remove the parameter and reload — the cookie is still there. (This is what proves you persisted it rather than just reading the URL.)
 5. Start a checkout and check the server log for the outgoing session payload: **log only whether `profitSharingId` was present, never the API key or the whole body.**
-6. Complete payment with a TapPay test card, and confirm the promotion block appears on the completion page.
-7. Say the quiet part: **this run charged nothing and earned nothing. Test-mode purchases never produce commission.** Switch to `pcs_live_*` for production; no code changes are needed, since the mode comes from the key.
+6. Complete payment with a TapPay test card, and confirm the promotion block appears on the completion page. In test mode the block is deliberately read-only — it names the plan and the rate but shows no "get my link" button, because a test purchase must not mint a real referral link. That is the correct result, not a broken one.
+7. Say the quiet part: **this run charged nothing and earned nothing. Test-mode purchases never produce commission, and never produce a referral link.** Switch to `pcs_live_*` for production; no code changes are needed, since the mode comes from the key.
 
 ## Preferred Response Shape
 
@@ -247,7 +247,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 7. **Subscription and dynamic-pricing plans: state the limit, offer the alternative, promise nothing.** No timelines, no roadmap, no "should be supported soon".
 8. **Never hand out a referral link before the switch is confirmed on.** Sales through it would earn the promoter nothing.
 9. **Say the withdrawal requirements before the creator promotes the program**, not after someone has earned money they can't collect.
-10. **Never claim a test run earned anything.** Test-mode purchases produce no commission at all.
+10. **Never claim a test run earned anything.** Test-mode purchases produce no commission, and the completion page issues no referral link for them.
 11. **Never invent endpoints or fields.** This skill uses exactly the two promotion endpoints above, `promotionUrl` on the plan, and `profitSharingId` on checkout-session creation. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
 12. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
 13. **Never mass-message the creator's buyers for them.** Portaly already emails each buyer their own invitation; anything beyond that — exporting a customer list, a broadcast — is the creator's to decide and theirs to do.
