@@ -210,9 +210,9 @@ An unknown, expired or mismatched code is ignored and the checkout still complet
 
 **They do not build anything for this.** After paying, the buyer stays on Portaly's own purchase-complete page, which offers them their referral link, restates the rate and what they'd earn, and states the withdrawal requirements before the button. The link is stable — the same buyer always gets the same one.
 
-Their earnings and withdrawals live at `https://rewards.portaly.cc`.
+Portaly also emails the buyer an invitation with a link back to that same page, so closing the tab is recoverable. Tell the creator this is happening, because it goes to their customer and they did not write it: it is sent by Portaly, from Portaly's address, with the sender name shown as **`{their brand name}（透過 Portaly）`**.
 
-> ⚠️ Today the purchase-complete page is the buyer's only entry point to that link. If they close it without copying the link, they have no way back to it yet. Tell the creator this, and suggest they mention it wherever they talk about the program.
+Their earnings and withdrawals live at `https://rewards.portaly.cc`.
 
 ### 8. Verify with a test key, spending nothing
 
@@ -250,7 +250,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 10. **Never claim a test run earned anything.** Test-mode purchases produce no commission at all.
 11. **Never invent endpoints or fields.** This skill uses exactly the two promotion endpoints above, `promotionUrl` on the plan, and `profitSharingId` on checkout-session creation. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
 12. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
-13. **Never mass-message the creator's buyers for them.** Exporting a customer list or sending the invitation is theirs to decide and theirs to do.
+13. **Never mass-message the creator's buyers for them.** Portaly already emails each buyer their own invitation; anything beyond that — exporting a customer list, a broadcast — is the creator's to decide and theirs to do.
 14. **Never interrogate the creator field by field.** Derive what you can from their project, propose the whole mapping in one table, and ask once. A creator with ten plans must not be asked ten questions.
 15. **Windows:** run `chcp 65001` (cmd) or set `$OutputEncoding` to UTF-8 (PowerShell) before commands carrying Chinese plan names, or they arrive as mojibake.
 
