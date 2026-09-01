@@ -1,6 +1,6 @@
 # API Contract (Integration-Scope Subset)
 
-This is the contract subset available to an **integration-scope** Portaly Payment API key (`pcs_test_itg_…` / `pcs_live_itg_…`). It covers only what these keys can do: read plans, create checkout sessions, verify callbacks, and (optionally) drive subscriber self-service. Plan, merchant config, and discount code **write** endpoints are out of scope for this key and are called out explicitly below so you don't waste time debugging a 403.
+This is the contract subset available to an **integration-scope** Portaly Payment API key (`pcs_test_itg_…` / `pcs_live_itg_…`). It covers only what these keys can do: read plans and orders, create checkout sessions, verify payment/refund callbacks, and optionally drive subscriber self-service. Refund initiation plus plan, merchant config, and discount code **write** endpoints are out of scope and called out below so you do not waste time debugging a 403.
 
 ## Use This Reference For
 
@@ -9,7 +9,7 @@ This is the contract subset available to an **integration-scope** Portaly Paymen
 - session query and reconciliation
 - signed callback verification
 - subscriber self-service subscription actions (cancel, resume, portal)
-- order query
+- order query and refund-outcome reconciliation
 - rate limiting behavior and retry handling
 - skill version reporting
 
@@ -27,7 +27,7 @@ For anything about creating/editing plans, merchant branding, or discount codes,
   - each key has a fixed `mode` (`live` or `test`) — live keys start with `pcs_live_itg_`, test keys start with `pcs_test_itg_`
   - each key has a fixed **scope** — this contract assumes `integration` scope. The authoritative scope is stored server-side against the key, not just the prefix.
   - mode is derived from the key; it is not passed per-request
-  - **integration-scope keys are checkout-only.** They can read plans, create checkout sessions, query sessions/subscriptions/orders, and drive cancel/resume/portal-session. Calls to plan, merchant config, or discount-code **write** endpoints return `403 KEY_SCOPE_FORBIDDEN` — see "Out of Scope" below.
+  - **integration-scope keys are checkout-only.** They can read plans, create checkout sessions, query sessions/subscriptions/orders, and drive cancel/resume/portal-session. Calls to refund, plan, merchant config, or discount-code **write** endpoints return `403 KEY_SCOPE_FORBIDDEN` — see "Out of Scope" below.
 
 ## Read Subscription Plans
 
@@ -147,7 +147,7 @@ Every failure returns `{ "error": string }`; business-rule failures also include
 | 404 | `PLAN_NOT_FOUND` | `planId` does not exist for this merchant. | Misconfiguration (or the plan was removed) — log it. Recover like `PLAN_INACTIVE`: re-fetch `GET /plans?status=active`, re-render, and prompt the user to pick an available plan. Don't show the buyer a raw payment error; don't retry the same `planId`. |
 | 400 | `INVALID_DISCOUNT_CODE` | The buyer-entered `discountCode` is invalid (see `reason`). | "That discount code can't be applied." Let them retry without it. |
 | 400 | `PER_CUSTOMER_LIMIT_REACHED` | The buyer-entered `discountCode` has hit its per-customer redemption cap for this buyer. | "That discount code can't be applied." Let them proceed without it — don't retry the same code for the same buyer. |
-| 403 | `KEY_SCOPE_FORBIDDEN` | You called a plan/config/discount **write** endpoint with this key. | This should not happen from a correctly-scoped integration — see "Out of Scope" below. Do not retry; do not attempt a workaround. Tell the merchant to make the change in the Portaly dashboard. |
+| 403 | `KEY_SCOPE_FORBIDDEN` | You called refund or a plan/config/discount **write** endpoint with this key. | This should not happen from a correctly-scoped integration — see "Out of Scope" below. Do not retry or attempt a workaround; ask the merchant to use the authorized path. |
 | 401 | _(none)_ | Missing/invalid bearer token. | Server-side key problem — never surface to the buyer. |
 
 A best-practice plan-selection UI never shows a pay button for a plan that isn't `status: "active"` (query `GET …/plans?status=active` first), so `PLAN_INACTIVE` should only ever fire on a race.
@@ -204,11 +204,15 @@ Payload example (`creator_subscription.checkout.completed`):
 | `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | Payload: `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. **No `subscriptionId`** — none was created; dedup on `sessionId`. Sent in `test` mode too. Re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds | Not sent for the first checkout charge. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on every failed attempt; `willCancel: true` + `status: canceled` on the 3rd consecutive failure. |
+| `creator_subscription.payment.refunded` | A merchant/admin refund succeeds | Deduplicate on `orderId`; integration-scope keys receive the event but cannot initiate the refund. |
+| `creator_subscription.payment.refund_failed` | A merchant/admin refund reaches terminal failure | Deduplicate on `orderId`; no money moved and Portaly must handle it manually. |
 | `creator_subscription.active` | Subscription transitions into active | Not re-sent for an already-active renewal. |
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Includes the 3rd-failure auto-cancel. |
 
 - `amount` on `payment.succeeded` / `payment.failed` is the **charged (or attempted) post-discount** amount, not the plan price. The lifecycle events (`active` / `cancel_requested` / `canceled`) carry the subscription's undiscounted base amount in that same field — they move no money, so never reconcile from them.
+
+Refund terminal payloads share: `event`, the subscription lifecycle base fields, `orderId`, `paymentId`, `paymentReference`, `orderMerchantOrderNumber`, `amount`, `currency`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, and `subscriptionCanceledByRefund`. Success adds `refundedAt` and `refundReference`; failure adds `refundFailedAt`, `refundFailureReason`, and nullable `refundFailureRetryable`. A separate `creator_subscription.canceled` event has no ordering guarantee; deduplicate it on `subscriptionId` and refund events on `orderId`.
 
 All events are signed and delivered the same way. Use `scripts/sign_callback.mjs` (Node/TypeScript), `scripts/sign_callback.py` (reference/other stacks), or `scripts/sign_callback.webcrypto.mjs` (edge / WebCrypto runtimes — Cloudflare/Vercel Edge, Deno, InsForge edge functions, no `node:crypto`). Do not hand-roll the key ordering: `stableJson` sorts with `localeCompare`; a naive `.sort()` is UTF-16 order and silently rejects real callbacks. Note `sign_callback.py` sorts by Unicode code point, which can diverge from the `.mjs` scripts for mixed-case/non-ASCII keys — keep merchant-supplied `metadata` keys lowercase ASCII, or use a JS script for those payloads.
 
@@ -240,10 +244,11 @@ Lets a subscriber manage their own subscription without you building cancel/resu
 
 ## Order Query (Optional)
 
-- Endpoint: `GET /api/creator-subscription/orders`
+- Endpoints: `GET /api/creator-subscription/orders` and `GET /api/creator-subscription/orders/{orderId}`
 - Required headers: `Authorization: Bearer {portaly_payment_api_key}`
 - Query parameters: `status` (comma-separate for multiple, e.g. `paid,liquid`; allowed: `pending`, `awaiting_atm`, `paid`, `liquid`, `refund`, `failed`, `tracked` — anything else returns `400`), `startDate`/`endDate` (filters `createdAt`, which for these orders **is** the payment time — the order is only written once payment succeeds, so `createdAt === paidAt`; `YYYY-MM-DD` or a datetime with no offset is read as Taipei/UTC+8, pass `Z`/`±HH:MM` to override; `startDate` later than `endDate` returns `400`), `planId` (exact match on `creatorSubscriptionPlanId`), `limit` (default 20, max 100), `startAfter` (cursor)
-- Response fields per order: `id`, `amount`, `netTotal`, `currency`, `status`, `name`, `email`, `paymentMethod`, `merchantOrderNumber`, `creatorSubscriptionId`, `creatorSubscriptionPlanId`, `createdAt`, `paidAt`, plus `pagination.hasMore` / `pagination.nextCursor` / `pagination.count`
+- Response fields per order: `id`, `amount`, `netTotal`, `currency`, `status`, `name`, `email`, `paymentMethod`, `merchantOrderNumber`, `creatorSubscriptionId`, `creatorSubscriptionPlanId`, `refundRequestedAt`, `refundedAt`, `refundFailedAt`, `refundFailureReason`, `createdAt`, `paidAt`, plus list-only `pagination.hasMore` / `pagination.nextCursor` / `pagination.count`
+- Use the single-order endpoint to reconcile a missing refund event without scanning the list. A delayed TapPay refund can remain pending through up to three daily scheduled attempts, so a terminal outcome can take about three days from the `202`. Keep polling while both terminal timestamps are null; contact Portaly support if `refundFailedAt` appears or neither terminal outcome arrives after that retry window.
 
 ## Skill Version Report
 
@@ -254,8 +259,9 @@ Lets a subscriber manage their own subscription without you building cancel/resu
 
 ## Out Of Scope For This Key (403 `KEY_SCOPE_FORBIDDEN`)
 
-The following endpoints manage the merchant's product catalog, branding, and promotions. They belong to the merchant, who manages them directly in the Portaly dashboard — **do not call these with an integration-scope key**, and do not attempt to work around a `403`:
+The following endpoints move money or manage the merchant's product catalog, branding, and promotions. **Do not call these with an integration-scope key**, and do not attempt to work around a `403`:
 
+- `POST /api/creator-subscription/orders/{orderId}/refund` — full refunds require a live full-scope key; ask the merchant to perform the refund. Test-mode API refunds are not available yet.
 - `POST /api/creator-subscription/plans` / `PUT /api/creator-subscription/plans/{planId}` — plan create/update
 - `POST /api/creator-subscription/plans/{planId}/images` — plan image upload
 - `PUT /api/creator-subscription/config` / `POST /api/creator-subscription/config/images` — merchant branding and logo
@@ -269,7 +275,7 @@ All creator-subscription endpoints are rate limited **except** `POST /checkout-s
 
 | Group | Window | Max requests | Applies to |
 |---|---|---|---|
-| read | 1 minute | 120 | GET plans, GET checkout-sessions/{id}, GET subscriptions(-/{id}), GET orders |
+| read | 1 minute | 120 | GET plans, GET checkout-sessions/{id}, GET subscriptions(-/{id}), GET orders, GET orders/{id} |
 | write | 1 minute | 20 | POST subscriptions/{id}/cancel, POST subscriptions/{id}/resume |
 | _(unlimited)_ | — | — | POST checkout-sessions, POST portal-sessions |
 

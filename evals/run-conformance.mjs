@@ -59,6 +59,87 @@ function checkArtifactParity() {
   console.log(`PASS parity: ${parityFiles.length} callback artifacts`);
 }
 
+function checkRefundContractDocumentation() {
+  const requiredContractTerms = [
+    "GET /api/creator-subscription/orders/{orderId}",
+    "POST /api/creator-subscription/orders/{orderId}/refund",
+    "creator_subscription.payment.refunded",
+    "creator_subscription.payment.refund_failed",
+    "refundFailureRetryable",
+  ];
+
+  for (const skillName of ["portaly-payment", "portaly-payment-integration"]) {
+    const skill = fs.readFileSync(skillPath(skillName, "SKILL.md"), "utf8");
+    const contract = fs.readFileSync(
+      skillPath(skillName, "references/api-contract.md"),
+      "utf8"
+    );
+    for (const term of requiredContractTerms) {
+      assert.ok(
+        skill.includes(term) || contract.includes(term),
+        `${skillName}: refund contract is missing ${term}`
+      );
+    }
+
+    for (const document of [skill, contract]) {
+      assert.ok(
+        document.includes("up to three daily scheduled attempts"),
+        `${skillName}: delayed refund retry window is missing`
+      );
+      assert.ok(
+        !document.includes(
+          "refundRequestedAt is over 30 minutes old with neither terminal timestamp"
+        ),
+        `${skillName}: delayed refunds must not be treated as missing after 30 minutes`
+      );
+    }
+  }
+
+  const paymentSkill = fs.readFileSync(
+    skillPath("portaly-payment", "SKILL.md"),
+    "utf8"
+  );
+  const paymentVersion = paymentSkill.match(/^version: (\S+)$/m)?.[1];
+  assert.ok(paymentVersion, "portaly-payment: missing top-level version");
+  assert.match(
+    paymentSkill,
+    new RegExp(`metadata:\\n  version: ["']${paymentVersion}["']`),
+    "portaly-payment: metadata.version must match top-level version"
+  );
+  assert.ok(
+    paymentSkill.includes(`"skillName": "portaly-payment", "version": "${paymentVersion}"`),
+    "portaly-payment: report example must match top-level version"
+  );
+  const paymentContract = fs.readFileSync(
+    skillPath("portaly-payment", "references/api-contract.md"),
+    "utf8"
+  );
+  assert.ok(
+    paymentContract.includes(
+      "`REFUND_ATTEMPT_FAILED`: a previous refund attempt reached terminal failure; contact Portaly support"
+    ),
+    "portaly-payment: terminal refund failure guidance is missing"
+  );
+
+  const integrationSkill = fs.readFileSync(
+    skillPath("portaly-payment-integration", "SKILL.md"),
+    "utf8"
+  );
+  const integrationVersion = integrationSkill.match(/^version: (\S+)$/m)?.[1];
+  assert.ok(
+    integrationVersion,
+    "portaly-payment-integration: missing top-level version"
+  );
+  assert.ok(
+    integrationSkill.includes(
+      `"skillName": "portaly-payment-integration", "version": "${integrationVersion}"`
+    ),
+    "portaly-payment-integration: report example must match top-level version"
+  );
+
+  console.log("PASS refund contract documentation");
+}
+
 function requestedRuntimes(runtime) {
   return runtime === "all"
     ? ["node", "webcrypto", "python", "go"]
@@ -184,6 +265,7 @@ function runSkillConformance(skillName, runtime) {
 function main() {
   const runtime = runtimeArgument(process.argv.slice(2));
   checkArtifactParity();
+  checkRefundContractDocumentation();
   checkFixtureSafety(runtime);
   for (const skillName of skillNames) {
     runSkillConformance(skillName, runtime);

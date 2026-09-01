@@ -1,7 +1,7 @@
 ---
 name: portaly-payment-integration
-version: 0.5.0
-description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Does not create or manage plans, merchant config, or discount codes; those stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key.
+version: 0.6.1
+description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key.
 ---
 
 # Portaly Payment Integration (Team / Integration-Scope)
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.5.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.6.1" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -97,13 +97,14 @@ Content-Type: application/json
 - Pick the adapter that matches the repo's runtime — `scripts/sign_callback.mjs` (Node/TS), `scripts/sign_callback.webcrypto.mjs` (edge/WebCrypto runtimes without `node:crypto`), or `scripts/sign_callback.py` (Python). Don't translate the signer from memory: the key ordering is `localeCompare`, and a naive code-point/`.sort()` silently 401s real callbacks. For an unlisted runtime, use a documented server-side bridge or keep the receiver blocked until a native implementation passes the vectors — see `references/callback-signature-v1.md`.
 - Before shipping the receiver, run `scripts/check_callback_vectors.mjs --runtime <node|webcrypto|python|go>` against the committed production-derived vectors (`references/callback-signature-v1-vectors.json`). Passing self-signed fixtures is not enough — sender and receiver can share the same ordering bug.
 - **Handle `creator_subscription.checkout.failed`, not just `.completed`.** A declined first charge emits its own callback carrying `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. It has **no `subscriptionId`** (none was created), so dedup it on `sessionId`. `test`-mode sessions emit it too — check `mode` before acting. If your endpoint was down, re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`; the subscription-keyed retry route cannot reach a failed first charge.
+- **Handle refund terminal events even though this key cannot initiate them.** Merchant/admin refunds emit `creator_subscription.payment.refunded` or `.refund_failed`; deduplicate each on `orderId`, and reconcile with `GET /api/creator-subscription/orders/{orderId}`. A delayed TapPay refund can remain pending through up to three daily scheduled attempts, so a terminal outcome can take about three days from the `202`; keep polling until a terminal timestamp appears, and contact Portaly support only after terminal failure or that retry window passes without an outcome. A separate `creator_subscription.canceled` event has no ordering guarantee. Never call `POST /orders/{orderId}/refund` with this integration-scope key; it deliberately returns `403 KEY_SCOPE_FORBIDDEN` and requires a live full-scope key.
 - See `references/api-contract.md` → "Signed Callback" for the event table and payload shapes.
 
 ### 5. Handle checkout errors
 
 - `422 PLAN_INACTIVE` — the plan was archived between page load and checkout. Show a friendly "no longer available" message, re-fetch `GET /plans?status=active`, and re-render. Don't retry the same call.
 - `404 PLAN_NOT_FOUND` — the `planId` doesn't exist for this merchant (misconfigured on your side, or the plan was removed). Log it, then recover the same way as `PLAN_INACTIVE`: re-fetch `GET /plans?status=active`, re-render the current plan list, and prompt the user to pick an available plan. Never show the buyer a raw payment error, and don't retry the same `planId`.
-- `403 KEY_SCOPE_FORBIDDEN` — you (or a library) accidentally called a plan/config/discount **write** endpoint with this key. **Do not retry. Do not attempt a workaround or use a different key you might have lying around.** Tell the user plainly: this key is for integration only — plan, pricing, and discount-code changes go through the merchant's Portaly dashboard, not through this codebase.
+- `403 KEY_SCOPE_FORBIDDEN` — you (or a library) called the refund endpoint or a plan/config/discount **write** endpoint with this key. **Do not retry. Do not attempt a workaround or use a different key you might have lying around.** Tell the user plainly: this key is for integration only; refunds require the merchant's live full-scope path, while plan, pricing, and discount-code changes go through the Portaly dashboard.
 - See `references/api-contract.md` → "Error responses" and "Out Of Scope For This Key" for the full table.
 
 ### 6. Subscriber self-service (optional)
@@ -112,7 +113,7 @@ If the integration needs subscription lifecycle management, these are available 
 
 - `POST /subscriptions/{id}/cancel` / `POST /subscriptions/{id}/resume` — stop or restore future renewals (not a refund; current period stays active until `cancelEffectiveAt`).
 - `POST /portal-sessions` → redirect the subscriber to `portalUrl` for a hosted self-service page (view/cancel/resume/payment history). Server-to-server only — never expose the API key client-side.
-- `GET /subscriptions`, `GET /subscriptions/{id}`, `GET /orders` for query and reconciliation. For a payout period, `GET /orders?startDate=&endDate=&status=paid,liquid` — the dates filter `createdAt`, which for these orders is the payment time (`createdAt === paidAt`).
+- `GET /subscriptions`, `GET /subscriptions/{id}`, `GET /orders`, and `GET /orders/{orderId}` for query and reconciliation. The single-order response includes `refundRequestedAt`, `refundedAt`, `refundFailedAt`, and `refundFailureReason`. For a payout period, `GET /orders?startDate=&endDate=&status=paid,liquid` — the dates filter `createdAt`, which for these orders is the payment time (`createdAt === paidAt`).
 - **Never reconcile against a subscription's `amount`** — that is the frozen base price, not a payment record; a subscription with a `discount` snapshot is charged less. Money comes from the renewal callback's `amount` or `GET /orders`.
 - See `references/api-contract.md` → "Subscription Query And Lifecycle", "Portal Session", "Order Query".
 
@@ -123,7 +124,7 @@ If the integration needs subscription lifecycle management, these are available 
 
 ## Guardrails
 
-- **This is an integration-scope key, not a management key.** Never attempt to create/update a plan, change merchant config, create/update/delete a discount code, or upload a plan/merchant image — all return `403 KEY_SCOPE_FORBIDDEN`. If asked to do any of these, explain that plans, pricing, and discount codes are managed by the merchant in the Portaly dashboard, and stop there — don't retry, don't look for a bypass, don't ask the user for a different key.
+- **This is an integration-scope key, not a money-movement or management key.** Never initiate a refund, create/update a plan, change merchant config, create/update/delete a discount code, or upload a plan/merchant image — all return `403 KEY_SCOPE_FORBIDDEN`. Explain the boundary and stop there; don't retry, look for a bypass, or ask for another key.
 - **Runtime fetch only.** Plan names, prices, `listPrice`, and discount codes must never be hardcoded in source, config files, or a build-time static page. Plans can be added, repriced, or archived by the merchant at any time — always read them live via `GET /plans`.
 - `callbackUrl` must be HTTPS. Serving over plain HTTP exposes the signature and payload in transit.
 - Verify every callback's HMAC signature; reject any timestamp more than 5 minutes from now in either direction (symmetric skew window — don't special-case "any future timestamp"); dedup on an event-specific key (event type + `subscriptionId` + the event's timestamp/id), never on `sessionId` alone — see Workflow step 4.
