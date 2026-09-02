@@ -221,7 +221,7 @@ Their earnings and withdrawals live at `https://rewards.portaly.cc`.
 3. Open `https://{their-site}/{their product page}?ps=test-code` in a private window. In DevTools → Application → Cookies, `portaly:profitSharing` exists and expires in ~3 days.
 4. Remove the parameter and reload — the cookie is still there. (This is what proves you persisted it rather than just reading the URL.)
 5. Start a checkout and check the server log for the outgoing session payload: **log only whether `profitSharingId` was present, never the API key or the whole body.**
-6. Complete payment with a TapPay test card, and confirm the promotion block appears on the completion page. In test mode the block is deliberately read-only — it names the plan and the rate but shows no "get my link" button, because a test purchase must not mint a real referral link. That is the correct result, not a broken one.
+6. Complete payment with a TapPay test card, and confirm the promotion block appears on the completion page. On the 3DS return it can take a few seconds — the page shows the payment as successful before the order is finished being written, and the block waits for it rather than guessing. In test mode the block is deliberately read-only — it names the plan and the rate but shows no "get my link" button, because a test purchase must not mint a real referral link. That is the correct result, not a broken one.
 7. Say the quiet part: **this run charged nothing and earned nothing. Test-mode purchases never produce commission, and never produce a referral link.** Switch to `pcs_live_*` for production; no code changes are needed, since the mode comes from the key.
 
 ## Preferred Response Shape
