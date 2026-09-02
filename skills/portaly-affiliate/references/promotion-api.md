@@ -121,8 +121,9 @@ The landing page differs per plan, so it lives on the plan rather than in the pr
   **Use their live production address, never the dev server the project is running on.** This is the mistake to watch for: you are working inside their repo, where `localhost:3000` is in every config file. The rejection message names the actual problem and is safe to show verbatim.
 - Accepted on plan create as well — set it there and you save a round trip per plan.
 - One call per plan. With several plans, derive the whole plan → page mapping from the creator's project (their checkout code already picks a `planId` per product, so it already knows which page each plan belongs to), confirm the table once, then send the calls. Do not ask about them one at a time.
-- If it is unset, Portaly falls back to the plan's `externalInformationUrl`, then to the merchant's configured site URL — but each fallback has to pass the same checks, so a plan can still end up with nothing usable. That plan is reported as `PROMOTION_URL_REQUIRED` in `GET .../promotion` and stays excluded until you set a real one.
-- Send `""` to clear it and fall back to the chain above.
+- If it is unset, Portaly falls back to the merchant's configured site URL (`appBaseUrl`) — and that fallback has to pass the same checks, so a plan can still end up with nothing usable. That plan is reported as `PROMOTION_URL_REQUIRED` in `GET .../promotion` and stays excluded until you set a real one.
+- The plan's `externalInformationUrl` is **not** used as a fallback, even when it is a perfectly good https address. It is a "more info" link that often points somewhere the creator does not own (a video, a doc), and the referral code is only captured by the creator's own site — a link landing anywhere else stays clickable while the commission silently goes nowhere.
+- Send `""` to clear it and fall back to `appBaseUrl`.
 - Setting it does **not** turn promotion on. The switch is `PUT /promotion`.
 
 ---
