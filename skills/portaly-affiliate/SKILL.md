@@ -3,9 +3,9 @@ name: portaly-affiliate
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.3.0
+version: 0.1.0
 metadata:
-  version: "0.3.0"
+  version: "0.1.0"
 description: Set up buyer promotion on Portaly Payment so the creator's own customers earn a commission for referring other buyers — switch promotion on for the product and set the one commission rate every eligible plan shares, then capture the referral code on the creator's own site and attach it to the checkout session server-side. Portaly hosts the promoter-facing part: buyers get their referral link on Portaly's own purchase-complete page, and Portaly computes, records and pays every commission. One-time fixed-price plans only, Taiwan accounts only. Trigger when the user wants an affiliate, referral, ambassador or partner program, wants their customers, students, members or buyers to promote a product for a cut, or mentions 分潤 / 推廣連結 / 聯盟行銷 / 佣金 / 推廣夥伴 / 推薦獎金 on top of Portaly Payment.
 ---
 
@@ -43,13 +43,12 @@ Never build any of these in the creator's project — they already exist, and a 
 
 ## Before You Switch Anything On
 
-Three limits, all of which the creator needs to hear before they tell their customers anything:
+Two limits, both of which decide whether this can be switched on at all:
 
 1. **One-time, fixed-price plans only.** The switch covers the whole product, but only plans that are active, one-time, fixed-price and not free are actually included. Subscription plans cannot have promotion. Neither can dynamic-pricing plans — a promoter has to see a fixed price to know what a referral is worth.
-2. **Taiwan accounts only.** Promoters are paid into a Taiwanese bank account and need a Taiwanese national ID for tax reporting, so the whole feature is limited to Taiwan-based Portaly accounts.
-3. **Earning is easy, withdrawing is not.** A buyer gets their link with no signup at all, and commission accrues against their email. To actually withdraw it they need a Portaly account, a Taiwanese national ID, and a Taiwanese bank account in their own name. Commission is held for a review period and is clawed back if the order is refunded.
+2. **Taiwan accounts only.** Payouts run through Taiwanese bank accounts, so the feature is limited to Taiwan-based Portaly accounts.
 
-Point 3 is the one that turns into a support problem for the creator, not for Portaly. Make sure they know it before they promote the program.
+**Payout rules are Portaly's to explain, not yours.** A buyer gets their link with no signup and commission accrues against their email; the conditions for turning that into money are documented in Portaly Rewards, which is where the promoter goes to see it. Point there. Do not recite the requirements back to the creator, and never restate them from memory — they change, and a stale copy in the creator's chat log or on their site becomes their problem.
 
 ## Quick Start
 
@@ -69,7 +68,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-affiliate", "version": "0.3.0" }
+{ "skillName": "portaly-affiliate", "version": "0.1.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -208,11 +207,11 @@ An unknown, expired or mismatched code is ignored and the checkout still complet
 
 ### 7. Tell the creator what their buyers will see
 
-**They do not build anything for this.** After paying, the buyer stays on Portaly's own purchase-complete page, which offers them their referral link, restates the rate and what they'd earn, and states the withdrawal requirements before the button. The link is stable — the same buyer always gets the same one.
+**They do not build anything for this.** After paying, the buyer stays on Portaly's own purchase-complete page, which offers them their referral link and restates the rate and what they'd earn. The link is stable — the same buyer always gets the same one.
 
 Portaly also emails the buyer an invitation with a link back to that same page, so closing the tab is recoverable. Tell the creator this is happening, because it goes to their customer and they did not write it: it is sent by Portaly, from Portaly's address, with the sender name shown as **`{their brand name}（透過 Portaly）`**.
 
-Their earnings and withdrawals live at `https://rewards.portaly.cc`.
+Earnings, payout status and the payout rules all live at `https://rewards.portaly.cc` — give the creator that link and stop there.
 
 ### 8. Verify with a test key, spending nothing
 
@@ -231,7 +230,7 @@ Their earnings and withdrawals live at `https://rewards.portaly.cc`.
 3. The API call you're about to make and what it changes (with live/test stated)
 4. Files added or changed in their project, one line each
 5. The code itself, in their stack
-6. What their buyers will see, and what to tell them about withdrawals
+6. What their buyers will see, and the one link where earnings and payouts live
 7. Test-mode checklist with real pass/fail per item
 
 Write for a creator who is not an engineer: what will happen, then how. Use their own product prices in every example.
@@ -246,7 +245,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 6. **Never invent an earnings figure.** If you have no number from Portaly, show no number and link to `https://rewards.portaly.cc` — a placeholder that ships is a number a promoter will try to reconcile.
 7. **Subscription and dynamic-pricing plans: state the limit, offer the alternative, promise nothing.** No timelines, no roadmap, no "should be supported soon".
 8. **Never hand out a referral link before the switch is confirmed on.** Sales through it would earn the promoter nothing.
-9. **Say the withdrawal requirements before the creator promotes the program**, not after someone has earned money they can't collect.
+9. **Never restate or invent the payout rules.** They are Portaly Rewards' to state and they change; link to `https://rewards.portaly.cc` instead of copying conditions into the chat, the creator's site, or their FAQ.
 10. **Never claim a test run earned anything.** Test-mode purchases produce no commission, and the completion page issues no referral link for them.
 11. **Never invent endpoints or fields.** This skill uses exactly the two promotion endpoints above, `promotionUrl` on the plan, and `profitSharingId` on checkout-session creation. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
 12. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
@@ -260,15 +259,15 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 - a plan → landing page table derived from their own project, confirmed in one pass rather than interrogated plan by plan
 - the product promotion switch result, read back from Portaly, naming every plan it did and did not cover
 - attribution wired into their actual stack: URL capture, cookie persistence, and the server-side hand-off at checkout-session creation
-- a short, publishable explanation of the program for their own site, including the withdrawal requirements
+- a short, publishable explanation of the program for their own site, linking to Portaly Rewards for earnings and payout
 - a test-mode checklist with real results, and the switch-to-live steps
 
 ## Resources
 
 - `references/promotion-api.md` — full request/response fields and the error-code table for the two promotion endpoints. Read it before calling either one, or when you get a code you don't recognise.
 - `references/attribution.md` — the cookie contract in full, with SSR, SPA and static-site implementations and the edge cases (repeated parameters, subdomains, Safari ITP). Read it when writing or debugging the capture code.
-- `references/partner-program-copy.md` — ready-to-publish 正體中文 copy explaining the program to buyers, including the withdrawal requirements. Read it when producing the creator's own page or announcement.
+- `references/partner-program-copy.md` — ready-to-publish 正體中文 copy explaining the program to buyers. Read it when producing the creator's own page or announcement.
 - `scripts/check_promotion_setup.mjs` — offline, read-only preflight: prints mode, the product switch state, and which plans are included or excluded. Run it before wiring code and again before going live.
 - `../portaly-payment/SKILL.md` — creating plans, creating checkout sessions, verifying callbacks. This skill assumes that is already done.
-- `https://rewards.portaly.cc` — where promoters see their earnings and withdraw. The only authoritative source for those numbers.
+- `https://rewards.portaly.cc` — where promoters see their earnings, withdraw, and read the payout rules. The only authoritative source for all three.
 - `https://portaly.ai/openapi.json` — the live API contract. Check it before trusting any endpoint shape written here.

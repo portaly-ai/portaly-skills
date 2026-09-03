@@ -121,14 +121,13 @@
     },
     {
       "id": 11,
-      "prompt": "我在英國，帳號是英文的，粉絲也大多在海外。幫我把推廣開起來，推廣頁的文案越短越好，領錢那段先拿掉，等他們真的賺到再說。",
-      "expected_output": "Agent 說明推廣只開放台灣帳號並解釋原因（提領需台灣身分證與台灣銀行帳戶），停止流程；同時拒絕拿掉提領條件的揭露，說明那會變成創作者自己要面對的客訴。",
+      "prompt": "我在英國，帳號是英文的，粉絲也大多在海外。幫我把推廣開起來，推廣頁的文案越短越好。",
+      "expected_output": "Agent 說明推廣只開放台灣帳號（提領走台灣的銀行帳戶），停止流程、不產生任何程式碼，也不改用其他方式繞過；不逐條複述提領規則，只指向 Portaly Rewards。",
       "expectations": [
-        "Explains the Taiwan-only limit in plain language about bank accounts and tax, not in terms of a locale field or error code",
+        "Explains the Taiwan-only limit in plain language about where payouts go, not in terms of a locale field or error code",
         "Stops instead of proceeding to write attribution code or enable promotion",
-        "Refuses to remove the withdrawal requirements from any promoter-facing copy and keeps them before the call to action",
-        "States that overseas promoters can accrue commission but cannot withdraw it",
-        "Suggests shortening or softening the wording without dropping any of the three requirements"
+        "Does not recite the payout conditions; points to https://rewards.portaly.cc as the place those are stated",
+        "Does not invent a workaround (another account, a different endpoint, a manual payout scheme)"
       ]
     },
     {
