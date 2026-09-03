@@ -198,6 +198,13 @@ await fetch(`${PORTALY_API_HOST}/api/creator-subscription/checkout-sessions`, {
 })
 ```
 
+**Nothing has to reach Portaly's checkout page, and nothing should.** That page runs on
+`portaly.ai` — a different origin, where the creator's cookie is not readable and a forwarded query
+parameter would mean nothing. The referral code travels server-to-server in this one call and
+nowhere else, so a checkout URL with no `?ps=` on it is the correct result, not a bug. Say this
+out loud when handing the integration over: "carry the code through to checkout" is the natural
+wrong guess, and someone will otherwise spend an afternoon on it.
+
 Two rules that are not negotiable:
 
 - **Read the value server-side from the cookie.** Never accept it from the request body, a query string, or `localStorage` — if the browser can choose it, anyone can claim someone else's sale.

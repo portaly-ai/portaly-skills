@@ -92,7 +92,7 @@ Same as the SPA case: a short inline script in the shared layout `<head>`, plus 
 
 ## Edge cases worth knowing
 
-- **Subdomains.** A link landing on `www.example.com` while checkout runs on `shop.example.com` loses the cookie. Set `domain: '.example.com'` on both sides, or keep the referral link on the same host as checkout.
+- **Subdomains.** A link landing on `www.example.com` while the creator's own session-creating endpoint runs on `shop.example.com` loses the cookie. Set `domain: '.example.com'` on both sides, or keep the referral link on the same host as that endpoint. (This is about the creator's own hosts. Portaly's hosted checkout page is on `portaly.ai` and never sees this cookie — it does not need to.)
 - **Safari / ITP.** Browser-set cookies (the SPA and static paths) can be capped well below 3 days. Server-set cookies are not affected, which is another reason to prefer the middleware version.
 - **Ad and privacy blockers** may strip unfamiliar query parameters. Nothing to do about it; it makes attribution best-effort, which is why an unattributed sale must never be blocked.
 - **Preview and staging environments** share cookies with production if they sit on the same domain. Use a distinct host for staging.
