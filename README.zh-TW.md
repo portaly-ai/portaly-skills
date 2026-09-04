@@ -160,15 +160,15 @@ npx skills add portaly-ai/portaly-skills --skill portaly-review
 npx skills add portaly-ai/portaly-skills --skill portaly-affiliate
 ```
 
-為 Portaly Payment 方案開啟**買家推廣**：買家付款完成後，Portaly 會在自己的完成頁上提供他一條專屬推廣連結，有人透過它購買時他就能抽成。
+為 Portaly Payment 產品開啟**買家推廣**：買家付款完成後，Portaly 會在自己的完成頁上提供他一條專屬推廣連結，有人透過它購買時他就能抽成。
 
-- 逐方案開啟推廣並設定分潤比例；上下限與預設值一律從 Portaly 讀取，不寫死在專案裡
+- 一個開關、一個分潤比例涵蓋整個產品底下所有合格的一次性方案；上下限與預設值一律從 Portaly 讀取，不寫死在專案裡
 - 在創作者自己的網站接住 `?ps=` 推廣碼（伺服器端寫入、`httpOnly`、三天最後點擊為準），建立 checkout session 時交給 Portaly
 - 推廣連結的發放、分潤計算、退款回沖與撥付全部由 Portaly 負責，不在專案裡重做一份
 - 推廣者到 `https://rewards.portaly.cc` 查看成效與提領
 - 附可直接貼上網站的正體中文推薦夥伴說明文案
 
-**前置條件：** 已可運作的 Portaly Payment，且至少有一個**上架中、一次性、固定價格**的方案（訂閱制與動態定價不支援），以及**台灣**的 Portaly 帳號。推廣者只要有 email 就能拿到連結並累積分潤，但**提領需要 Portaly 帳號、台灣身分證與台灣銀行帳戶**——請在推廣這個計畫之前先告訴你的買家。
+**前置條件：** 已可運作的 Portaly Payment，且至少有一個**上架中、一次性、固定價格**的方案（訂閱制與動態定價不支援），以及**台灣**的 Portaly 帳號。推廣者只要有 email 就能拿到連結並累積分潤；提領規則以 [Portaly Rewards](https://rewards.portaly.cc) 為準，導向那裡、不要另抄一份。
 
 **觸發語：**
 - 「我想讓買過的人幫我推廣」

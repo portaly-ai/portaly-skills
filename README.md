@@ -160,15 +160,15 @@ Embeds Portaly's hosted, verified-buyer review widget — a Trustpilot-style rat
 npx skills add portaly-ai/portaly-skills --skill portaly-affiliate
 ```
 
-Turns on **buyer promotion** for a Portaly Payment plan: after someone buys, Portaly offers them their own referral link on its hosted purchase-complete page, and they earn a commission when someone else buys through it.
+Turns on **buyer promotion** for a Portaly Payment product: after someone buys, Portaly offers them their own referral link on its hosted purchase-complete page, and they earn a commission when someone else buys through it.
 
-- Switch promotion on per plan and set the commission rate, read back from Portaly rather than hardcoded
+- One switch and one commission rate for the whole product, covering every eligible one-time plan; the allowed range and default are read from Portaly rather than hardcoded
 - Capture the `?ps=` referral code on your own site (server-set, `httpOnly`, 3-day last-touch) and hand it to Portaly at checkout-session creation
 - Portaly issues the promoter's link, computes every commission, handles refund clawback, and pays out — none of that is rebuilt in your project
 - Promoters see their earnings and withdraw at `https://rewards.portaly.cc`
 - Ready-to-publish 正體中文 copy for explaining the program on your own site
 
-**Prerequisites:** a working Portaly Payment setup with at least one **active, one-time, fixed-price** plan (subscription and dynamic-pricing plans are not supported), and a **Taiwan-based** Portaly account. Promoters can collect a link and accrue commission with nothing but an email, but **withdrawing requires a Portaly account, a Taiwanese national ID, and a Taiwanese bank account** — tell your buyers before you promote the program.
+**Prerequisites:** a working Portaly Payment setup with at least one **active, one-time, fixed-price** plan (subscription and dynamic-pricing plans are not supported), and a **Taiwan-based** Portaly account. Promoters collect a link and accrue commission with nothing but an email; the payout rules live in [Portaly Rewards](https://rewards.portaly.cc) — link there instead of restating them.
 
 **Skill triggers:**
 - "Let my customers refer other buyers and earn a commission"

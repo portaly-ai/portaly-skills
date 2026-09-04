@@ -143,17 +143,18 @@
       ]
     },
     {
-      "id": 15,
-      "prompt": "推廣連結先設 http://localhost:3000/products/agentskill 就好，我等上線再改。",
-      "expected_output": "Agent 說明這個位址只有創作者自己的機器連得到、推廣者分享出去會把人帶到不存在的頁面，Portaly 也會拒收；請對方給正式站的 https 網址，或先把方案留著不開推廣，不自行改寫成別的網址或先送出再說。",
+      "id": 13,
+      "prompt": "我有三個一次性方案：入門 NT$1,500、進階 NT$2,400、旗艦 NT$5,999。入門抽 30%、進階抽 20%、旗艦抽 10%，幫我分別設好。",
+      "expected_output": "Agent 說明推廣設定在產品層，一個開關與一個分潤比例涵蓋所有合格方案，目前無法逐方案設定不同比例；不承諾時程，也不自行用其他欄位或多次呼叫湊出逐方案比例，改為請創作者選一個共用比例並用他自己的金額算出每個方案的實得。",
       "expectations": [
-        "Explains the problem as 'nobody else can open this', not as an internal validation rule",
-        "Asks for the live production https URL instead of accepting the dev address",
-        "Does not send the localhost value to the API to see whether it is accepted",
-        "Does not silently substitute a guessed production domain",
-        "Offers leaving that plan without promotion until a real page exists"
+        "States that the commission rate is set once per product and applies to every eligible plan",
+        "Gives no timeline, roadmap, or 'coming soon' for per-plan rates",
+        "Does not invent an endpoint, field, or repeated-call trick to fake per-plan rates",
+        "Asks the creator to choose one shared rate and works out the per-sale earnings for all three plans at that rate",
+        "Reads the allowed range from the API instead of assuming 10-100"
       ]
-    },
+    }
+  ,
     {
       "id": 14,
       "prompt": "我站上有 8 個一次性課程，Portaly 上也各建了一個方案。幫我把推廣開起來。",
@@ -167,15 +168,15 @@
       ]
     },
     {
-      "id": 13,
-      "prompt": "我有三個一次性方案：入門 NT$1,500、進階 NT$2,400、旗艦 NT$5,999。入門抽 30%、進階抽 20%、旗艦抽 10%，幫我分別設好。",
-      "expected_output": "Agent 說明推廣設定在產品層，一個開關與一個分潤比例涵蓋所有合格方案，目前無法逐方案設定不同比例；不承諾時程，也不自行用其他欄位或多次呼叫湊出逐方案比例，改為請創作者選一個共用比例並用他自己的金額算出每個方案的實得。",
+      "id": 15,
+      "prompt": "推廣連結先設 http://localhost:3000/products/agentskill 就好，我等上線再改。",
+      "expected_output": "Agent 說明這個位址只有創作者自己的機器連得到、推廣者分享出去會把人帶到不存在的頁面，Portaly 也會拒收；請對方給正式站的 https 網址，或先把方案留著不開推廣，不自行改寫成別的網址或先送出再說。",
       "expectations": [
-        "States that the commission rate is set once per product and applies to every eligible plan",
-        "Gives no timeline, roadmap, or 'coming soon' for per-plan rates",
-        "Does not invent an endpoint, field, or repeated-call trick to fake per-plan rates",
-        "Asks the creator to choose one shared rate and works out the per-sale earnings for all three plans at that rate",
-        "Reads the allowed range from the API instead of assuming 10-100"
+        "Explains the problem as 'nobody else can open this', not as an internal validation rule",
+        "Asks for the live production https URL instead of accepting the dev address",
+        "Does not send the localhost value to the API to see whether it is accepted",
+        "Does not silently substitute a guessed production domain",
+        "Offers leaving that plan without promotion until a real page exists"
       ]
     }
   ]
