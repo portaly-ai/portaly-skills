@@ -86,7 +86,8 @@ function checkSkillVersionConsistency() {
       `${skillName}: version must be plain semver — portaly-vercel's parser rejects anything else`
     );
 
-    // Both of the other two are optional; they just have to agree when present.
+    // `metadata:` is genuinely optional — only some skills carry the block, so
+    // it only has to agree when present.
     if (/^metadata:$/m.test(skill)) {
       assert.match(
         skill,
@@ -94,12 +95,14 @@ function checkSkillVersionConsistency() {
         `${skillName}: metadata.version must match top-level version`
       );
     }
-    if (skill.includes(`"skillName": "${skillName}"`)) {
-      assert.ok(
-        skill.includes(`"skillName": "${skillName}", "version": "${version}"`),
-        `${skillName}: report example must match top-level version`
-      );
-    }
+    // The report example is NOT optional, and must not be guarded by a presence
+    // check: that literal is the only version the dashboard ever receives, so a
+    // deleted or reformatted example is precisely the silent drift described
+    // above — it has to fail, not be skipped.
+    assert.ok(
+      skill.includes(`"skillName": "${skillName}", "version": "${version}"`),
+      `${skillName}: report example must be present and match top-level version`
+    );
   }
 
   console.log(`PASS version consistency: ${skillNamesOnDisk.length} skills`);
