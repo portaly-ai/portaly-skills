@@ -246,7 +246,7 @@ An unknown, expired or mismatched code is ignored and the checkout still complet
 
 ### 7. Tell the creator what their buyers will see
 
-**They do not build anything for this.** After paying, the buyer stays on Portaly's own purchase-complete page, which offers them their referral link and restates the rate and what they'd earn. The link is stable — the same buyer always gets the same one.
+**They do not build anything for this.** After paying, the buyer stays on Portaly's own purchase-complete page, which offers them their referral link and restates the rate and what they'd earn. The link is stable **per purchase**: the same order always yields the same link, so closing the tab and coming back is safe. A buyer who buys again gets a second, different link — both accrue against the same email, so their Rewards total covers all of them, and neither link stops working. Say it that way rather than "you always get the same link", or the creator will answer that support question wrongly.
 
 Portaly also emails the buyer an invitation with a link back to that same page, so closing the tab is recoverable. Tell the creator this is happening, because it goes to their customer and they did not write it: it is sent by Portaly, from Portaly's address, with the sender name shown as **`{their brand name}（透過 Portaly）`**.
 
