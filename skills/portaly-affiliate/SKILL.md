@@ -95,13 +95,14 @@ Authorization: Bearer {PORTALY_API_KEY}
 
 One call answers both questions: what the current setting is, and which plans it does or would cover. Read `plans[]` and handle what you find:
 
-- **Some plans qualify** → list their name and amount, and say plainly that **the switch and the rate cover all of them at once** — there is no per-plan rate today.
+- **Some plans are eligible** (`excludedReason: null`) → list their name and amount, and say plainly that **the switch and the rate cover all of them at once** — there is no per-plan rate today. Before the switch has ever been turned on, an eligible plan still reports `included: false`; that is expected, not a problem to report.
 - **No plans at all** → offer to create a one-time fixed-price plan first (hand off to `portaly-payment`).
 - **Everything excluded as `PROMOTION_BILLING_PERIOD_UNSUPPORTED`** → say plainly: *"Buyer promotion only works on one-time payment plans, so your subscription plans can't use it. If there's a single course or one-off product you want promoted, create a one-time plan for it and we can switch promotion on."* **Do not offer a timeline, a roadmap, or "coming soon" for subscription support.**
 - **Excluded as `PROMOTION_PRICING_TYPE_UNSUPPORTED`** → this is the common case for sites that compute the price themselves. Say: *"Promotion needs a fixed plan price so promoters can see what they earn per referral. Your plan takes its amount at checkout, so Portaly has no fixed number to show."* Then **offer the fix and do it with them**: create one fixed-price one-time plan per product, and change their checkout call to send the matching `planId` instead of computing an `amount`. This is a simplification, not a rewrite — and it also gives them per-product orders and stats on Portaly's side. Do not promise dynamic-pricing support.
 - **Excluded as `PROMOTION_URL_REQUIRED`** → the plan has no landing page yet. Ask which page on their site sells it, and set it (step 2).
+- **Excluded with `excludedReason: null`** → the plan itself is fine and the product switch is simply off. This is what a first read returns for every eligible plan, and it is the only exclusion that carries **no** message. Go to step 4 and turn the switch on; do not report it as a plan problem, and do not quote `excludedMessage` here — it is `null`.
 
-For anything else, `excludedMessage` is written for them and safe to quote.
+For any other `excludedReason`, `excludedMessage` is written for them and safe to quote.
 
 ### 2. Give each plan a landing page
 
@@ -185,7 +186,7 @@ For each plan, find the codes whose `rules[]` reach it — a rule with `appliesT
 | `discount.type: "percent"` | `round(amount × (100 - discount.value) / 100)` |
 | `discount.type: "free"` | **No figure.** Those sales charge nothing, so they pay the promoter nothing — say that instead of quoting a number |
 
-A `signupRefCode` discount applies with no code passed at checkout at all, so a plan carrying a ref-code rule is in the discounted case even when the creator believes they send nothing. Carry the base you land on into `references/partner-program-copy.md` as `{計算基數}`, alongside `{金額}` — the published copy states both, so the sentence stays true when a buyer pays less. That copy labels it 成交金額 rather than 售價 on purpose: on a discounted plan the base is below the list price, and publishing it as 售價 would contradict the price on the creator's own product page.
+A `signupRefCode` discount applies with no code passed at checkout at all, so a plan carrying a ref-code rule is in the discounted case even when the creator believes they send nothing. Carry the base you land on into `references/partner-program-copy.md` as `{計算基數}`, alongside `{金額}` = `round({計算基數} × commissionRate / 100)` — the same formula the API uses for `commissionAmount`, so re-basing keeps the two numbers consistent. The published copy states both, so the sentence stays true when a buyer pays less. That copy labels it 成交金額 rather than 售價 on purpose: on a discounted plan the base is below the list price, and publishing it as 售價 would contradict the price on the creator's own product page.
 
 ### 4. Switch promotion on
 
@@ -251,7 +252,7 @@ wrong guess, and someone will otherwise spend an afternoon on it.
 Two rules that are not negotiable:
 
 - **Read the value server-side from the cookie.** Never accept it from the request body, a query string, or `localStorage` — if the browser can choose it, anyone can claim someone else's sale.
-- **Omit the field when there's no cookie.** Don't send an empty string.
+- **Omit the field when there's no cookie.** It must be 1–64 characters, so an empty string is a `400` and the checkout session is never created — that would fail the sale for the majority of buyers, who arrive with no referral cookie at all.
 
 An unknown, expired or mismatched code is ignored and the checkout still completes. That is deliberate: losing the attribution is bad, losing the sale is worse.
 
@@ -287,7 +288,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 
 ## Guardrails
 
-1. **Never compute or pay a commission in the creator's code.** No `amount * rate`, no earnings ledger, no "paid out" flag — Portaly holds the only copy, and a second one will disagree and become a dispute the creator has to answer.
+1. **Never compute or pay a commission in the creator's shipped code.** No `amount * rate` at runtime, no earnings ledger, no "paid out" flag (re-basing one published figure for the creator's own page, per step 3, is fine — that number is copy, not accounting) — Portaly holds the only copy, and a second one will disagree and become a dispute the creator has to answer.
 2. **Never hardcode the rate, the range or the service fee.** Read them from `GET .../promotion`; a number frozen into the project keeps saying 15% long after the creator changed it.
 3. **Never put `PORTALY_API_KEY` in client code.** `NEXT_PUBLIC_`, `VITE_`, `REACT_APP_` prefixed variables are inlined into the browser bundle; putting the key there publishes it.
 4. **Never point a landing page at a dev address.** `localhost`, **any** IP literal (public ones too), an `http://` URL, or a reserved suffix like `.test` / `.internal` / `.example` is refused, and for good reason: promoters share these links with other people. `.test` and `.internal` are the traps — they read like real staging domains. Full list in `references/promotion-api.md`.

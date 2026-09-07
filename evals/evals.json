@@ -177,6 +177,30 @@
         "Does not silently substitute a guessed production domain",
         "Offers leaving that plan without promotion until a real page exists"
       ]
+    },
+    {
+      "id": 16,
+      "prompt": "我照你說的打了 PUT /api/creator-subscription/promotion，回 200 了，推廣是不是已經上線了？（回應：{\"data\":{\"enabled\":true,\"commissionRate\":15,\"plans\":[{\"planId\":\"plan_a\",\"included\":false,\"excludedReason\":\"PROMOTION_URL_REQUIRED\",\"excludedMessage\":\"Referral links for this plan have nowhere usable to land...\"},{\"planId\":\"plan_b\",\"included\":false,\"excludedReason\":\"PROMOTION_BILLING_PERIOD_UNSUPPORTED\",\"excludedMessage\":\"...\"}]}}）",
+      "expected_output": "Agent 明說 200 不代表有東西上線：逐方案看 included 都是 false，所以現在沒有任何方案發得出推廣連結。plan_a 只差落地頁、請創作者給正式站網址；plan_b 是訂閱制、這條軌用不了且不給時程。不因為狀態碼是 200 就回報成功，也不在這個狀態下去寫歸因程式。",
+      "expectations": [
+        "States explicitly that a 200 does not mean promotion is live",
+        "Reads plans[].included rather than the HTTP status to decide",
+        "Reports plan_a as needing a landing page and asks for the production URL",
+        "Says subscription plans cannot use this rail, with no timeline or 'coming soon'",
+        "Does not start writing the ?ps= attribution code while nothing is included"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "結帳的地方我這樣寫：const ps = req.cookies['portaly:profitSharing'] ?? ''; 然後 body 一律帶 profitSharingId: ps。這樣可以嗎？",
+      "expected_output": "Agent 指出沒有 cookie 時這會送出空字串，而 profitSharingId 限 1–64 字元，空字串是 400、結帳 session 根本建不出來——而絕大多數買家都不帶推薦 cookie，等於把主要的購買流程弄壞。改成沒有值就整個欄位不要帶（例如物件展開），並說明無效但非空的值才是被靜默忽略、結帳照樣完成。",
+      "expectations": [
+        "Identifies that an absent cookie yields an empty string",
+        "States that an empty string is a 400 because the field must be 1-64 characters",
+        "Points out this breaks checkout for the majority of buyers who have no referral cookie",
+        "Fixes it by omitting the field entirely rather than sending an empty value",
+        "Distinguishes this from an unknown-but-non-empty value, which is silently ignored"
+      ]
     }
   ]
 }

@@ -153,8 +153,8 @@ One optional extra field on the existing create-session call:
 
 - The value is the `ps` query parameter from the referral link, which **your server** reads from its own cookie.
 - Only accepted on this API-key-authenticated call. Any request the buyer's browser can make must never carry it, or anyone could claim someone else's sale.
-- Max 64 characters.
-- An unknown, disabled or mismatched value is **silently ignored** and the session is still created. There is no error to handle: the buyer came to buy, and losing the attribution is better than losing the sale.
+- 1–64 characters. **Omit the field entirely when you have no cookie value — an empty string is a validation error (`400`, no `code`), not a silent ignore.**
+- An unknown, disabled or mismatched value *is* **silently ignored** and the session is still created: the buyer came to buy, and losing the attribution is better than losing the sale.
 
 Portaly validates that the link belongs to this exact plan and merchant, and freezes the commission rate onto the session at that moment — a rate change afterwards does not rewrite an already-quoted sale.
 
