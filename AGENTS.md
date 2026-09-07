@@ -12,11 +12,19 @@ A collection of skills for AI coding agents to help Portaly creators integrate p
 
 ```
 skills/
+  portaly-affiliate/          # Buyer promotion: switch it on, capture the referral code
+    SKILL.md                  # Skill definition (entry point)
+    references/               # Promotion API contract, attribution cookie, publishable copy
+    scripts/                  # Read-only promotion preflight
   portaly-overview/           # Orientation/navigation across Portaly's open APIs
     SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
   portaly-payment/            # Portaly Payment integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, checkout and renewal docs
+    scripts/                  # Callback adapters + production-derived conformance checks
+  portaly-payment-integration/ # Lean integration-scope (pcs_*_itg_*) variant of the above
+    SKILL.md                  # Skill definition (entry point)
+    references/               # API contract for the integration-scope subset
     scripts/                  # Callback adapters + production-derived conformance checks
   portaly-product/            # Portaly digital products integration
     SKILL.md                  # Skill definition (entry point)
@@ -60,6 +68,15 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Webhook events: `digital_product.checkout.completed` (per session), `digital_product.order.refunded` (per order)
 - HMAC-SHA256 webhook signature verification, ISO-datetime timestamp valid within 5 minutes
 
+**Affiliate Skill:**
+- API host: `https://portaly.ai`; same Creator Subscription API Key. Writes need a **full-scope** key — `pcs_*_itg_*` gets `403 KEY_SCOPE_FORBIDDEN` on `PUT /promotion` and `PUT /plans/{planId}`, while reads work on either
+- The switch is **per product, not per plan**: one `enabled` + one `commissionRate` covers every eligible plan. There is no per-plan rate
+- Eligible plans are one-time, fixed-price, active, and priced above zero; the account must be Taiwan-based
+- `plans[].included` is the only field that means "live" — a `200` from `PUT /promotion` does not, because that call's gate ignores the landing page
+- `plans[].promotionUrl` is the **resolved** value (plan's own, else the product's `appBaseUrl`), and `commissionAmount` is computed at **list price** — re-base it against active discount codes before publishing a figure
+- Attribution: `?ps=` → server-set `httpOnly` cookie `portaly:profitSharing` (3 days, last-touch) → `profitSharingId` (1–64 chars) on checkout-session creation
+- Commission, refund clawback and payout are Portaly's alone — never computed or displayed from the creator's own code
+
 ## These Skills Mirror a Backend That Ships Without Them
 
 The APIs documented here are implemented in a **separate repo** (`portaly-vibe`, the Portaly
@@ -76,8 +93,10 @@ When that test sends you here, or when you otherwise learn of an API change:
 2. Update `SKILL.md` — the workflow bullet and any copy-ready code snippet. Agents act on
    SKILL.md first and often never open the reference.
 3. Do all of the above for **every** skill that touches the endpoint. Checkout-session fields
-   land in three: `portaly-payment`, `portaly-payment-integration` (both the subscription
-   endpoint), and `portaly-product` (digital products).
+   land in four: `portaly-payment`, `portaly-payment-integration` (both the subscription
+   endpoint), `portaly-product` (digital products), and `portaly-affiliate`, which documents
+   `profitSharingId` on the same subscription endpoint in both its reference and its
+   copy-ready snippet.
 4. Bump that skill's version — the top-level `version:`, `metadata.version` if present, and the
    literal in its "Report the installed skill version" example. The dashboard uses it to flag
    stale installs, so an unbumped skill looks current while being wrong.
