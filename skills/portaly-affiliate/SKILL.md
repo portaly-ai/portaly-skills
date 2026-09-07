@@ -145,7 +145,27 @@ If they ask for a different rate per plan, say it is not available today — one
 
 If they pick something outside the range, say what the range is and ask again — do not silently clamp it.
 
-Use `plans[].commissionAmount` from the read-back rather than doing the arithmetic yourself.
+Take the per-sale figure from `plans[].commissionAmount` in the read-back rather than doing the arithmetic yourself — but note which rate it was computed at. Before the `PUT` it reflects the **current or default** rate, not the one you are proposing, so don't quote it against a rate the creator has not set yet.
+
+#### Establish the base before any figure is published
+
+`plans[].commissionAmount` is worked out at the plan's **list price**. Commission follows what the buyer actually paid — Portaly's purchase-complete page and the settlement both use the charged amount — so on a plan that a discount reaches, list price is a ceiling rather than the number to put on the creator's website. Check once:
+
+```
+GET {PORTALY_API_HOST}/api/creator-subscription/discount-codes?status=active
+Authorization: Bearer {PORTALY_API_KEY}
+```
+
+For each plan, find the codes whose `rules[]` reach it — a rule with `appliesTo.type: "specific"` listing this `planId`, otherwise one with `appliesTo.type: "all"`; a specific rule wins over the `all` fallback. Then:
+
+| What reaches the plan | The base to quote |
+|---|---|
+| Nothing | The list price. `commissionAmount` is exact — publish it as-is |
+| `discount.type: "fixed"` | `amount - discount.value` |
+| `discount.type: "percent"` | `round(amount × (100 - discount.value) / 100)` |
+| `discount.type: "free"` | **No figure.** Those sales charge nothing, so they pay the promoter nothing — say that instead of quoting a number |
+
+A `signupRefCode` discount applies with no code passed at checkout at all, so a plan carrying a ref-code rule is in the discounted case even when the creator believes they send nothing. Carry the base you land on into `references/partner-program-copy.md` as `{售價}`, alongside `{金額}` — the published copy states both, so the sentence stays true when a buyer pays less.
 
 ### 4. Switch promotion on
 
@@ -249,7 +269,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 3. **Never put `PORTALY_API_KEY` in client code.** `NEXT_PUBLIC_`, `VITE_`, `REACT_APP_` prefixed variables are inlined into the browser bundle; putting the key there publishes it.
 4. **Never point a landing page at a dev address.** `localhost`, a private IP or an `http://` URL is refused, and for good reason: promoters share these links with other people.
 5. **Never trust an attribution code from the browser.** Server-set `httpOnly` cookie, read server-side; reject a repeated parameter; ignore anything malformed.
-6. **Never invent an earnings figure.** If you have no number from Portaly, show no number and link to `https://rewards.portaly.cc` — a placeholder that ships is a number a promoter will try to reconcile.
+6. **Never invent an earnings figure, and never publish a NT$ amount without its base.** A promoter's accrued earnings come from Portaly or are not shown — link to `https://rewards.portaly.cc`; a placeholder that ships is a number a promoter will try to reconcile. A per-sale figure is fine, but only next to the price and rate it came from (`NT$225` alone goes stale and becomes wrong the moment a discount applies; "售價 NT$1,500 的 15%，也就是 NT$225" stays true). Re-base it against active discount codes first — step 3.
 7. **Subscription and dynamic-pricing plans: state the limit, offer the alternative, promise nothing.** No timelines, no roadmap, no "should be supported soon".
 8. **Never hand out a referral link before the switch is confirmed on.** Sales through it would earn the promoter nothing.
 9. **Never restate or invent the payout rules.** They are Portaly Rewards' to state and they change; link to `https://rewards.portaly.cc` instead of copying conditions into the chat, the creator's site, or their FAQ.
@@ -266,7 +286,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 - a plan → landing page table derived from their own project, confirmed in one pass rather than interrogated plan by plan
 - the product promotion switch result, read back from Portaly, naming every plan it did and did not cover
 - attribution wired into their actual stack: URL capture, cookie persistence, and the server-side hand-off at checkout-session creation
-- a short, publishable explanation of the program for their own site, linking to Portaly Rewards for earnings and payout
+- a short, publishable explanation of the program for their own site, with every NT$ figure stated next to the price it was derived from, linking to Portaly Rewards for earnings and payout
 - a test-mode checklist with real results, and the switch-to-live steps
 
 ## Resources

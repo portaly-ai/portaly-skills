@@ -4,7 +4,9 @@ Ready-to-adapt 正體中文 text explaining the program to buyers. The creator o
 
 **Payout conditions are not copied into this page.** They are stated in Portaly Rewards, where the promoter goes to see their earnings and withdraw; a second copy on the creator's site goes stale and turns a Portaly rule into the creator's support burden. Link there instead — and never write the conditions from memory.
 
-Replace `{商品名稱}`, `{比例}` and `{金額}` with real values read from the promotion API. Never leave a placeholder in published copy.
+Replace `{商品名稱}`, `{比例}`, `{售價}` and `{金額}` with real values. Never leave a placeholder in published copy.
+
+`{售價}` and `{金額}` are a pair, and neither is simply copied out of `GET /promotion`: `plans[].commissionAmount` is worked out at the plan's list price, so on a plan that an active discount code reaches it is a ceiling rather than the figure to publish. Take both from the base you established in the discount check in SKILL.md step 3.
 
 ---
 
@@ -12,7 +14,7 @@ Replace `{商品名稱}`, `{比例}` and `{金額}` with real values read from t
 
 > **買過就能推薦，成交抽 {比例}%**
 >
-> 購買「{商品名稱}」之後，你會在付款完成頁拿到一條專屬推廣連結。把它分享給朋友，只要有人透過你的連結完成購買，你就能獲得 NT${金額} 的分潤。
+> 購買「{商品名稱}」之後，你會在付款完成頁拿到一條專屬推廣連結。把它分享給朋友，只要有人透過你的連結完成購買，你就能獲得 NT${金額} 的分潤（售價 NT${售價} 的 {比例}%）。
 >
 > 分潤由 Portaly 記帳與發放，成效與提領都在 [Portaly Rewards](https://rewards.portaly.cc)。
 
@@ -26,7 +28,7 @@ Replace `{商品名稱}`, `{比例}` and `{金額}` with real values read from t
 > 購買「{商品名稱}」之後，付款完成頁會提供你一條專屬推廣連結。不需要另外申請，也不需要先註冊任何帳號。
 >
 > ### 怎麼算
-> 有人透過你的連結完成購買，你就能獲得成交金額的 {比例}%，也就是每成交一筆約 NT${金額}。
+> 有人透過你的連結完成購買，你就能獲得成交金額的 {比例}%。以「{商品名稱}」目前售價 NT${售價} 計算，每成交一筆是 NT${金額}。
 >
 > 計算方式有兩點要先知道：
 > - **以最後點擊為準**：如果對方先點了別人的連結、之後才點你的，這筆算你的；反過來也一樣。
@@ -42,7 +44,8 @@ Replace `{商品名稱}`, `{比例}` and `{金額}` with real values read from t
 - **Don't restate the payout conditions.** Link to Portaly Rewards. Anything written here is a second copy that goes stale, and the creator is the one who answers for it.
 - **Don't promise a payout date.** Settlement runs on Portaly's schedule and there is a withdrawal window; a specific date will be wrong.
 - **Don't state fee or tax amounts.** They depend on the promoter's own situation and on thresholds that change. Point at the dashboard.
-- **Don't show an earnings figure the creator's own site calculated.** Every number shown to a promoter should come from Portaly, or not be shown at all.
+- **Don't print a NT$ figure on its own.** Every amount has to sit next to the price and the rate it came from — the way Portaly's own purchase-complete card does it, where the headline amount is followed by 售價 and 分潤回饋 %. With the base in view the sentence stays true when a buyer pays less; without it, the number is a promise the creator cannot keep, and they are the one who answers for it.
+- **Don't show a promoter's accrued earnings that the creator's own site calculated.** "What one sale pays" is fine — it is price × rate and both halves are on the page. "What you have earned so far" is not: refunds claw commission back and settlement is not immediate, so any locally computed running total will diverge. That number comes from Portaly Rewards or it is not shown.
 
 ## English
 
