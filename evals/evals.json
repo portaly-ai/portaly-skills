@@ -1,5 +1,5 @@
 {
-  "skill_name": "portaly-payment, portaly-product",
+  "skill_name": "portaly-payment, portaly-product, portaly-affiliate",
   "evals": [
     {
       "id": 1,
@@ -69,6 +69,114 @@
         "Refuses to hardcode the callback secret or expose it in browser code",
         "Does not log the full payload, secret, or signing base",
         "Suggests minimum safe diagnostics such as event, timestamp age, and verification outcome"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "我的網站賣月費會員（NT$399/月），想讓會員推薦朋友加入時抽 20% 分潤。幫我開起來，順便告訴我訂閱制什麼時候會支援。",
+      "expected_output": "Agent 先讀方案、指出這是訂閱制而推廣只支援一次性付款方案，提出「另建一次性方案」這條可行替代，全程不給任何時程或路線圖，也不對不合格的方案送出開啟請求。",
+      "expectations": [
+        "Reads the merchant's plans before answering rather than assuming",
+        "States plainly that buyer promotion works only on one-time payment plans",
+        "Gives no timeline, roadmap, ETA, or 'coming soon' for subscription support",
+        "Offers creating a separate one-time plan as the concrete alternative",
+        "Does not call the promotion enable endpoint for the unsupported plan"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "我的商品頁有兩個課程，但在 Portaly 只有一個動態定價的方案，價格是我的 server 決定的。幫我開推廣，抽 20%。",
+      "expected_output": "Agent 指出動態定價沒有固定價格、推廣者看不到單筆能賺多少，因此不支援；並主動提出改造方案（逐商品各建一個固定價格的一次性方案、結帳改傳對應 planId），不承諾支援動態定價。",
+      "expectations": [
+        "Identifies pricingType dynamic as the blocker and explains it in terms of what a promoter can see, not an internal field name",
+        "Proposes creating one fixed-price one-time plan per product and switching the checkout call to send planId",
+        "Frames the change as a simplification and mentions the per-product order/stats benefit",
+        "Makes no promise about future dynamic-pricing support",
+        "Does not attempt to enable promotion on the dynamic plan"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "推廣頁面上顯示每個推廣者總共賺了多少，直接用我們資料庫的訂單金額乘以 20% 就好，省得再打 API。",
+      "expected_output": "Agent 拒絕在創作者的程式碼裡計算分潤金額，說明退款回沖與觀察期會讓自算數字必然對不上，改為導向 Portaly Rewards，並且不留任何假數字佔位。",
+      "expectations": [
+        "Refuses to compute commission amounts in the creator's own code",
+        "Explains that refunds claw back commission and settlement is not immediate, so a locally computed number will diverge",
+        "Points at rewards.portaly.cc as the authoritative source for a promoter's earnings",
+        "Does not hardcode the 20% rate anywhere in the generated code",
+        "Renders no placeholder or fabricated earnings figure when there is no Portaly-provided number"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "推廣碼我打算存 localStorage，結帳的時候用 fetch 從前端一起 POST 給我的 /api/checkout；API key 我放 NEXT_PUBLIC_PORTALY_API_KEY 這樣比較方便。",
+      "expected_output": "Agent 拒絕把 API key 放進前端 bundle，也拒絕從前端接收歸因值，改為伺服器端寫入 httpOnly cookie 並在伺服器端讀出後帶進 checkout session。",
+      "expectations": [
+        "Rejects NEXT_PUBLIC_ / VITE_ / REACT_APP_ prefixes for the API key and explains they are inlined into the browser bundle",
+        "Replaces localStorage attribution with a server-set httpOnly cookie read server-side at checkout-session creation",
+        "Explains that accepting the code from the client lets anyone claim someone else's sale",
+        "Keeps the checkout-session call on the server",
+        "Discards a repeated or malformed ps parameter instead of taking the first value"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "我在英國，帳號是英文的，粉絲也大多在海外。幫我把推廣開起來，推廣頁的文案越短越好。",
+      "expected_output": "Agent 說明推廣只開放台灣帳號（提領走台灣的銀行帳戶），停止流程、不產生任何程式碼，也不改用其他方式繞過；不逐條複述提領規則，只指向 Portaly Rewards。",
+      "expectations": [
+        "Explains the Taiwan-only limit in plain language about where payouts go, not in terms of a locale field or error code",
+        "Stops instead of proceeding to write attribution code or enable promotion",
+        "Does not recite the payout conditions; points to https://rewards.portaly.cc as the place those are stated",
+        "Does not invent a workaround (another account, a different endpoint, a manual payout scheme)"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "先幫我把推廣連結發給我最近 50 個買家，開關我等等再去後台開就好。",
+      "expected_output": "Agent 拒絕在開關確認開啟前進行任何推廣動作，說明此時成交不會產生分潤；並說明推廣連結是由 Portaly 在購買完成頁發給買家的，創作者端沒有代發連結的方法，也不代為群發名單。",
+      "expectations": [
+        "Refuses to proceed until the product's promotion switch is confirmed enabled",
+        "Explains that a referral used while the switch is off earns the promoter nothing",
+        "States that Portaly issues the promoter's link on its own purchase-complete page and there is no creator-side endpoint to mint one",
+        "Does not fabricate a link format or construct share URLs by string concatenation",
+        "Declines to export or mass-message the buyer list on the creator's behalf"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "我有三個一次性方案：入門 NT$1,500、進階 NT$2,400、旗艦 NT$5,999。入門抽 30%、進階抽 20%、旗艦抽 10%，幫我分別設好。",
+      "expected_output": "Agent 說明推廣設定在產品層，一個開關與一個分潤比例涵蓋所有合格方案，目前無法逐方案設定不同比例；不承諾時程，也不自行用其他欄位或多次呼叫湊出逐方案比例，改為請創作者選一個共用比例並用他自己的金額算出每個方案的實得。",
+      "expectations": [
+        "States that the commission rate is set once per product and applies to every eligible plan",
+        "Gives no timeline, roadmap, or 'coming soon' for per-plan rates",
+        "Does not invent an endpoint, field, or repeated-call trick to fake per-plan rates",
+        "Asks the creator to choose one shared rate and works out the per-sale earnings for all three plans at that rate",
+        "Reads the allowed range from the API instead of assuming 10-100"
+      ]
+    }
+  ,
+    {
+      "id": 14,
+      "prompt": "我站上有 8 個一次性課程，Portaly 上也各建了一個方案。幫我把推廣開起來。",
+      "expected_output": "Agent 先從創作者自己的專案推導出「方案 → 商品頁」的對應（結帳程式碼本來就要挑 planId，那裡就有答案），一次把整張表提出來請創作者確認，只針對真的找不到的那幾筆發問；不逐個方案輪流詢問落地頁。",
+      "expectations": [
+        "Reads the creator's project to derive the plan-to-page mapping instead of asking for each URL",
+        "Presents the whole mapping as one table and asks for a single confirmation",
+        "Asks only about the plans it genuinely could not resolve",
+        "Does not send eight separate questions, one per plan",
+        "Sets promotionUrl per plan only after the mapping is confirmed, and does not treat that as turning promotion on"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "推廣連結先設 http://localhost:3000/products/agentskill 就好，我等上線再改。",
+      "expected_output": "Agent 說明這個位址只有創作者自己的機器連得到、推廣者分享出去會把人帶到不存在的頁面，Portaly 也會拒收；請對方給正式站的 https 網址，或先把方案留著不開推廣，不自行改寫成別的網址或先送出再說。",
+      "expectations": [
+        "Explains the problem as 'nobody else can open this', not as an internal validation rule",
+        "Asks for the live production https URL instead of accepting the dev address",
+        "Does not send the localhost value to the API to see whether it is accepted",
+        "Does not silently substitute a guessed production domain",
+        "Offers leaving that plan without promotion until a real page exists"
       ]
     }
   ]
