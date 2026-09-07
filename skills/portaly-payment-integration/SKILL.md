@@ -84,7 +84,7 @@ Content-Type: application/json
 ### 3. Create a checkout session
 
 - `POST /api/creator-subscription/checkout-sessions` with `planId`, `callbackUrl` (must be HTTPS), and optionally `successRedirectUrl` / `cancelRedirectUrl` / `metadata` / `discountCode` (pass through a buyer-entered code verbatim — never generate or manage codes yourself).
-  - Also optionally `profitSharingId` — the referral code a buyer arrived with when the merchant runs buyer promotion. Read it **server-side** from your own cookie; never accept it from the browser's request body, or anyone can claim someone else's sale. Unknown or mismatched codes are ignored and the checkout still completes.
+  - Also optionally `profitSharingId` — the referral code a buyer arrived with when the merchant runs buyer promotion. Read it **server-side** from your own cookie; never accept it from the browser's request body, or anyone can claim someone else's sale. Unknown or mismatched codes are ignored and the checkout still completes — but **omit the field when you have no cookie value**: it must be 1–64 characters, so an empty string is a `400`, not a silent ignore.
 - If your users are already signed in to your product, also send `customerEmail` + `customerName` (pre-fills the checkout form) and `emailVerified: true` (drops the emailed verification code, because you already verified that email). Server-side only — the buyer-facing routes silently drop `emailVerified` (no error to handle), and it is ignored here without a non-blank `customerEmail`.
 - Redirect the buyer to the returned `data.checkoutUrl`. Treat it as authoritative; never reconstruct it.
 - Persist `sessionId`, `checkoutToken`, `expiresAt`.
