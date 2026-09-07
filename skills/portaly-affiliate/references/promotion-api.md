@@ -12,7 +12,7 @@ Read the product's current promotion settings, the limits that apply, and which 
 
 Promotion is configured **per product, not per plan**: one switch and one commission rate cover every eligible plan the merchant has. A creator with ten plans pays the same rate on all ten.
 
-Response:
+Response — shown here in the state a first read usually finds, with the switch still off (so no plan is `included` yet):
 
 ```json
 {
@@ -30,7 +30,7 @@ Response:
         "amount": 1500,
         "currency": "TWD",
         "promotionUrl": "https://merchant.example/products/agentskill",
-        "included": true,
+        "included": false,
         "commissionRate": 15,
         "commissionAmount": 225,
         "excludedReason": null,
@@ -55,9 +55,10 @@ Response:
 
 - `commissionRate` at the top level is `null` until promotion has been configured once.
 - `plans[].included` is the answer to "will promoters actually see this plan" — the switch, **and** the plan qualifying, **and** it having somewhere usable to land. A plan can be excluded while the switch is on. This is the only field to trust for "is it live"; the switch's own `enabled` is not enough.
-- `plans[].promotionUrl` is the **resolved** value, not the plan's own field: the plan's `promotionUrl` if set, otherwise the product's `appBaseUrl`. So when `appBaseUrl` is configured, every plan comes back non-null and none reports `PROMOTION_URL_REQUIRED` — even the ones with no page of their own, whose referral links then land on the site root. If several plans share one `promotionUrl`, that is the fallback showing through; treat those plans as still needing a real page.
+- **`included: false` with `excludedReason: null` means the plan itself is fine and the switch is simply off** — `plan_123` above is in exactly that state. It is the only combination that carries no reason code, because a reason code describes the plan and this exclusion is not about the plan. Do not report it as a problem with the plan: the fix is step 4, not a plan edit, and once the switch is on such a plan flips to `included: true` on its own.
+- `plans[].promotionUrl` is the **resolved** value, not the plan's own field: the plan's `promotionUrl` if set, otherwise the product's `appBaseUrl`. So when `appBaseUrl` is configured, every plan comes back non-null and none reports `PROMOTION_URL_REQUIRED` — even the ones with no page of their own, whose referral links then land on the site root. To tell a real page from the fallback, compare each plan's value against the product's own `appBaseUrl` (`GET /api/creator-subscription/config` → `data.appBaseUrl`); anything equal to it still needs a real page. Do not instead look for plans that share a URL with each other — when only some plans fall back, their value differs from the ones that have real pages, and a single-plan product has nothing to compare against.
 - `plans[].excludedMessage` is written for a non-technical creator and is safe to show verbatim; the `excludedReason` code is for your branching.
-- `plans[].commissionAmount` is `amount × commissionRate`, already worked out — use it instead of doing the arithmetic yourself. It is computed at the plan's **list price**, so treat it as a ceiling: a buyer using a discount code, or one whose `signupRefCode` auto-applies, pays less, and the commission follows what they actually paid. Portaly's purchase-complete page and the settlement both use the charged amount. Call `GET /api/creator-subscription/discount-codes?status=active` and re-base the figure before it reaches anything the creator's buyers will read.
+- `plans[].commissionAmount` is `round(amount × commissionRate / 100)`, already worked out — use it instead of doing the arithmetic yourself. It is computed at the plan's **list price**, so treat it as a ceiling: a buyer using a discount code, or one whose `signupRefCode` auto-applies, pays less, and the commission follows what they actually paid. Portaly's purchase-complete page and the settlement both use the charged amount. Call `GET /api/creator-subscription/discount-codes?status=active` and re-base the figure before it reaches anything the creator's buyers will read.
 - Before promotion has been configured, `plans[].commissionRate` and `commissionAmount` reflect `defaultCommissionRate` — not a rate you are currently proposing to the creator. Read them back after the `PUT` before quoting them against the agreed rate.
 - `serviceFeeRate` is the platform fee taken from the creator's side, as a percentage.
 - **Read `minCommissionRate` / `maxCommissionRate` / `defaultCommissionRate` from here rather than hardcoding them.** They are shared with the rest of Portaly's profit-sharing rules and can change.

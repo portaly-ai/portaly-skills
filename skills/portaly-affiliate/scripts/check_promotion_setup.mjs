@@ -76,7 +76,13 @@ const main = async () => {
   const excluded = plans.filter((p) => !p.included)
 
   console.log(`\nIncluded (${included.length}):`)
-  if (!included.length) console.log('  (none — nothing is promotable right now)')
+  if (!included.length) {
+    console.log(
+      d.enabled
+        ? '  (none — the switch is on, but no plan qualifies yet; see Excluded below)'
+        : '  (none — the product switch is off, so nothing is promotable yet)'
+    )
+  }
   included.forEach((p) => {
     console.log(`  ${p.name} (${p.planId})`)
     console.log(`    ${p.currency || 'TWD'} ${p.amount} → promoter earns about ${p.currency || 'TWD'} ${p.commissionAmount} per sale`)
@@ -86,7 +92,11 @@ const main = async () => {
   if (excluded.length) {
     console.log(`\nExcluded (${excluded.length}):`)
     excluded.forEach((p) => {
-      console.log(`  ${p.name} (${p.planId}) — ${p.excludedReason}`)
+      // A missing reason code is not missing data: the plan itself qualifies and
+      // the product switch is simply off, which is the state a first run finds.
+      // Printing a bare `null` there reads as a broken plan.
+      const reason = p.excludedReason || 'promotion is switched off for this product'
+      console.log(`  ${p.name} (${p.planId}) — ${reason}`)
       if (p.excludedMessage) console.log(`    ${p.excludedMessage}`)
     })
   }

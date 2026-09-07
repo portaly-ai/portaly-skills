@@ -41,11 +41,19 @@ export function middleware(req: NextRequest) {
   // whatever the visitor shares, bookmarks or pastes next.
   url.searchParams.delete(PARAM)
 
+  // Follow the request's own scheme, not NODE_ENV: a production build served
+  // over plain http (a LAN box, an http staging deploy) would set `Secure`, the
+  // browser would discard the cookie without a word, and the symptom is
+  // identical to attribution simply not working.
+  const isHttps =
+    req.nextUrl.protocol === 'https:' ||
+    req.headers.get('x-forwarded-proto') === 'https'
+
   const res = NextResponse.redirect(url, 307)
   res.cookies.set(COOKIE, values[0], {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     path: '/',
     maxAge: THREE_DAYS,
   })
@@ -95,10 +103,17 @@ export function captureReferral() {
   // Secure is fatal on an http origin — the browser drops the cookie silently
   const secure = location.protocol === 'https:' ? '; Secure' : ''
   document.cookie = `${COOKIE}=${values[0]}; expires=${expires}; path=/; SameSite=Lax${secure}`
+
+  // Strip the parameter, as the middleware does. Left in the address bar it
+  // rides along into whatever the visitor copies, shares or bookmarks, and
+  // last-touch then credits this promoter for every buyer who follows that URL.
+  const url = new URL(location.href)
+  url.searchParams.delete(PARAM)
+  history.replaceState(null, '', url)
 }
 ```
 
-**A cookie the page can write is a cookie the buyer can write.** Portaly checks that a referral code belongs to this plan and this merchant, but never that the buyer actually clicked it — so on this path a buyer can paste any code into the console, including one they minted themselves, and the sale follows it. Self-referral and taking another promoter's credit both work. That is the hole guardrail 5 exists to close, and the reason the server hook above is worth one extra endpoint. If the creator accepts the trade-off anyway, make sure they are accepting it knowingly rather than inheriting it from a code sample.
+**A cookie the page can write is a cookie the buyer can write.** Portaly checks that a referral code belongs to this plan and this merchant, but never that the buyer actually clicked it — so on this path a buyer can paste any code into the console, including one they minted themselves, and the sale follows it. Self-referral and taking another promoter's credit both work. That is the hole guardrail 5 exists to close, and the reason the server hook above is worth one extra endpoint. This path also strips the parameter a beat later than the middleware does — the code is in the address bar until the page's JavaScript has run, so a visitor who copies the URL out of the bar immediately can still propagate it. If the creator accepts the trade-off anyway, make sure they are accepting it knowingly rather than inheriting it from a code sample.
 
 ## Edge cases worth knowing
 

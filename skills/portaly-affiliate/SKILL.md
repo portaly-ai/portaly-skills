@@ -110,7 +110,9 @@ A referral link has to open something, and Portaly hosts no public page for a Pa
 **`plans[].promotionUrl` in the read is the *resolved* value, not the plan's own field.** Portaly falls back to the merchant's configured site URL (`appBaseUrl`), so a plan with nothing of its own still comes back with a URL and no `PROMOTION_URL_REQUIRED` — pointing every referral link at the site root. Do not treat a non-null `promotionUrl` as "already handled". A plan needs this step when **either** of these is true:
 
 - it reports `excludedReason: "PROMOTION_URL_REQUIRED"` (no plan URL *and* no usable `appBaseUrl`), or
-- its `promotionUrl` is the same value as every other plan's — that is the `appBaseUrl` fallback showing through, not a product page
+- its `promotionUrl` equals the product's own `appBaseUrl` — that is the fallback showing through, not a product page. Read that value once from `GET {PORTALY_API_HOST}/api/creator-subscription/config` (`data.appBaseUrl`) and compare every plan against it
+
+Do **not** try to spot the fallback by looking for plans that share a URL with each other. When only some plans fall back, their value differs from the ones that do have real pages, so the comparison comes out false exactly when it matters — and a product with a single plan has nothing to compare against at all.
 
 Only a plan whose `promotionUrl` is distinctly its own is genuinely done. When in doubt, propose it in the table below and let the creator confirm; setting a URL that was already right costs one idempotent call.
 
@@ -128,7 +130,7 @@ Then propose the whole thing at once and ask for **one** confirmation:
 
 Ask only about the rows you genuinely could not resolve, and get the base URL once rather than repeating it in every row.
 
-**It has to be their live production address.** Portaly rejects `http://`, `localhost`, private IPs, `.local` names, and anything that is not a plain web page — the value becomes the target of a Portaly-hosted short link that promoters share publicly, so a dev address would send every visitor nowhere. You are working inside their repo, where `localhost:3000` sits in every config file; do not let it become the answer. If you only know the dev URL, ask for the live one.
+**It has to be their live production address.** Portaly rejects `http://`, `localhost`, **any** IP address literal (public ones included, v4 and v6), any hostname with no dot, the reserved suffixes `.local` / `.localhost` / `.internal` / `.test` / `.example` / `.invalid`, a URL carrying credentials, and anything that is not a plain web page — the value becomes the target of a Portaly-hosted short link that promoters share publicly, so a dev address would send every visitor nowhere. You are working inside their repo, where `localhost:3000` sits in every config file; do not let it become the answer. If you only know the dev URL, ask for the live one.
 
 Then write them:
 
@@ -154,6 +156,8 @@ If they ask for a different rate per plan, say it is not available today — one
 
 If they pick something outside the range, say what the range is and ask again — do not silently clamp it.
 
+The rate must also be a **whole number**. `commissionRate: 12.5` is refused with `400 PROMOTION_INVALID_REQUEST` even though it sits inside the range, and that error's message covers both causes at once, so it will not tell you which one you hit. Round to an integer before sending, and tell the creator you did.
+
 Take the per-sale figure from `plans[].commissionAmount` in the read-back rather than doing the arithmetic yourself — but note which rate it was computed at. Before the `PUT` it reflects the **current or default** rate, not the one you are proposing, so don't quote it against a rate the creator has not set yet.
 
 #### Establish the base before any figure is published
@@ -165,6 +169,13 @@ GET {PORTALY_API_HOST}/api/creator-subscription/discount-codes?status=active
 Authorization: Bearer {PORTALY_API_KEY}
 ```
 
+`status=active` is a stored status, not "redeemable right now", and the list is paginated. Page through all of it (`?limit=&startAfter=`, following `pagination.nextCursor` until it is `null`) rather than reading the first page only, and ignore any code that cannot currently be used:
+
+- `redeemBy` already past, or `redeemFrom` still in the future
+- `timesRedeemed` has reached `maxRedemptions`
+
+Re-basing against a code nobody can redeem understates the promoter's earnings just as badly as missing a live one overstates them. `maxRedemptionsPerCustomer` is not a reason to skip a code — it still applies to the next buyer.
+
 For each plan, find the codes whose `rules[]` reach it — a rule with `appliesTo.type: "specific"` listing this `planId`, otherwise one with `appliesTo.type: "all"`; a specific rule wins over the `all` fallback. Then:
 
 | What reaches the plan | The base to quote |
@@ -174,7 +185,7 @@ For each plan, find the codes whose `rules[]` reach it — a rule with `appliesT
 | `discount.type: "percent"` | `round(amount × (100 - discount.value) / 100)` |
 | `discount.type: "free"` | **No figure.** Those sales charge nothing, so they pay the promoter nothing — say that instead of quoting a number |
 
-A `signupRefCode` discount applies with no code passed at checkout at all, so a plan carrying a ref-code rule is in the discounted case even when the creator believes they send nothing. Carry the base you land on into `references/partner-program-copy.md` as `{售價}`, alongside `{金額}` — the published copy states both, so the sentence stays true when a buyer pays less.
+A `signupRefCode` discount applies with no code passed at checkout at all, so a plan carrying a ref-code rule is in the discounted case even when the creator believes they send nothing. Carry the base you land on into `references/partner-program-copy.md` as `{計算基數}`, alongside `{金額}` — the published copy states both, so the sentence stays true when a buyer pays less. That copy labels it 成交金額 rather than 售價 on purpose: on a discounted plan the base is below the list price, and publishing it as 售價 would contradict the price on the creator's own product page.
 
 ### 4. Switch promotion on
 
@@ -279,14 +290,14 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 1. **Never compute or pay a commission in the creator's code.** No `amount * rate`, no earnings ledger, no "paid out" flag — Portaly holds the only copy, and a second one will disagree and become a dispute the creator has to answer.
 2. **Never hardcode the rate, the range or the service fee.** Read them from `GET .../promotion`; a number frozen into the project keeps saying 15% long after the creator changed it.
 3. **Never put `PORTALY_API_KEY` in client code.** `NEXT_PUBLIC_`, `VITE_`, `REACT_APP_` prefixed variables are inlined into the browser bundle; putting the key there publishes it.
-4. **Never point a landing page at a dev address.** `localhost`, a private IP or an `http://` URL is refused, and for good reason: promoters share these links with other people.
+4. **Never point a landing page at a dev address.** `localhost`, **any** IP literal (public ones too), an `http://` URL, or a reserved suffix like `.test` / `.internal` / `.example` is refused, and for good reason: promoters share these links with other people. `.test` and `.internal` are the traps — they read like real staging domains. Full list in `references/promotion-api.md`.
 5. **Never trust an attribution code from the browser.** Server-set `httpOnly` cookie, read server-side; reject a repeated parameter; ignore anything malformed.
 6. **Never invent an earnings figure, and never publish a NT$ amount without its base.** A promoter's accrued earnings come from Portaly or are not shown — link to `https://rewards.portaly.cc`; a placeholder that ships is a number a promoter will try to reconcile. A per-sale figure is fine, but only next to the price and rate it came from (`NT$225` alone goes stale and becomes wrong the moment a discount applies; "售價 NT$1,500 的 15%，也就是 NT$225" stays true). Re-base it against active discount codes first — step 3.
 7. **Subscription and dynamic-pricing plans: state the limit, offer the alternative, promise nothing.** No timelines, no roadmap, no "should be supported soon".
 8. **Never hand out a referral link before the switch is confirmed on.** Sales through it would earn the promoter nothing.
 9. **Never restate or invent the payout rules.** They are Portaly Rewards' to state and they change; link to `https://rewards.portaly.cc` instead of copying conditions into the chat, the creator's site, or their FAQ.
 10. **Never claim a test run earned anything.** Test-mode purchases produce no commission, and the completion page issues no referral link for them.
-11. **Never invent endpoints or fields.** This skill uses exactly the two promotion endpoints above, `promotionUrl` on the plan, and `profitSharingId` on checkout-session creation. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
+11. **Never invent endpoints or fields.** This skill uses exactly: `GET`/`PUT /api/creator-subscription/promotion`, `GET /api/creator-subscription/config` (to read `appBaseUrl`), `GET /api/creator-subscription/discount-codes` (to re-base the figure, step 3), `promotionUrl` via `PUT /api/creator-subscription/plans/{planId}`, `profitSharingId` on checkout-session creation, and `POST /api/creator-subscription/skill-version` to report the version. Nothing beyond that list. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
 12. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
 13. **Never mass-message the creator's buyers for them.** Portaly already emails each buyer their own invitation; anything beyond that — exporting a customer list, a broadcast — is the creator's to decide and theirs to do.
 14. **Never interrogate the creator field by field.** Derive what you can from their project, propose the whole mapping in one table, and ask once. A creator with ten plans must not be asked ten questions.
