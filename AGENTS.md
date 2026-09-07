@@ -12,11 +12,19 @@ A collection of skills for AI coding agents to help Portaly creators integrate p
 
 ```
 skills/
+  portaly-affiliate/          # Buyer promotion: switch it on, capture the referral code
+    SKILL.md                  # Skill definition (entry point)
+    references/               # Promotion API contract, attribution cookie, publishable copy
+    scripts/                  # Read-only promotion preflight
   portaly-overview/           # Orientation/navigation across Portaly's open APIs
     SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
   portaly-payment/            # Portaly Payment integration
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract, checkout and renewal docs
+    scripts/                  # Callback adapters + production-derived conformance checks
+  portaly-payment-integration/ # Lean integration-scope (pcs_*_itg_*) variant of the above
+    SKILL.md                  # Skill definition (entry point)
+    references/               # API contract for the integration-scope subset
     scripts/                  # Callback adapters + production-derived conformance checks
   portaly-product/            # Portaly digital products integration
     SKILL.md                  # Skill definition (entry point)

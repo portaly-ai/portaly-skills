@@ -1,7 +1,7 @@
 ---
 name: portaly-overview
-version: 0.1.0
-description: Orientation and navigation for what Portaly's open APIs can do — subscription payments, digital products, discount codes, subscriber self-service, and order/invoice queries — plus an API catalog and where to find Portaly's API docs. Trigger when the user asks "what can Portaly do", "what APIs does Portaly have", wants a list or catalog of Portaly's APIs/endpoints, is evaluating Portaly's payment or product APIs before committing to an integration, is looking for Portaly API documentation, or is deciding which Portaly skill to install.
+version: 0.2.0
+description: Orientation and navigation for what Portaly's open APIs can do — subscription payments, digital products, discount codes, buyer promotion, subscriber self-service, and order/invoice queries — plus an API catalog and where to find Portaly's API docs. Trigger when the user asks "what can Portaly do", "what APIs does Portaly have", wants a list or catalog of Portaly's APIs/endpoints, is evaluating Portaly's payment or product APIs before committing to an integration, is looking for Portaly API documentation, or is deciding which Portaly skill to install.
 ---
 
 # Portaly Overview
@@ -126,7 +126,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-overview", "version": "0.1.0" }
+  { "skillName": "portaly-overview", "version": "0.2.0" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.

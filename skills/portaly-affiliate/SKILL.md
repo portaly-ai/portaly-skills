@@ -56,6 +56,8 @@ Two limits, both of which decide whether this can be switched on at all:
 
 - Read `PORTALY_API_KEY` from `.env` / `process.env`. Never ask the user to paste it into the chat, and check `.gitignore` covers `.env`.
 - Prefer starting with a `pcs_test_*` key.
+- **It has to be a full-scope key.** Turning promotion on and setting `promotionUrl` are writes; an integration-scope key (`pcs_test_itg_*` / `pcs_live_itg_*`) reads fine but is refused with `403 KEY_SCOPE_FORBIDDEN` on both. If that is all the project has, the merchant creates a full-access key at `https://portaly.cc/admin/creator-subscription` — you cannot work around it.
+- **Rate limits:** reads 120/min, writes 20/min, per the rest of the creator-subscription API. This skill's writes are one call per plan (`promotionUrl`) plus one for the switch, so a merchant with more than ~19 plans will run into `429` partway through. Batch below the limit, honour `Retry-After`, and re-read `GET .../promotion` afterwards to confirm every plan actually landed — a half-applied set leaves some referral links on product pages and the rest on the site root.
 
 ### 1.5 Report the installed skill version
 
@@ -103,7 +105,14 @@ For anything else, `excludedMessage` is written for them and safe to quote.
 
 ### 2. Give each plan a landing page
 
-A referral link has to open something, and Portaly hosts no public page for a Payment plan — so each plan needs a URL on the creator's own site. Only plans reported as `PROMOTION_URL_REQUIRED` need one; anything with a usable `promotionUrl` already is left alone.
+A referral link has to open something, and Portaly hosts no public page for a Payment plan — so each plan needs a URL on the creator's own site.
+
+**`plans[].promotionUrl` in the read is the *resolved* value, not the plan's own field.** Portaly falls back to the merchant's configured site URL (`appBaseUrl`), so a plan with nothing of its own still comes back with a URL and no `PROMOTION_URL_REQUIRED` — pointing every referral link at the site root. Do not treat a non-null `promotionUrl` as "already handled". A plan needs this step when **either** of these is true:
+
+- it reports `excludedReason: "PROMOTION_URL_REQUIRED"` (no plan URL *and* no usable `appBaseUrl`), or
+- its `promotionUrl` is the same value as every other plan's — that is the `appBaseUrl` fallback showing through, not a product page
+
+Only a plan whose `promotionUrl` is distinctly its own is genuinely done. When in doubt, propose it in the table below and let the creator confirm; setting a URL that was already right costs one idempotent call.
 
 **Work the mapping out from their project first. Do not interview them plan by plan.** You are running inside their codebase, and it already contains the answer: the code that creates checkout sessions has to pick a `planId`, so wherever that choice is made — a product constant, a CMS field, a database column, a route param — is also where the product's own page is defined. Read that, plus their route structure, and derive the mapping yourself.
 
@@ -178,8 +187,9 @@ Content-Type: application/json
 ```
 
 - **This decides who gets paid what. With a live key, restate which plans it will cover, the rate and the mode, and wait for an explicit yes before sending.**
-- The call succeeds as long as **one** plan qualifies. Read `plans[]` back from the response and tell the creator exactly which plans went live and which did not — a partial result is normal here, not an error.
-- On failure, stop — do not write any attribution code. A referral link handed out while the switch is off earns the promoter nothing. See `references/promotion-api.md` for the error codes; the two worth knowing here are `PROMOTION_LOCALE_UNSUPPORTED` (not a Taiwan account — this is not something code can fix, they need Portaly support) and `PROMOTION_NO_ELIGIBLE_PLAN` (back to step 1).
+- **A 200 does not mean anything went live.** Eligibility here is billing period, pricing type, amount and status — it does not look at the landing page. So the call succeeds as long as one plan clears *those*, and a plan with nowhere usable to land still comes back `included: false`. Read `plans[]` from the response and go by `included`, never by the status code.
+- Tell the creator exactly which plans went live and which did not — a partial result is normal here, not an error. If **nothing** is `included`, treat it as a failure however clean the response looked: fix what `excludedReason` names (usually back to step 2) and switch on again before writing any attribution code.
+- On failure, stop — do not write any attribution code. A referral link handed out while the switch is off earns the promoter nothing. See `references/promotion-api.md` for the error codes; three are worth knowing here — `PROMOTION_LOCALE_UNSUPPORTED` (not a Taiwan account: not something code can fix, they need Portaly support), `PROMOTION_NO_ELIGIBLE_PLAN` (back to step 1), and `KEY_SCOPE_FORBIDDEN` (an integration-scope `pcs_*_itg_*` key — this endpoint needs the merchant's own full-access key; reading is fine with either).
 
 ### 5. Capture the referral code on the creator's site
 
@@ -193,11 +203,13 @@ The contract:
 |---|---|
 | URL parameter | `?ps=<code>` |
 | Cookie | `portaly:profitSharing` |
-| Lifetime | **3 days**, `sameSite: 'Lax'`, `path: '/'`, `secure` in production |
+| Lifetime | **3 days**, `sameSite: 'Lax'`, `path: '/'`, `httpOnly`, `secure` on an https origin only |
 | Repeated visits | last one wins, and the 3 days restart |
 | Same parameter twice in one URL | ignore it entirely |
 
-Write the cookie **server-side and `httpOnly`** wherever the stack allows (Next.js middleware, or any server framework's request hook). The browser never needs to read it — only the server does when it creates the checkout session. See `references/attribution.md` for SSR, SPA and static-site versions.
+Write the cookie **server-side and `httpOnly`**. The browser never needs to read it — only the server does, when it creates the checkout session — and a cookie the page can write is a cookie the buyer can write, which is the whole point of guardrail 5.
+
+Every stack can do this, including the ones with no server rendering: the project already needs a server endpoint for checkout (the API key cannot ship to the browser), and every static/SPA host has a request hook that runs before the document — Next.js middleware, Vercel or Netlify edge middleware, a Cloudflare Worker. Reach for `document.cookie` only when there is genuinely no such hook, and then say out loud what it costs. See `references/attribution.md` for the implementations and that trade-off in full.
 
 ### 6. Attach it when creating the checkout session
 
@@ -294,7 +306,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 - `references/promotion-api.md` — full request/response fields and the error-code table for the two promotion endpoints. Read it before calling either one, or when you get a code you don't recognise.
 - `references/attribution.md` — the cookie contract in full, with SSR, SPA and static-site implementations and the edge cases (repeated parameters, subdomains, Safari ITP). Read it when writing or debugging the capture code.
 - `references/partner-program-copy.md` — ready-to-publish 正體中文 copy explaining the program to buyers. Read it when producing the creator's own page or announcement.
-- `scripts/check_promotion_setup.mjs` — offline, read-only preflight: prints mode, the product switch state, and which plans are included or excluded. Run it before wiring code and again before going live.
+- `scripts/check_promotion_setup.mjs` — read-only preflight: prints mode, the product switch state, and which plans are included or excluded. Writes nothing, but it does call the API, so it needs `PORTALY_API_KEY` and network access. Run it before wiring code and again before going live.
 - `../portaly-payment/SKILL.md` — creating plans, creating checkout sessions, verifying callbacks. This skill assumes that is already done.
 - `https://rewards.portaly.cc` — where promoters see their earnings, withdraw, and read the payout rules. The only authoritative source for all three.
 - `https://portaly.ai/openapi.json` — the live API contract. Check it before trusting any endpoint shape written here.

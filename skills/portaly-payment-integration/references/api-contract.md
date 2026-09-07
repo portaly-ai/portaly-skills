@@ -108,6 +108,7 @@ Request body (fixed pricing plan):
   "customerEmail": "buyer@example.com",
   "customerName": "Mary Smith-Jones",
   "emailVerified": true,
+  "profitSharingId": "a1b2c3d4",
   "metadata": { "source": "web" }
 }
 ```

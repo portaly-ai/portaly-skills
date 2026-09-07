@@ -153,8 +153,7 @@
         "Asks the creator to choose one shared rate and works out the per-sale earnings for all three plans at that rate",
         "Reads the allowed range from the API instead of assuming 10-100"
       ]
-    }
-  ,
+    },
     {
       "id": 14,
       "prompt": "我站上有 8 個一次性課程，Portaly 上也各建了一個方案。幫我把推廣開起來。",

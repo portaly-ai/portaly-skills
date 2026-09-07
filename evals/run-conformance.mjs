@@ -59,6 +59,52 @@ function checkArtifactParity() {
   console.log(`PASS parity: ${parityFiles.length} callback artifacts`);
 }
 
+// A skill states its version in up to three places: the line-anchored top-level
+// `version:` (the only one portaly-vercel's skill-versions endpoint can parse),
+// an optional indented `metadata.version`, and the literal in its "Report the
+// installed skill version" example, which is what the agent actually sends. A
+// drift between them is invisible in production: the dashboard either flags a
+// current install as stale or lets a stale one look current. See POR-4237.
+// Iterate the directory rather than a hardcoded list — a new skill must be
+// covered on the day it lands, not whenever someone remembers to add it here.
+function checkSkillVersionConsistency() {
+  const skillNamesOnDisk = fs
+    .readdirSync(path.join(repositoryRoot, "skills"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  assert.ok(skillNamesOnDisk.length > 0, "no skills found under skills/");
+
+  for (const skillName of skillNamesOnDisk) {
+    const skill = fs.readFileSync(skillPath(skillName, "SKILL.md"), "utf8");
+
+    const version = skill.match(/^version: (\S+)$/m)?.[1];
+    assert.ok(version, `${skillName}: missing top-level version`);
+    assert.match(
+      version,
+      /^\d+\.\d+\.\d+$/,
+      `${skillName}: version must be plain semver — portaly-vercel's parser rejects anything else`
+    );
+
+    // Both of the other two are optional; they just have to agree when present.
+    if (/^metadata:$/m.test(skill)) {
+      assert.match(
+        skill,
+        new RegExp(`metadata:\\n  version: ["']${version}["']`),
+        `${skillName}: metadata.version must match top-level version`
+      );
+    }
+    if (skill.includes(`"skillName": "${skillName}"`)) {
+      assert.ok(
+        skill.includes(`"skillName": "${skillName}", "version": "${version}"`),
+        `${skillName}: report example must match top-level version`
+      );
+    }
+  }
+
+  console.log(`PASS version consistency: ${skillNamesOnDisk.length} skills`);
+}
+
 function checkRefundContractDocumentation() {
   const requiredContractTerms = [
     "GET /api/creator-subscription/orders/{orderId}",
@@ -95,21 +141,6 @@ function checkRefundContractDocumentation() {
     }
   }
 
-  const paymentSkill = fs.readFileSync(
-    skillPath("portaly-payment", "SKILL.md"),
-    "utf8"
-  );
-  const paymentVersion = paymentSkill.match(/^version: (\S+)$/m)?.[1];
-  assert.ok(paymentVersion, "portaly-payment: missing top-level version");
-  assert.match(
-    paymentSkill,
-    new RegExp(`metadata:\\n  version: ["']${paymentVersion}["']`),
-    "portaly-payment: metadata.version must match top-level version"
-  );
-  assert.ok(
-    paymentSkill.includes(`"skillName": "portaly-payment", "version": "${paymentVersion}"`),
-    "portaly-payment: report example must match top-level version"
-  );
   const paymentContract = fs.readFileSync(
     skillPath("portaly-payment", "references/api-contract.md"),
     "utf8"
@@ -119,22 +150,6 @@ function checkRefundContractDocumentation() {
       "`REFUND_ATTEMPT_FAILED`: a previous refund attempt reached terminal failure; contact Portaly support"
     ),
     "portaly-payment: terminal refund failure guidance is missing"
-  );
-
-  const integrationSkill = fs.readFileSync(
-    skillPath("portaly-payment-integration", "SKILL.md"),
-    "utf8"
-  );
-  const integrationVersion = integrationSkill.match(/^version: (\S+)$/m)?.[1];
-  assert.ok(
-    integrationVersion,
-    "portaly-payment-integration: missing top-level version"
-  );
-  assert.ok(
-    integrationSkill.includes(
-      `"skillName": "portaly-payment-integration", "version": "${integrationVersion}"`
-    ),
-    "portaly-payment-integration: report example must match top-level version"
   );
 
   console.log("PASS refund contract documentation");
@@ -265,6 +280,7 @@ function runSkillConformance(skillName, runtime) {
 function main() {
   const runtime = runtimeArgument(process.argv.slice(2));
   checkArtifactParity();
+  checkSkillVersionConsistency();
   checkRefundContractDocumentation();
   checkFixtureSafety(runtime);
   for (const skillName of skillNames) {

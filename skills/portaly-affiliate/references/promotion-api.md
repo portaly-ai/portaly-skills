@@ -54,7 +54,8 @@ Response:
 ```
 
 - `commissionRate` at the top level is `null` until promotion has been configured once.
-- `plans[].included` is the answer to "will promoters actually see this plan" — the switch **and** the plan qualifying. A plan can be excluded while the switch is on.
+- `plans[].included` is the answer to "will promoters actually see this plan" — the switch, **and** the plan qualifying, **and** it having somewhere usable to land. A plan can be excluded while the switch is on. This is the only field to trust for "is it live"; the switch's own `enabled` is not enough.
+- `plans[].promotionUrl` is the **resolved** value, not the plan's own field: the plan's `promotionUrl` if set, otherwise the product's `appBaseUrl`. So when `appBaseUrl` is configured, every plan comes back non-null and none reports `PROMOTION_URL_REQUIRED` — even the ones with no page of their own, whose referral links then land on the site root. If several plans share one `promotionUrl`, that is the fallback showing through; treat those plans as still needing a real page.
 - `plans[].excludedMessage` is written for a non-technical creator and is safe to show verbatim; the `excludedReason` code is for your branching.
 - `plans[].commissionAmount` is `amount × commissionRate`, already worked out — use it instead of doing the arithmetic yourself. It is computed at the plan's **list price**, so treat it as a ceiling: a buyer using a discount code, or one whose `signupRefCode` auto-applies, pays less, and the commission follows what they actually paid. Portaly's purchase-complete page and the settlement both use the charged amount. Call `GET /api/creator-subscription/discount-codes?status=active` and re-base the figure before it reaches anything the creator's buyers will read.
 - Before promotion has been configured, `plans[].commissionRate` and `commissionAmount` reflect `defaultCommissionRate` — not a rate you are currently proposing to the creator. Read them back after the `PUT` before quoting them against the agreed rate.
@@ -79,7 +80,9 @@ Request:
 - `enabled` (required): `false` always succeeds, even when nothing qualifies any more — a creator must never be stuck unable to switch it off.
 - `commissionRate` (optional): whole-number percentage, applied to every plan. Omit to keep the current rate, or to accept `defaultCommissionRate` on the first enable.
 
-Response: the same shape as `GET`. **Read `plans[]` back and tell the creator which plans were included and which were not** — enabling succeeds as long as *one* plan qualifies, so a silent partial result is the normal case, not an edge case.
+Response: the same shape as `GET`. **Read `plans[]` back and go by `included`, not by the status code.**
+
+The eligibility gate on this call is narrower than `included`: it checks billing period, pricing type, amount and status, and **does not look at the landing page**. So enabling succeeds as long as one plan clears those four, and it is entirely possible to get a clean `200` with `enabled: true` and every plan `included: false` — typically all of them `PROMOTION_URL_REQUIRED`. Treat that as a failure regardless of the status code: nothing is live, no referral link will be issued, and attribution code written now would sit dead. A genuine partial result (some in, some out) is normal and worth reporting plan by plan.
 
 There is no per-plan rate. If a creator asks for one, say it is not available today rather than implying it is coming.
 
@@ -114,10 +117,16 @@ The landing page differs per plan, so it lives on the plan rather than in the pr
 
   | Rejected | Why |
   |---|---|
-  | `http://…` | Promoters share this link; browsers flag non-secure pages |
-  | `localhost`, `127.0.0.1`, a private IP, a name with no dot, `*.local` | Only reachable from the creator's own machine — the link would go nowhere for everyone else |
-  | `javascript:`, `data:`, `ftp:` | Not a web page |
+  | `javascript:`, `data:`, `ftp:` — anything not http(s) | Not a web page |
   | `https://user:pass@host/…` | Reads as one domain, resolves to another |
+  | `localhost`, **any** IPv4 literal (not only private ranges), any IPv6 literal, a hostname with no dot | Only reachable from the creator's own machine or network — the link would go nowhere for everyone else |
+  | Anything under `.local`, `.localhost`, `.internal`, `.test`, `.example`, `.invalid` | Reserved suffixes. `.test` and `.internal` are the traps: they look like real staging domains |
+  | `http://` on an otherwise public host | Promoters share this link; browsers flag non-secure pages |
+  | Not parseable as a URL, or empty | — |
+
+  A rejection is a plain `400` from `PUT /plans/{planId}` (and from plan create) shaped `{ "error": "Validation failed", "details": { "fieldErrors": { "promotionUrl": ["…"] } } }`. **There is no `code` on this one** — unlike the promotion endpoints, so do not branch on one. The string in `details.fieldErrors.promotionUrl[0]` is written for the creator and names the actual problem; show it verbatim and ask for a different URL. Never retry with a guessed domain.
+
+  Note that `.example` is on the reject list, so the placeholder domains used throughout this document cannot be sent to the real API as-is.
 
   **Use their live production address, never the dev server the project is running on.** This is the mistake to watch for: you are working inside their repo, where `localhost:3000` is in every config file. The rejection message names the actual problem and is safe to show verbatim.
 - Accepted on plan create as well — set it there and you save a round trip per plan.
