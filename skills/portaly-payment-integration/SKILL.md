@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.6.3
+version: 0.7.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.6.3" }
+{ "skillName": "portaly-payment-integration", "version": "0.7.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -118,10 +118,19 @@ If the integration needs subscription lifecycle management, these are available 
 - **Never reconcile against a subscription's `amount`** — that is the frozen base price, not a payment record; a subscription with a `discount` snapshot is charged less. Money comes from the renewal callback's `amount` or `GET /orders`.
 - See `references/api-contract.md` → "Subscription Query And Lifecycle", "Portal Session", "Order Query".
 
-### 7. Go live
+### 7. Test mode, and what a green test run does not prove
 
-- Once the test-mode integration (`pcs_test_itg_…`) is verified end-to-end, ask the merchant for a **live integration key** (`pcs_live_itg_…`) and swap `PORTALY_API_KEY`.
-- No code changes needed — mode is derived entirely from the key.
+Mode comes from the key (`pcs_test_itg_` vs `pcs_live_itg_`) and the API is identical either way. What sits behind it is not, so don't report a rehearsal you didn't get:
+
+- **Never invent a card number.** A test-mode checkout page prints the test card in a highlighted box just below the card fields — have whoever is testing read it off the page.
+- **The provider is chosen by mode.** A test session charges through TapPay on the checkout page itself; a live session hands the buyer off to 91APP and finalizes on its callback. So the live redirect-and-return path is never exercised in test, and `paymentMethod` in the callback is `tappay` in test and `91app` in live — branch on it rather than pinning the value you saw while testing.
+- **A test subscription never renews.** The recurring job skips test subscriptions outright, so a second-cycle `creator_subscription.payment.succeeded` never arrives however long you wait. For a subscription integration this is the one thing test mode cannot cover at all — exercise your renewal branch with a replayed signed payload instead of waiting on the clock.
+- **Test orders sit off the settlement chain.** No invoice, nothing reaching revenue, balance or payouts, no affiliate or promotion commission, no review invite. They *are* listed and refundable under the test tab of `https://portaly.cc/admin/creator-subscription` — send the merchant there rather than to their revenue view.
+
+### 8. Go live
+
+- Once the test-mode integration (`pcs_test_itg_…`) covers everything test mode can cover — see step 7 for what it can't — ask the merchant for a **live integration key** (`pcs_live_itg_…`) and swap `PORTALY_API_KEY`.
+- No code change is needed to switch mode; it is derived entirely from the key. That is not the same as being verified in live: the first live charge is the first time the 91APP path, the invoice, and the renewal schedule actually run, so watch that one closely.
 
 ## Guardrails
 
