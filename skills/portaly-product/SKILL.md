@@ -33,7 +33,7 @@ https://portaly.ai
 | API key prefix | `pcs_live_` | `pcs_test_` |
 | Real charges | Yes | No — test transactions only |
 | Card to enter at checkout | The buyer's real card | The test card the checkout page prints |
-| Where a completed order lands | Creator's real order list, revenue, payouts | A separate sandbox ledger, invisible to all of those |
+| Where a completed order lands | The creator's real orders, revenue and payouts | A separate sandbox ledger — off the settlement chain, but listed under the Payment admin's test tab |
 
 The API key is shared with the `portaly-payment` skill (creator subscriptions). One key, two products. Test keys run the full flow without charging real money; develop against a test key and swap to a live key for production.
 
@@ -41,15 +41,20 @@ Payment is handled entirely on Portaly's hosted checkout page — you never see 
 
 ### Test mode
 
-**Never invent a card number.** A test-mode checkout page prints the test card to use, right above the card fields — tell the user to read it off the page. There is no card number in this skill on purpose: the page is the single source of truth for it.
+**Never invent a card number.** A test-mode checkout page prints the test card to use, in a highlighted box just below the card fields — tell the user to read it off the page. There is no card number in this skill on purpose: the page is the single source of truth for it.
 
-**That card only works on the `checkoutUrl` this skill creates.** Test mode is a property of the checkout session, not of the product. The same product is also on sale on the creator's own Portaly page (`portaly.cc/<slug>`), and that checkout is always real money with no test mode and no test-card hint — the test card is rejected there with a raw gateway error (`Failured3DS`, `NeedContactBank`, …). If the user reports "I tested it and got a weird error", first ask which page they paid on.
+**That card only works on the `checkoutUrl` this skill creates.** Test mode is a property of the checkout session, not of the product. The same product is also on sale on the creator's own Portaly page (`portaly.cc/<slug>`), and that checkout is always real money with no test mode and no test-card hint — the test card is rejected there with a raw gateway error (e.g. `Failured3DS`). If the user reports "I tested it and got a weird error", first ask which page they paid on.
 
-**Test-mode orders go to a sandbox ledger.** Three consequences to tell the creator before they test, so they don't go hunting for something that was never meant to be there:
+**A test-mode purchase does not rehearse what happens after the charge.** The charge and the webhook are real, but the order is written to a separate sandbox ledger and every downstream step is skipped. Tell the creator before they test, so they don't go hunting for something that was never meant to be there:
 
-- They do not appear in the creator's order list or revenue stats in the Portaly admin.
-- They never generate affiliate or promotion commission — sandbox orders are not on the settlement chain.
-- They cannot be reviewed, so a test purchase produces no review invite.
+- **No confirmation email to the buyer.** Portaly's order email fires off the live order collection only, so a test purchase mails nobody. Verify your own handler's output rather than watching an inbox.
+- **The `orderSuccessPageUrl` in the callback does not resolve to the order.** That page looks the order up in the live collection only.
+- **No invoice** — the payment record stays at `invoiceStatus: pending` indefinitely.
+- **Nothing reaches the creator's revenue, balance or payouts.** The sandbox ledger is off the settlement chain.
+- **No review invite**, because sandbox orders are deliberately unreviewable.
+- **No affiliate commission** — though that one is not a test-mode limit: orders created through this API carry none in either mode. Commission is a subscription-plan feature; see the `portaly-affiliate` skill.
+
+**Where a test order _is_ visible.** The Portaly Payment admin (`https://portaly.cc/admin/creator-subscription`) has live/test tabs, and the test tab lists these orders and can refund them. `GET /api/digital-products/orders` with the test key returns them too — hand the user one of those two checks, not the creator's main revenue view.
 
 ## Quick Start
 
