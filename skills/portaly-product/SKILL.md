@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.6.0
+version: 0.7.0
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
 ---
 
@@ -13,7 +13,7 @@ description: Help users integrate Portaly digital products checkout — list a c
 
 Use this skill to help a human user wire their own website (typically vibe-coded with Cursor / v0 / Lovable / etc.) to sell a creator's Portaly digital products. The user owns the product display UI; Portaly owns the checkout, payment, email, and order success page.
 
-Pattern is the same as Stripe Checkout:
+The flow is a redirect-based hosted checkout:
 
 1. User's site fetches the creator's products via API and displays them however they want.
 2. When a buyer is ready to pay, user's site creates a checkout session via API and redirects the buyer to the returned `checkoutUrl`.
@@ -32,10 +32,24 @@ https://portaly.ai
 |---|---|---|
 | API key prefix | `pcs_live_` | `pcs_test_` |
 | Real charges | Yes | No — test transactions only |
+| Card to enter at checkout | The buyer's real card | The test card the checkout page prints |
+| Where a completed order lands | Creator's real order list, revenue, payouts | A separate sandbox ledger, invisible to all of those |
 
 The API key is shared with the `portaly-payment` skill (creator subscriptions). One key, two products. Test keys run the full flow without charging real money; develop against a test key and swap to a live key for production.
 
 Payment is handled entirely on Portaly's hosted checkout page — you never see or choose how the buyer is charged. Your integration is the same regardless: list products, create a session, redirect, and consume webhooks.
+
+### Test mode
+
+**Never invent a card number.** A test-mode checkout page prints the test card to use, right above the card fields — tell the user to read it off the page. There is no card number in this skill on purpose: the page is the single source of truth for it.
+
+**That card only works on the `checkoutUrl` this skill creates.** Test mode is a property of the checkout session, not of the product. The same product is also on sale on the creator's own Portaly page (`portaly.cc/<slug>`), and that checkout is always real money with no test mode and no test-card hint — the test card is rejected there with a raw gateway error (`Failured3DS`, `NeedContactBank`, …). If the user reports "I tested it and got a weird error", first ask which page they paid on.
+
+**Test-mode orders go to a sandbox ledger.** Three consequences to tell the creator before they test, so they don't go hunting for something that was never meant to be there:
+
+- They do not appear in the creator's order list or revenue stats in the Portaly admin.
+- They never generate affiliate or promotion commission — sandbox orders are not on the settlement chain.
+- They cannot be reviewed, so a test purchase produces no review invite.
 
 ## Quick Start
 
@@ -89,7 +103,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.6.0" }
+  { "skillName": "portaly-product", "version": "0.7.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -244,11 +258,12 @@ When implementing for the user, return:
 2. Backend endpoint(s) they need to add (with copy-pasteable code)
 3. Webhook handler code (with signature verification)
 4. The minimum schema for whatever they persist on their side (orders table)
-5. A short test plan: "create a test session with one item, then with two items, then fail a payment with a declined test card, then trigger refund in Portaly admin"
+5. A short test plan, naming the page to pay on: "open the `checkoutUrl` your backend returns and pay with the test card the page shows you; do it once with a single item and once with a bundle, then trigger a refund in Portaly admin"
 
 ## Guardrails
 
 - **Default to test mode for development.** A `pcs_live_` key creates real, chargeable checkout sessions. If the loaded key starts with `pcs_live_`, confirm with the user that live mode is intended before creating a live checkout session. Never silently move a buyer through production billing.
+- **Test mode lives on the checkout session, not on the product.** The test card works only on the `checkoutUrl` you created with a `pcs_test_` key. Buying the same product from the creator's own Portaly page is always a real charge, and the test card fails there with a raw gateway error — never tell the user to "just try it on Portaly" as a way to test the integration.
 - **Never echo secrets in chat.** Have the user place `PORTALY_API_KEY` and `PORTALY_CALLBACK_SECRET` in `.env` themselves.
 - **Always verify `.gitignore` includes `.env`** before suggesting any commit.
 - **Always verify webhook signatures** before acting on a webhook payload. Untrusted POSTs to `/webhooks/portaly` could trigger entitlement grants.
