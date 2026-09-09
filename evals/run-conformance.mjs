@@ -42,6 +42,16 @@ function skillPath(skillName, relativePath) {
   return path.join(repositoryRoot, "skills", skillName, relativePath);
 }
 
+function skillNamesOnDisk() {
+  const names = fs
+    .readdirSync(path.join(repositoryRoot, "skills"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  assert.ok(names.length > 0, "no skills found under skills/");
+  return names;
+}
+
 function checkArtifactParity() {
   for (const relativePath of parityFiles) {
     const [firstSkill, ...remainingSkills] = skillNames;
@@ -68,14 +78,9 @@ function checkArtifactParity() {
 // Iterate the directory rather than a hardcoded list — a new skill must be
 // covered on the day it lands, not whenever someone remembers to add it here.
 function checkSkillVersionConsistency() {
-  const skillNamesOnDisk = fs
-    .readdirSync(path.join(repositoryRoot, "skills"), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  assert.ok(skillNamesOnDisk.length > 0, "no skills found under skills/");
+  const allSkills = skillNamesOnDisk();
 
-  for (const skillName of skillNamesOnDisk) {
+  for (const skillName of allSkills) {
     const skill = fs.readFileSync(skillPath(skillName, "SKILL.md"), "utf8");
 
     const version = skill.match(/^version: (\S+)$/m)?.[1];
@@ -105,7 +110,32 @@ function checkSkillVersionConsistency() {
     );
   }
 
-  console.log(`PASS version consistency: ${skillNamesOnDisk.length} skills`);
+  console.log(`PASS version consistency: ${allSkills.length} skills`);
+}
+
+// The installer parses this block as YAML and silently skips a skill whose
+// frontmatter will not parse, so an unquoted `: ` or ` #` inside a value costs
+// every install of that skill with no error anywhere.
+function checkFrontmatterParses() {
+  for (const skillName of skillNamesOnDisk()) {
+    const frontmatter = fs
+      .readFileSync(skillPath(skillName, "SKILL.md"), "utf8")
+      .match(/^---\n([\s\S]*?)\n---\n/)?.[1];
+    assert.ok(frontmatter, `${skillName}: SKILL.md must open with a --- frontmatter block`);
+
+    for (const line of frontmatter.split("\n")) {
+      const value = line.match(/^\s*[\w.-]+:\s+(\S.*)$/)?.[1];
+      if (!value || /^["|>']/.test(value)) continue;
+      const offense = value.match(/:\s|\s#/);
+      if (!offense) continue;
+      const excerpt = value.slice(Math.max(0, offense.index - 30), offense.index + 30);
+      assert.fail(
+        `${skillName}: frontmatter value breaks YAML near "...${excerpt}..." — quote the value or rewrite the ": " / " #"`
+      );
+    }
+  }
+
+  console.log("PASS frontmatter parses");
 }
 
 function checkRefundContractDocumentation() {
@@ -284,6 +314,7 @@ function main() {
   const runtime = runtimeArgument(process.argv.slice(2));
   checkArtifactParity();
   checkSkillVersionConsistency();
+  checkFrontmatterParses();
   checkRefundContractDocumentation();
   checkFixtureSafety(runtime);
   for (const skillName of skillNames) {

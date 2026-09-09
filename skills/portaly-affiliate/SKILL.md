@@ -6,7 +6,7 @@ name: portaly-affiliate
 version: 0.1.0
 metadata:
   version: "0.1.0"
-description: Set up buyer promotion on Portaly Payment so the creator's own customers earn a commission for referring other buyers — switch promotion on for the product and set the one commission rate every eligible plan shares, then capture the referral code on the creator's own site and attach it to the checkout session server-side. Portaly hosts the promoter-facing part: buyers get their referral link on Portaly's own purchase-complete page, and Portaly computes, records and pays every commission. One-time fixed-price plans only, Taiwan accounts only. Trigger when the user wants an affiliate, referral, ambassador or partner program, wants their customers, students, members or buyers to promote a product for a cut, or mentions 分潤 / 推廣連結 / 聯盟行銷 / 佣金 / 推廣夥伴 / 推薦獎金 on top of Portaly Payment.
+description: Set up buyer promotion on Portaly Payment so the creator's own customers earn a commission for referring other buyers — switch promotion on for the product and set the one commission rate every eligible plan shares, then capture the referral code on the creator's own site and attach it to the checkout session server-side. Portaly hosts the promoter-facing part — buyers get their referral link on Portaly's own purchase-complete page, and Portaly computes, records and pays every commission. One-time fixed-price plans only, Taiwan accounts only. Trigger when the user wants an affiliate, referral, ambassador or partner program, wants their customers, students, members or buyers to promote a product for a cut, or mentions 分潤 / 推廣連結 / 聯盟行銷 / 佣金 / 推廣夥伴 / 推薦獎金 on top of Portaly Payment.
 ---
 
 # Portaly Affiliate (Buyer Promotion)
