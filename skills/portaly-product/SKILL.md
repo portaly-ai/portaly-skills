@@ -35,7 +35,7 @@ https://portaly.ai
 | Card to enter at checkout | The buyer's real card | The test card the checkout page prints |
 | Where a completed order lands | The creator's real orders, revenue and payouts | A separate sandbox ledger — off the settlement chain, but listed under the Payment admin's test tab |
 
-The API key is shared with the `portaly-payment` skill (creator subscriptions). One key, two products. Test keys run the full flow without charging real money; develop against a test key and swap to a live key for production.
+The API key is shared with the `portaly-payment` skill (creator subscriptions). One key, two products. Test keys run the whole checkout without charging real money — develop against a test key and swap to a live key for production, but read **Test mode** below for what a test purchase does *not* do.
 
 Payment is handled entirely on Portaly's hosted checkout page — you never see or choose how the buyer is charged. Your integration is the same regardless: list products, create a session, redirect, and consume webhooks.
 
