@@ -68,7 +68,11 @@ In the hosted flow, Portaly handles:
 - Test mode (`pcs_test_` keys) uses TapPay sandbox and stores orders in a separate `sandboxOrders` collection
 - Checkout sessions, subscriptions, and callbacks created with a test key carry `mode: "test"`
 - Merchants should use test keys during integration development and switch to live keys for production
-- The test mode flow is identical to live — same endpoints, same hosted checkout, same callback verification — only the payment provider and order storage differ
+- The first charge is identical to live — same endpoints, same hosted checkout, same callback payload and verification. Everything downstream of that first charge is not:
+  - **No renewal.** The recurring job skips test subscriptions, so the second billing cycle never happens and no second `creator_subscription.payment.succeeded` is ever dispatched. Test a renewal handler by replaying a payload, not by waiting.
+  - **No invoice.** Test payments queue no invoice task.
+  - **No money movement.** `sandboxOrders` is off the settlement chain: no revenue stats, no payout, no affiliate or promotion commission.
+  - **No review invite.** Test orders are deliberately unreviewable.
 
 ## Recommended Third-Party Responsibility
 

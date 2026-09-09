@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.11.3
+version: 0.12.0
 metadata:
-  version: "0.11.3"
+  version: "0.12.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
 ---
 
@@ -44,6 +44,9 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - A single merchant (`profileId`) can have both a live key and a test key active at the same time.
 - API endpoints accept both live and test keys except order refund: `POST /orders/{orderId}/refund` currently requires a live full-scope key. The mode is derived from the key, not from a request parameter.
 - Test mode is intended for integration testing. Real charges are not made in test mode when using TapPay sandbox credentials.
+- **Never invent a card number.** A test-mode checkout page prints the test card to use, right above the card fields — tell the user to read it off the page. That card only works on the `checkoutUrl` this integration creates; it is rejected anywhere a real charge is taken, with a raw gateway error rather than a friendly one.
+- **A test-mode subscription never renews.** The renewal job skips test subscriptions outright, so a second-cycle `creator_subscription.payment.succeeded` will never arrive however long the user waits. Exercise the renewal handler with a replayed payload, not by waiting for the clock.
+- **`sandboxOrders` is off the settlement chain.** Tell the creator before they test, so they don't go hunting for something that was never meant to be there: test orders do not appear in their order list or revenue stats, never generate affiliate or promotion commission, issue no invoice, and cannot be reviewed (so no review invite is sent).
 - **Plans and merchant config are shared across modes.** They belong to the merchant (`profileId`), not to the API key mode. A plan created with a live key is visible and usable with a test key, and vice versa. Do **not** create duplicate plans when switching between live and test keys — query existing plans first with `GET /api/creator-subscription/plans` and reuse them.
 
 ## Quick Start
@@ -142,7 +145,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.11.3" }
+  { "skillName": "portaly-payment", "version": "0.12.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
