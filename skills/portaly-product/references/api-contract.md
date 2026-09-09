@@ -21,7 +21,7 @@ All endpoints accept `Authorization: Bearer {api_key}` where `{api_key}` is a Po
 
 - The key is the **same** key used for the `portaly-payment` (creator-subscription) skill. One key per creator profile, two modes (live/test).
 - The key identifies one `profileId` (one creator). You can only see and operate on that creator's resources.
-- Test keys run the full flow without charging real money. All other behavior is identical.
+- Test keys run the full flow without charging real money. The API is identical; what happens after the charge is not — a test order is written to a separate sandbox ledger, and no buyer email, invoice, revenue, payout or review comes of it. See the **Test mode** section of `SKILL.md` before telling a creator what to look for.
 
 ---
 
