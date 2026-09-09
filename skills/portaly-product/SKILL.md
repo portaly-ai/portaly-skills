@@ -263,7 +263,7 @@ When implementing for the user, return:
 2. Backend endpoint(s) they need to add (with copy-pasteable code)
 3. Webhook handler code (with signature verification)
 4. The minimum schema for whatever they persist on their side (orders table)
-5. A short test plan, naming the page to pay on: "open the `checkoutUrl` your backend returns and pay with the test card the page shows you; do it once with a single item and once with a bundle, then trigger a refund in Portaly admin"
+5. A short test plan, naming the page to pay on: "open the `checkoutUrl` your backend returns and pay with the test card the page shows you; do it once with a single item and once with a bundle, then refund one of them from the test tab in Portaly admin". Add one step for the failure branch: the checkout page offers no declining card, so exercise `digital_product.checkout.failed` by signing that payload with `scripts/sign_callback.mjs` and POSTing it at your own webhook, rather than trying to fail a real charge.
 
 ## Guardrails
 
