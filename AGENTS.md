@@ -62,7 +62,9 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 **Product Skill:**
 - API host: `https://portaly.ai`
 - Uses the same Creator Subscription API Key (`pcs_live_*` / `pcs_test_*`) as the payment skill
-- Stripe Checkout pattern: third party lists products on their own site → checkout redirects to Portaly's hosted page
+- Redirect-based hosted checkout: third party lists products on their own site → checkout redirects to Portaly's hosted page. Don't reintroduce the "same as Stripe Checkout" analogy — Portaly does not use Stripe, and it was removed from the skill deliberately
+- Test mode is chosen by the API key, but the payment provider follows from it: `pcs_test_*` charges via TapPay on the checkout page, `pcs_live_*` hands off to 91APP and finishes on its callback. So `paymentMethod` in a callback differs by mode, and a test run never exercises the live redirect-and-return path
+- A test-mode order lands in `sandboxOrders`, which is off the settlement chain: no buyer email, no invoice, no revenue/payout, no commission, no review invite. It *is* listed and refundable under the test tab of the Payment admin — that distinction matters, and the skills state it explicitly
 - Always price from `effectivePrice` (handles sale / countdown / free), never `sale ?? price`
 - Bundle pricing: proportional split, last item absorbs rounding (`sum(allocations) === totalAmount`); each item becomes its own order
 - Webhook events: `digital_product.checkout.completed` (per session), `digital_product.order.refunded` (per order)
