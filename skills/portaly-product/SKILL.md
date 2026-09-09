@@ -6,7 +6,7 @@ name: portaly-product
 version: 0.7.0
 metadata:
   version: "0.7.0"
-description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, or bundle pricing of Portaly products.
+description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Also covers test mode — which test card to use, and why a test purchase sends no email and shows up in no revenue figure. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, bundle pricing of Portaly products, or is troubleshooting a Portaly test payment, test card, sandbox order, or a missing order confirmation email.
 ---
 
 # Portaly Digital Products Integration

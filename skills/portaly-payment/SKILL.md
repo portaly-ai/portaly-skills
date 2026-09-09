@@ -6,7 +6,7 @@ name: portaly-payment
 version: 0.12.0
 metadata:
   version: "0.12.0"
-description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
+description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
 # Portaly Payment Integration
