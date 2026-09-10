@@ -77,7 +77,7 @@ In the hosted flow, Portaly handles:
   - **No invoice.** Test payments queue no invoice task — including the first charge, so a test purchase never produces one at all.
   - **No money movement.** `sandboxOrders` is off the settlement chain: nothing reaches revenue, balance or payouts, and no affiliate or promotion commission is generated.
   - **No review invite.** Test orders are deliberately unreviewable.
-- Test orders are not invisible, though: the test tab of `https://portaly.cc/admin/creator-subscription` lists them and can refund them. Point the merchant there rather than at their revenue view.
+- Test orders are not invisible, though: `https://portaly.cc/admin/creator-subscription` lists them and can refund them once the orders table's **Live/Test** toggle is set to **Test**. Point the merchant there rather than at their revenue view — and not at a "test tab", which does not exist; the page's tabs are Subscriptions and Orders, and the mode toggle sits in the table's toolbar.
 
 ## Recommended Third-Party Responsibility
 

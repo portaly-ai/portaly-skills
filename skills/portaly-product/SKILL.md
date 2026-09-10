@@ -33,7 +33,7 @@ https://portaly.ai
 | API key prefix | `pcs_live_` | `pcs_test_` |
 | Real charges | Yes | No — test transactions only |
 | Card to enter at checkout | The buyer's real card | The test card the checkout page prints |
-| Where a completed order lands | The creator's real orders, revenue and payouts | A separate sandbox ledger — off the settlement chain, but listed under the Payment admin's test tab |
+| Where a completed order lands | The creator's real orders, revenue and payouts | A separate sandbox ledger — off the settlement chain, but listed in the Payment admin with the orders table set to Test |
 
 The API key is shared with the `portaly-payment` skill (creator subscriptions). One key, two products. Test keys run the whole checkout without charging real money — develop against a test key and swap to a live key for production, but read **Test mode** below for what a test purchase does *not* do.
 
@@ -45,16 +45,16 @@ Payment is handled entirely on Portaly's hosted checkout page — you never see 
 
 **That card only works on the `checkoutUrl` this skill creates.** Test mode is a property of the checkout session, not of the product. The same product is also on sale on the creator's own Portaly page (`portaly.cc/<slug>`), and that checkout is always real money with no test mode and no test-card hint — the test card is rejected there with a raw gateway error (e.g. `Failured3DS`). If the user reports "I tested it and got a weird error", first ask which page they paid on.
 
-**A test-mode purchase does not rehearse what happens after the charge.** The charge and the webhook are real, but the order is written to a separate sandbox ledger and every downstream step is skipped. Tell the creator before they test, so they don't go hunting for something that was never meant to be there:
+**A test-mode purchase does not rehearse what happens after the charge.** The charge really executes (against the TapPay sandbox, so no money moves) and the webhook really fires, but the order is written to a separate sandbox ledger and every downstream step is skipped. Tell the creator before they test, so they don't go hunting for something that was never meant to be there:
 
-- **No confirmation email to the buyer.** Portaly's order email fires off the live order collection only, so a test purchase mails nobody. Verify your own handler's output rather than watching an inbox.
+- **No confirmation email to the buyer.** Portaly's order email fires off the live order collection only, so no confirmation email is sent. Verify your own handler's output rather than watching an inbox. The buyer's email-verification code, if your checkout requires one, *is* still sent in test mode — that email arriving is not evidence the confirmation email will.
 - **The `orderSuccessPageUrl` in the callback does not resolve to the order.** That page looks the order up in the live collection only.
 - **No invoice** — the payment record stays at `invoiceStatus: pending` indefinitely.
 - **Nothing reaches the creator's revenue, balance or payouts.** The sandbox ledger is off the settlement chain.
 - **No review invite**, because sandbox orders are deliberately unreviewable.
 - **No affiliate commission** — though that one is not a test-mode limit: orders created through this API carry none in either mode. Commission is a subscription-plan feature; see the `portaly-affiliate` skill.
 
-**Where a test order _is_ visible.** The Portaly Payment admin (`https://portaly.cc/admin/creator-subscription`) has live/test tabs, and the test tab lists these orders and can refund them. `GET /api/digital-products/orders` with the test key returns them too — hand the user one of those two checks, not the creator's main revenue view.
+**Where a test order _is_ visible.** In the Portaly Payment admin (`https://portaly.cc/admin/creator-subscription`), switch the orders table's **Live/Test** toggle to **Test** — it lists these orders and can refund them. The page's own tabs are Subscriptions and Orders, so don't send the creator hunting for a "test tab". `GET /api/digital-products/orders` with the test key returns them too — hand the user one of those two checks, not the creator's main revenue view.
 
 ## Quick Start
 
@@ -220,7 +220,7 @@ Persist:
 
 **Reject callbacks where `x-portaly-timestamp` is more than 5 minutes from now in either direction; the symmetric window tolerates ordinary clock skew, whereas rejecting any future timestamp would make legitimate callbacks fail intermittently.** Use `event + sessionId` for checkout idempotency and `event + orderId` for refund idempotency; do not use one shared session-only key for every event type.
 
-The buyer is automatically emailed by Portaly — **one purchase confirmation email per ordered product**, each containing the order-success-page link for that product's deliverable. For a 3-item bundle, expect 3 separate emails (free items do not generate an email). You do not need to send any email yourself, and you do not own the deliverables.
+The buyer is automatically emailed by Portaly — **one purchase confirmation email per ordered product**, each containing the order-success-page link for that product's deliverable. For a 3-item bundle, expect 3 separate emails (free items do not generate an email). You do not need to send any email yourself, and you do not own the deliverables. **In test mode none of these emails are sent** — read **Test mode** above before telling anyone to watch an inbox.
 
 ### 6. Handle failed payments (webhook)
 
@@ -263,7 +263,7 @@ When implementing for the user, return:
 2. Backend endpoint(s) they need to add (with copy-pasteable code)
 3. Webhook handler code (with signature verification)
 4. The minimum schema for whatever they persist on their side (orders table)
-5. A short test plan, naming the page to pay on: "open the `checkoutUrl` your backend returns and pay with the test card the page shows you; do it once with a single item and once with a bundle, then refund one of them from the test tab in Portaly admin". Add one step for the failure branch: the checkout page offers no declining card, so exercise `digital_product.checkout.failed` by signing that payload with `scripts/sign_callback.mjs` and POSTing it at your own webhook, rather than trying to fail a real charge.
+5. A short test plan, naming the page to pay on: "open the `checkoutUrl` your backend returns and pay with the test card the page shows you; do it once with a single item and once with a bundle, then refund one of them in Portaly admin with the orders table switched to Test". Add one step for the failure branch: the checkout page offers no declining card, so exercise `digital_product.checkout.failed` by signing that payload with `scripts/sign_callback.mjs` and POSTing it at your own webhook, rather than trying to fail a real charge.
 
 ## Guardrails
 

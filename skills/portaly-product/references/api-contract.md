@@ -485,11 +485,13 @@ When a buyer completes payment on the hosted checkout page:
    - Issues invoices for paid items; free items (`amount === 0`) are skipped.
 4. Portaly dispatches `digital_product.checkout.completed` to your `callbackUrl`.
 
+**Test mode runs steps 1, 2 and 4 only.** A test-mode order is written to a separate sandbox ledger that the creator-side pipeline does not read, so step 3 does not happen at all: no confirmation email, no sales stats, no invoice. See the **Test mode** section of `SKILL.md`.
+
 You do not need to send the buyer their deliverables. Each per-order email carries the order-success-page link for that product; the buyer clicks through to see the deliverable (download link / video / form).
 
 ### Buyer Confirmation Emails
 
-Each paid order in the bundle generates its own confirmation email — same template as a standalone product purchase. A 3-item paid bundle therefore produces 3 emails, each carrying the order-success-page link for that product. Free items (`amount === 0`) do not generate an email.
+Each paid order in the bundle generates its own confirmation email — same template as a standalone product purchase. A 3-item paid bundle therefore produces 3 emails, each carrying the order-success-page link for that product. Free items (`amount === 0`) do not generate an email. **None of this happens in test mode** — a `pcs_test_` purchase produces no confirmation email at all.
 
 ---
 
