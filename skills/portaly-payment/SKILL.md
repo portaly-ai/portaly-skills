@@ -3,10 +3,10 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.11.3
+version: 0.12.0
 metadata:
-  version: "0.11.3"
-description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Trigger when the user mentions Portaly Payment, creator subscription, or wants to add subscription-based checkout to their application.
+  version: "0.12.0"
+description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
 # Portaly Payment Integration
@@ -36,14 +36,18 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 | Aspect | Live mode | Test mode |
 |---|---|---|
 | API key prefix | `pcs_live_` | `pcs_test_` |
-| Payment provider | TapPay production | TapPay sandbox |
-| Order storage | `orders` collection | `sandboxOrders` collection |
+| Payment provider | 91APP — the buyer is redirected out and the charge finishes on its callback | TapPay sandbox — charged on the checkout page itself |
+| Order storage | The creator's live order ledger | A separate sandbox ledger |
 | Callback payload | `mode: "live"` or absent | `mode: "test"` |
 
 - Mode is set at API key creation time and cannot be changed after creation.
 - A single merchant (`profileId`) can have both a live key and a test key active at the same time.
 - API endpoints accept both live and test keys except order refund: `POST /orders/{orderId}/refund` currently requires a live full-scope key. The mode is derived from the key, not from a request parameter.
 - Test mode is intended for integration testing. Real charges are not made in test mode when using TapPay sandbox credentials.
+- **Never invent a card number.** A test-mode checkout page prints the test card to use, in a highlighted box just below the card fields — tell the user to read it off the page. That card only works on the `checkoutUrl` this integration creates; it is rejected anywhere a real charge is taken, with a raw gateway error rather than a friendly one.
+- **Test mode and live mode do not use the same payment provider.** A test checkout charges through TapPay on the checkout page itself; a live checkout hands the buyer to 91APP and finishes on its callback. So a green test run has not exercised the live redirect-and-return path, and `paymentMethod` in the callback is `tappay` in test and `91app` in live — don't hardcode it. Don't treat those two as the only possible values either: a subscription completed through `POST /checkout-sessions/{sessionId}/complete` carries whatever `paymentMethod` the merchant sent.
+- **A test-mode subscription never renews.** The renewal job skips test subscriptions outright, so a second-cycle `creator_subscription.payment.succeeded` will never arrive however long the user waits. Exercise the renewal handler with a replayed payload, not by waiting for the clock.
+- **The sandbox ledger is off the settlement chain.** Tell the creator before they test, so they don't go hunting for something that was never meant to be there: test orders never reach revenue, balance or payouts, generate no affiliate or promotion commission, issue no invoice, and cannot be reviewed (so no review invite is sent). They *are* listed in `https://portaly.cc/admin/creator-subscription` once the orders table's **Live/Test** toggle is switched to **Test**, which is also where they can be refunded — that is the check to hand the creator. Don't call it a "test tab": the page's tabs are Subscriptions and Orders, and the mode toggle sits in the table's own toolbar.
 - **Plans and merchant config are shared across modes.** They belong to the merchant (`profileId`), not to the API key mode. A plan created with a live key is visible and usable with a test key, and vice versa. Do **not** create duplicate plans when switching between live and test keys — query existing plans first with `GET /api/creator-subscription/plans` and reuse them.
 
 ## Quick Start
@@ -109,7 +113,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
   - **A live key also requires a paid membership** — Portaly premium or a Portaly Vibe subscription (`403 PREMIUM_REQUIRED`). Passing verification is not enough on a free plan; they upgrade first.
   - **From the merchant's second product onward, every product is reviewed on its own** (its own service URL and business description). If the person is verified but this particular product is not, key creation returns `403 PRODUCT_REVIEW_NOT_VERIFIED`. Do **not** send them back through identity verification — that part is done; they submit *this product* for review in the dashboard (Payment > 金流審核) and wait for approval.
   - **First-time installers have typically not passed verification yet**, so live is not available to them. Tell them this is expected, not an error.
-  - **Recommend starting with a test key** (`pcs_test_…`) — it lets them build and exercise the entire integration (config, plans, checkout, callbacks) against TapPay sandbox immediately, with no real charges. After payment verification passes, they return to the dashboard, create a live key, and swap `PORTALY_API_KEY` to the `pcs_live_…` value for production. No code changes are needed — the mode is derived from the key.
+  - **Recommend starting with a test key** (`pcs_test_…`) — it lets them build and exercise most of the integration (config, plans, checkout, callbacks) against TapPay sandbox immediately, with no real charges — but not all of it. See the test-mode bullets above for what a green test run leaves unproven: renewals, the live 91APP redirect-and-return, invoicing and settlement. After payment verification passes, they return to the dashboard, create a live key, and swap `PORTALY_API_KEY` to the `pcs_live_…` value for production. No code changes are needed — the mode is derived from the key.
 - Be explicit that this step is performed by a human operator in Portaly Payment Dashboard, not by the third-party integration code.
 - Tell the human user to store the issued secret material safely, or store it on the user's behalf only in an appropriate secret manager or secure environment store.
 - Explain that the API key is used for bearer authentication in API calls and the `callbackSecret` is used for verifying the authenticity of callbacks from Portaly If user asking.
@@ -142,7 +146,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.11.3" }
+  { "skillName": "portaly-payment", "version": "0.12.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.

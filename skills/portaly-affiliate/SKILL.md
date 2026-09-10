@@ -3,9 +3,9 @@ name: portaly-affiliate
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.1.0
+version: 0.1.1
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 description: Set up buyer promotion on Portaly Payment so the creator's own customers earn a commission for referring other buyers — switch promotion on for the product and set the one commission rate every eligible plan shares, then capture the referral code on the creator's own site and attach it to the checkout session server-side. Portaly hosts the promoter-facing part — buyers get their referral link on Portaly's own purchase-complete page, and Portaly computes, records and pays every commission. One-time fixed-price plans only, Taiwan accounts only. Trigger when the user wants an affiliate, referral, ambassador or partner program, wants their customers, students, members or buyers to promote a product for a cut, or mentions 分潤 / 推廣連結 / 聯盟行銷 / 佣金 / 推廣夥伴 / 推薦獎金 on top of Portaly Payment.
 ---
 
@@ -70,7 +70,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-affiliate", "version": "0.1.0" }
+{ "skillName": "portaly-affiliate", "version": "0.1.1" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -271,7 +271,7 @@ Earnings, payout status and the payout rules all live at `https://rewards.portal
 3. Open `https://{their-site}/{their product page}?ps=test-code` in a private window. In DevTools → Application → Cookies, `portaly:profitSharing` exists and expires in ~3 days.
 4. Remove the parameter and reload — the cookie is still there. (This is what proves you persisted it rather than just reading the URL.)
 5. Start a checkout and check the server log for the outgoing session payload: **log only whether `profitSharingId` was present, never the API key or the whole body.**
-6. Complete payment with a TapPay test card, and confirm the promotion block appears on the completion page. On the 3DS return it can take a few seconds — the page shows the payment as successful before the order is finished being written, and the block waits for it rather than guessing. In test mode the block is deliberately read-only — it names the plan and the rate but shows no "get my link" button, because a test purchase must not mint a real referral link. That is the correct result, not a broken one.
+6. Complete payment with the test card the checkout page prints for you — it sits in a highlighted box just below the card fields, and **you must never invent a card number of your own**. Then confirm the promotion block appears on the completion page. On the 3DS return it can take a few seconds — the page shows the payment as successful before the order is finished being written, and the block waits for it rather than guessing. In test mode the block is deliberately read-only — it names the plan and the rate but shows no "get my link" button, because a test purchase must not mint a real referral link. That is the correct result, not a broken one.
 7. Say the quiet part: **this run charged nothing and earned nothing. Test-mode purchases never produce commission, and never produce a referral link.** Switch to `pcs_live_*` for production; no code changes are needed, since the mode comes from the key.
 
 ## Preferred Response Shape

@@ -65,10 +65,19 @@ In the hosted flow, Portaly handles:
 ## Test Mode (Sandbox)
 
 - Each API key is created with a fixed mode: `live` or `test`
-- Test mode (`pcs_test_` keys) uses TapPay sandbox and stores orders in a separate `sandboxOrders` collection
+- Test mode (`pcs_test_` keys) uses TapPay sandbox and records orders in a separate sandbox ledger
 - Checkout sessions, subscriptions, and callbacks created with a test key carry `mode: "test"`
 - Merchants should use test keys during integration development and switch to live keys for production
-- The test mode flow is identical to live — same endpoints, same hosted checkout, same callback verification — only the payment provider and order storage differ
+- The API you call is identical: same endpoints, same request bodies, same callback signature scheme and verification. What happens behind them is not, in two separate ways.
+- **The buyer's checkout differs, because the provider is chosen by mode.** A test session charges through TapPay on the checkout page itself; a live session hands the buyer off to 91APP and finalizes on its callback. Two consequences:
+  - The live redirect-and-return path is never exercised by a test run, however thorough that run was.
+  - `paymentMethod` in the callback is `tappay` in test and `91app` in live. It is a field you are told to persist, so branch on it defensively rather than pinning the value you saw while testing.
+- **Everything after the first charge is skipped in test mode:**
+  - **No renewal.** The recurring job skips test subscriptions, so the second billing cycle never happens and no second `creator_subscription.payment.succeeded` is ever dispatched. Test a renewal handler by replaying a payload, not by waiting.
+  - **No invoice.** Test payments queue no invoice task — including the first charge, so a test purchase never produces one at all.
+  - **No money movement.** The sandbox ledger is off the settlement chain: nothing reaches revenue, balance or payouts, and no affiliate or promotion commission is generated.
+  - **No review invite.** Test orders are deliberately unreviewable.
+- Test orders are not invisible, though: `https://portaly.cc/admin/creator-subscription` lists them and can refund them once the orders table's **Live/Test** toggle is set to **Test**. Point the merchant there rather than at their revenue view — and not at a "test tab", which does not exist; the page's tabs are Subscriptions and Orders, and the mode toggle sits in the table's toolbar.
 
 ## Recommended Third-Party Responsibility
 
