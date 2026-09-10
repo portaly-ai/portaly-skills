@@ -55,7 +55,7 @@ Mode behavior:
 
 - `live` keys use prefix `pcs_live_` and connect to production payment providers
 - `test` keys use prefix `pcs_test_` and connect to sandbox payment providers (e.g., TapPay sandbox)
-- Test mode orders are stored in a separate `sandboxOrders` collection
+- Test mode orders are recorded in a separate sandbox ledger
 - A single `profileId` can have both a live and a test key active simultaneously
 - Mode is fixed at creation time and cannot be changed
 - Omitting `mode` creates a **live** key — pass `mode: "test"` explicitly for a test key
@@ -1074,7 +1074,7 @@ Use this when the human user needs to query payment/order records for a profile.
   - `pagination.nextCursor`: string or null
   - `pagination.count`: number of items in current page
 - Notes:
-  - API key auth automatically routes to the correct order collection based on the key's mode (live → `orders`, test → `sandboxOrders`)
+  - API key auth automatically routes to the correct ledger based on the key's mode — you never name it in a request
   - Only returns orders with `projectId = 'creatorSubscription'`
   - Supports cursor-based pagination
 
