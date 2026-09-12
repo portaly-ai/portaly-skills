@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.7.0
+version: 0.7.1
 metadata:
-  version: "0.7.0"
+  version: "0.7.1"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Also covers test mode — which test card to use, and why a test purchase sends no email and shows up in no revenue figure. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, bundle pricing of Portaly products, or is troubleshooting a Portaly test payment, test card, sandbox order, or a missing order confirmation email.
 ---
 
@@ -108,7 +108,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.7.0" }
+  { "skillName": "portaly-product", "version": "0.7.1" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
