@@ -21,6 +21,9 @@ All endpoints accept `Authorization: Bearer {api_key}` where `{api_key}` is a Po
 
 - The key is the **same** key used for the `portaly-payment` (creator-subscription) skill. One key per creator profile, two modes (live/test).
 - The key identifies one `profileId` (one creator). You can only see and operate on that creator's resources.
+- A creator can run several stores, and each store has its own keys — but **the product catalog is shared across them**. `GET /api/digital-products` with any of that creator's keys returns the same full catalog, and a write endpoint can edit any of it. Products carry no store field, so if you are building a storefront for one particular store you have to decide yourself which products belong on it.
+- A key belonging to a store the creator has **closed** returns `403` with `code: "MERCHANT_INACTIVE"` on the product and checkout-session endpoints — including the read-only ones, so that store's catalog and checkout records are no longer retrievable. Ask the creator for a key from their main store; the closed store's history stays in their Portaly dashboard only.
+- Two endpoints are **exempt** and keep working after a store closes: `GET /api/digital-products/orders` and `GET /api/digital-products/checkout-sessions/{sessionId}`. They are scoped by the key itself, not by the store, so orders the closed store was already paid for stay retrievable — you can still look up what a buyer bought and deliver it.
 - Test keys run the full flow without charging real money. The API is identical; what happens after the charge is not — a test order is written to a separate sandbox ledger, and no buyer email, invoice, revenue, payout or review comes of it. See the **Test mode** section of `SKILL.md` before telling a creator what to look for.
 
 ---
