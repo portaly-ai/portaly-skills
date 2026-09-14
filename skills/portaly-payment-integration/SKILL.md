@@ -149,8 +149,8 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   `sessionId` / `paymentProvider` / `paymentStatus` on the 91APP return but not on every path,
   so do not depend on them. Read the amount from your own record, never from the query string.
   For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId` — read that `sessionId`
-  from your own order record, not the query string (the TapPay path appends nothing, so a
-  query-string read is `undefined` in test while looking fine in live).
+  from your own order record, not the query string (the TapPay path appends nothing, including
+  live same-page completion, so a query-string read is `undefined` there).
 - **It is the accurate path, not the complete one.** After a live 91APP payment the buyer lands
   on a Portaly page and has to **click** through to your success URL — it is not an automatic
   redirect — so anyone who closes the tab never fires it. Pair it with the callback, and never
@@ -177,31 +177,38 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   so your receiver still needs its own idempotency. **Never reuse `sessionId` as the `event_id`
   for a renewal:** `subscriptionId === sessionId`, so every renewal carries the same value and
   Meta would discard the second month onward.
-- **Two field traps on renewal payloads.** `payment.failed` carries **no `paymentId`** — only
-  `payment.succeeded` does, and even there it can be an empty string — so fall back to
-  `paymentReference`. And `merchantOrderNumber` *is* present on renewals, but frozen at checkout:
-  use it as a GA4 `transaction_id` and GA4 deduplicates every renewal after the first. Build a
-  per-charge id from `paymentId` / `paymentReference` instead.
-- **GA4's Measurement Protocol needs `client_id` *and* `session_id`** (from `_ga` and
-  `_ga_<MEASUREMENT_ID>`), delivered within 48 hours. Miss either and the hit still returns 2xx
-  — MP never reports errors — but lands as `(not set) / (not set)`. Renewals can never meet
-  that window, so send those as standalone `purchase` events and expect direct attribution;
-  that is correct, not a bug.
+- **Key renewals on a per-attempt timestamp.** `payment.failed` carries no `paymentId`, and
+  `paymentReference` is an empty string on effectively every 91APP failure — either choice
+  collapses every failed renewal across every subscriber onto one key and dunning silently stops.
+  Step 4's composite key already does the right thing; keep it. For GA4, `merchantOrderNumber`
+  *is* present on renewals but frozen at checkout, so as a `transaction_id` it makes GA4 dedup
+  every renewal after the first — build a per-charge id from `chargedAt` / `failedAt`, and never
+  send an empty `transaction_id`, which collapses every purchase into one.
+- **GA4's Measurement Protocol** only joins an existing session if the hit carries that
+  session's identifiers and arrives inside Google's ingestion window — both are Google's
+  contract and the window differs by use case, so check their current docs rather than
+  hardcoding a number. A miss still returns 2xx (MP never reports errors) and lands silently as
+  `(not set) / (not set)`. Renewals cannot join a session at all, so send those as standalone
+  `purchase` events and expect direct attribution; that is correct, not a bug.
 - **Keep ad identifiers in your own store, not in `metadata`.** Capture `utm_*` / `gclid` /
-  `fbclid` on first landing, read `_ga` / `_ga_<ID>` / `_fbp` / `_fbc` from the incoming
-  request's `Cookie` header in your backend (never `document.cookie` — this call carries the
-  API key), and save them against your order record keyed by the `merchantOrderNumber` you are
-  about to send. Join on the callback. This works on every runtime and outlives the checkout,
-  so renewals and refunds can use it too.
+  `fbclid` on first landing; read GA4's `client_id` / `session_id` via
+  `gtag('get', '<measurement id>', …)` rather than parsing the `_ga_*` cookie — Google does not
+  document that format and changed it in 2025, so a hand-written regex fails silently. Save them
+  against your order record keyed by the **`sessionId`** from the create-session response: it is
+  on `checkout.completed` *and* `checkout.failed`, and arrives as `subscriptionId` /
+  `checkoutSessionId` on later events. Do not key on `merchantOrderNumber` — it is optional and
+  absent from `checkout.failed`.
   ⚠️ **Do not route them through `metadata`.** The Python and Go adapters cannot reproduce v1's
   `localeCompare` ordering for arbitrary keys, so they accept only keys committed in the golden
   vectors and raise on anything else. `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`,
   `gclid` and `fbclid` are all absent from that list, and lowercase ASCII does not help — one of
-  them in `metadata` makes your receiver 401 the whole `checkout.completed` callback and stops
-  order reconciliation. The list is wider than the callback schema, though: `campaign`, `source`,
-  `cart_id`, `productId`, `productName` and `code` are on it, so a coarse
+  them in `metadata` makes your receiver 401 **that subscription's callbacks**, and because
+  `metadata` is replayed on every renewal and refund, reconciliation stops for the life of the
+  subscription rather than just at checkout. The list is wider than the callback schema, though:
+  `campaign`, `source`, `cart_id`, `productId`, `productName` and `code` are on it, so a coarse
   `metadata: { campaign, source }` is safe. Check `scripts/sign_callback.py`
-  (`_SUPPORTED_KEY_ORDER`) before assuming any key is.
+  (`_SUPPORTED_KEY_ORDER`) before assuming any other key is, and keep values as strings — the
+  whitelist covers keys, not values, and a float is rejected even under an accepted key.
 - Recommend both layers — GA4's session stitching for reporting, your own captured source for
   revenue attribution you can audit.
 
