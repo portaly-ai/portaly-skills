@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.7.0
+version: 0.8.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.7.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.8.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -131,6 +131,48 @@ Mode comes from the key (`pcs_test_itg_` vs `pcs_live_itg_`) and the API is iden
 
 - Once the test-mode integration (`pcs_test_itg_…`) covers everything test mode can cover — see step 7 for what it can't — ask the merchant for a **live integration key** (`pcs_live_itg_…`) and swap `PORTALY_API_KEY`.
 - No code change is needed to switch mode; it is derived entirely from the key. That is not the same as being verified in live: the first live charge is the first time the 91APP path, the invoice, and the renewal schedule actually run, so watch that one closely.
+
+### 9. Conversion tracking (GA4 / Meta), if the merchant wants it
+
+The payment page runs on `portaly.ai` and carries **no merchant tag** — Portaly does not inject
+GA4, GTM, or Meta Pixel into it. A tag there would not give the merchant what they want anyway:
+the `utm_*` parameters were consumed on their own site and never reach `portaly.ai`, Meta's
+`_fbc` cookie is first-party to their domain and unreadable from Portaly's, and renewals,
+refunds and failed charges never happen in a browser at all. Everything below runs on your side.
+
+- **Most of it is already yours.** `merchantOrderNumber` and `planId` are values you sent; the
+  callback returns `amount` / `currency`. Only campaign attribution needs any thought.
+- **Fire `purchase` on your own success page.** Same origin, so the `_ga` cookie and the
+  session's campaign are intact and GA4 attributes it correctly — you do not set the source
+  yourself, and **no cross-domain linker is needed**, precisely because the payment page runs no
+  tag. Portaly redirects to `successRedirectUrl` verbatim and appends nothing, so put your own
+  order id on that URL when you create the session. Read the amount from your own record, never
+  from the query string. For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId`.
+- **Ask whoever owns the merchant's GA4 property to add `portaly.ai` to "List unwanted
+  referrals"** (Admin → Data streams → Web → Configure tag settings → Show all). Often that is
+  a marketing owner, not you — raise it early, because without it a restarted session is
+  attributed to `portaly.ai / referral` and the campaign is lost.
+- **The session usually survives the round trip.** GA4 times out only after
+  [30 minutes of inactivity](https://support.google.com/analytics/answer/9191807), and — unlike
+  Universal Analytics —
+  ["a new campaign does not begin a new session"](https://support.google.com/analytics/answer/9964640).
+  It still breaks on a stalled 3DS/OTP, or when the buyer switches device mid-checkout (a
+  different browser is a different `client_id`; nothing recovers that). Treat stitching as
+  best-effort.
+- **Fire server-side from the callback** for buyers who never return to the success page, and
+  for renewals and refunds, which no browser tag can see. The callback's `customerEmail` is a
+  ready-made Meta Conversions API match key — no extra plumbing — and `sessionId` is the
+  `event_id` that deduplicates it against the browser pixel. Dedup as in step 4.
+- **GA4's Measurement Protocol needs a `client_id`**, or the hit lands as `(not set)` and adds
+  nothing. Read `_ga` / `_fbp` / `_fbc` server-side before redirecting and pass them in
+  `metadata` on the checkout session; Portaly echoes `metadata` back in the signed callback.
+  ⚠️ Custom `metadata` keys outside the committed callback schema are only verifiable by the
+  **Node and WebCrypto** adapters — the Python and Go v1 adapters fail closed on them (see
+  `references/callback-signature-v1.md`). On a Python or Go receiver, stick to the success-page
+  route or verify on a Node endpoint.
+- **For a figure the merchant can reconcile, don't lean on GA4's session at all**: capture
+  `utm_*` / `gclid` / `fbclid` into your own store on first landing and carry it through
+  `metadata`. Recommend both — GA4 for reporting, your own captured source for revenue.
 
 ## Guardrails
 
