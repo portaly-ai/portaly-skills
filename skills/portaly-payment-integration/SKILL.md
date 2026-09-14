@@ -145,9 +145,14 @@ refunds and failed charges never happen in a browser at all. Everything below ru
 - **Fire `purchase` on your own success page.** Same origin, so the `_ga` cookie and the
   session's campaign are intact and GA4 attributes it correctly — you do not set the source
   yourself, and **no cross-domain linker is needed**, precisely because the payment page runs no
-  tag. Portaly redirects to `successRedirectUrl` verbatim and appends nothing, so put your own
-  order id on that URL when you create the session. Read the amount from your own record, never
-  from the query string. For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId`.
+  tag. Put your own order id on that URL when you create the session: Portaly appends
+  `sessionId` / `paymentProvider` / `paymentStatus` on the 91APP return but not on every path,
+  so do not depend on them. Read the amount from your own record, never from the query string.
+  For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId`.
+- **It is the accurate path, not the complete one.** After a live 91APP payment the buyer lands
+  on a Portaly page and has to **click** through to your success URL — it is not an automatic
+  redirect — so anyone who closes the tab never fires it. Pair it with the callback, and never
+  derive entitlement from it (step 4 remains the source of truth).
 - **Ask whoever owns the merchant's GA4 property to add `portaly.ai` to "List unwanted
   referrals"** (Admin → Data streams → Web → Configure tag settings → Show all). Often that is
   a marketing owner, not you — raise it early, because without it a restarted session is
@@ -160,16 +165,28 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   different browser is a different `client_id`; nothing recovers that). Treat stitching as
   best-effort.
 - **Fire server-side from the callback** for buyers who never return to the success page, and
-  for renewals and refunds, which no browser tag can see. The callback's `customerEmail` is a
-  ready-made Meta Conversions API match key — no extra plumbing — and `sessionId` is the
-  `event_id` that deduplicates it against the browser pixel. Dedup as in step 4.
+  for renewals and refunds, which no browser tag can see. The callback's `customerEmail` gives
+  Meta's Conversions API a match key with no extra plumbing — but **hash it**: the `em` field
+  takes a SHA-256 of the trimmed, lowercased address, never the plaintext.
+- **Keep the two kinds of id apart.** Your own idempotency is step 4's composite key, unchanged.
+  Meta's `event_id` is a different mechanism — it deduplicates a server event against a
+  *browser* event, which exists only for the initial checkout, so use `sessionId` there to match
+  the pixel's `eventID`. **Never reuse `sessionId` as the `event_id` for a renewal:**
+  `subscriptionId === sessionId`, so every renewal would carry the same value and Meta would
+  discard the second month onward. Renewal payloads carry `paymentId` and no `sessionId` key at
+  all; refunds carry `orderId`.
 - **GA4's Measurement Protocol needs a `client_id`**, or the hit lands as `(not set)` and adds
   nothing. Read `_ga` / `_fbp` / `_fbc` server-side before redirecting and pass them in
   `metadata` on the checkout session; Portaly echoes `metadata` back in the signed callback.
-  ⚠️ Custom `metadata` keys outside the committed callback schema are only verifiable by the
-  **Node and WebCrypto** adapters — the Python and Go v1 adapters fail closed on them (see
-  `references/callback-signature-v1.md`). On a Python or Go receiver, stick to the success-page
-  route or verify on a Node endpoint.
+  Read them from the incoming request's `Cookie` header in your backend — never from
+  `document.cookie` in the browser, since this call carries the API key.
+  ⚠️ **This breaks a Python or Go receiver outright, not just the tracking.** Those adapters
+  cannot reproduce v1's `localeCompare` key ordering, so they validate against a committed key
+  whitelist and raise on anything outside it; `clientId` / `fbp` / `fbc` are not on it, and
+  lowercase ASCII does not help (see `references/callback-signature-v1.md`). The moment a
+  session carries them, that receiver starts 401-ing the whole `checkout.completed` callback and
+  order reconciliation stops. Only send them to a **Node or WebCrypto** receiver; otherwise use
+  the success-page route.
 - **For a figure the merchant can reconcile, don't lean on GA4's session at all**: capture
   `utm_*` / `gclid` / `fbclid` into your own store on first landing and carry it through
   `metadata`. Recommend both — GA4 for reporting, your own captured source for revenue.
