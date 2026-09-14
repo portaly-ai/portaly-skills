@@ -148,13 +148,15 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   tag. Put your own order id on that URL when you create the session: Portaly appends
   `sessionId` / `paymentProvider` / `paymentStatus` on the 91APP return but not on every path,
   so do not depend on them. Read the amount from your own record, never from the query string.
-  For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId`.
+  For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId` — read that `sessionId`
+  from your own order record, not the query string (the TapPay path appends nothing, so a
+  query-string read is `undefined` in test while looking fine in live).
 - **It is the accurate path, not the complete one.** After a live 91APP payment the buyer lands
   on a Portaly page and has to **click** through to your success URL — it is not an automatic
   redirect — so anyone who closes the tab never fires it. Pair it with the callback, and never
   derive entitlement from it (step 4 remains the source of truth).
 - **Ask whoever owns the merchant's GA4 property to add `portaly.ai` to "List unwanted
-  referrals"** (Admin → Data streams → Web → Configure tag settings → Show all). Often that is
+  referrals"** (Admin → Data collection and modification → Data streams → Web → Configure tag settings → Show all). Often that is
   a marketing owner, not you — raise it early, because without it a restarted session is
   attributed to `portaly.ai / referral` and the campaign is lost.
 - **The session usually survives the round trip.** GA4 times out only after
@@ -169,27 +171,39 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   Meta's Conversions API a match key with no extra plumbing — but **hash it**: the `em` field
   takes a SHA-256 of the trimmed, lowercased address, never the plaintext.
 - **Keep the two kinds of id apart.** Your own idempotency is step 4's composite key, unchanged.
-  Meta's `event_id` is a different mechanism — it deduplicates a server event against a
-  *browser* event, which exists only for the initial checkout, so use `sessionId` there to match
-  the pixel's `eventID`. **Never reuse `sessionId` as the `event_id` for a renewal:**
-  `subscriptionId === sessionId`, so every renewal would carry the same value and Meta would
-  discard the second month onward. Renewal payloads carry `paymentId` and no `sessionId` key at
-  all; refunds carry `orderId`.
-- **GA4's Measurement Protocol needs a `client_id`**, or the hit lands as `(not set)` and adds
-  nothing. Read `_ga` / `_fbp` / `_fbc` server-side before redirecting and pass them in
-  `metadata` on the checkout session; Portaly echoes `metadata` back in the signed callback.
-  Read them from the incoming request's `Cookie` header in your backend — never from
-  `document.cookie` in the browser, since this call carries the API key.
-  ⚠️ **This breaks a Python or Go receiver outright, not just the tracking.** Those adapters
-  cannot reproduce v1's `localeCompare` key ordering, so they validate against a committed key
-  whitelist and raise on anything outside it; `clientId` / `fbp` / `fbc` are not on it, and
-  lowercase ASCII does not help (see `references/callback-signature-v1.md`). The moment a
-  session carries them, that receiver starts 401-ing the whole `checkout.completed` callback and
-  order reconciliation stops. Only send them to a **Node or WebCrypto** receiver; otherwise use
-  the success-page route.
-- **For a figure the merchant can reconcile, don't lean on GA4's session at all**: capture
-  `utm_*` / `gclid` / `fbclid` into your own store on first landing and carry it through
-  `metadata`. Recommend both — GA4 for reporting, your own captured source for revenue.
+  Meta's `event_id` is a different mechanism — it deduplicates a server event against the
+  *browser* event for the same purchase, which exists only for the initial checkout, so use
+  `sessionId` there to match the pixel's `eventID`. It says nothing about two server deliveries,
+  so your receiver still needs its own idempotency. **Never reuse `sessionId` as the `event_id`
+  for a renewal:** `subscriptionId === sessionId`, so every renewal carries the same value and
+  Meta would discard the second month onward.
+- **Two field traps on renewal payloads.** `payment.failed` carries **no `paymentId`** — only
+  `payment.succeeded` does, and even there it can be an empty string — so fall back to
+  `paymentReference`. And `merchantOrderNumber` *is* present on renewals, but frozen at checkout:
+  use it as a GA4 `transaction_id` and GA4 deduplicates every renewal after the first. Build a
+  per-charge id from `paymentId` / `paymentReference` instead.
+- **GA4's Measurement Protocol needs `client_id` *and* `session_id`** (from `_ga` and
+  `_ga_<MEASUREMENT_ID>`), delivered within 48 hours. Miss either and the hit still returns 2xx
+  — MP never reports errors — but lands as `(not set) / (not set)`. Renewals can never meet
+  that window, so send those as standalone `purchase` events and expect direct attribution;
+  that is correct, not a bug.
+- **Keep ad identifiers in your own store, not in `metadata`.** Capture `utm_*` / `gclid` /
+  `fbclid` on first landing, read `_ga` / `_ga_<ID>` / `_fbp` / `_fbc` from the incoming
+  request's `Cookie` header in your backend (never `document.cookie` — this call carries the
+  API key), and save them against your order record keyed by the `merchantOrderNumber` you are
+  about to send. Join on the callback. This works on every runtime and outlives the checkout,
+  so renewals and refunds can use it too.
+  ⚠️ **Do not route them through `metadata`.** The Python and Go adapters cannot reproduce v1's
+  `localeCompare` ordering for arbitrary keys, so they accept only keys committed in the golden
+  vectors and raise on anything else. `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`,
+  `gclid` and `fbclid` are all absent from that list, and lowercase ASCII does not help — one of
+  them in `metadata` makes your receiver 401 the whole `checkout.completed` callback and stops
+  order reconciliation. The list is wider than the callback schema, though: `campaign`, `source`,
+  `cart_id`, `productId`, `productName` and `code` are on it, so a coarse
+  `metadata: { campaign, source }` is safe. Check `scripts/sign_callback.py`
+  (`_SUPPORTED_KEY_ORDER`) before assuming any key is.
+- Recommend both layers — GA4's session stitching for reporting, your own captured source for
+  revenue attribution you can audit.
 
 ## Guardrails
 

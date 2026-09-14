@@ -43,8 +43,8 @@ Yes, under three conditions.
 
 ### 1. Add `portaly.ai` to GA4's unwanted referrals — required
 
-GA4 → Admin → Data streams → Web → (the stream) → Configure tag settings → Settings →
-Show all → List unwanted referrals → add `portaly.ai`.
+GA4 → Admin → Data collection and modification → Data streams → Web → (the stream) →
+Configure tag settings → Show all → List unwanted referrals → add `portaly.ai`.
 
 Analytics then appends `ignore_referrer` to matching traffic, which per Google "indicates to
 Analytics that the referrer should not be displayed as a traffic source"
@@ -112,7 +112,10 @@ Read `amount` from your own record of the order, never from the query string: an
 URL is buyer-editable.
 
 For Meta, the standard `fbq('track', 'Purchase', …)` on the same page, with `eventID` set to
-the Portaly `sessionId`, so it deduplicates against the server-side checkout event below.
+the Portaly `sessionId`, so it deduplicates against the server-side checkout event below. Read
+that `sessionId` from the merchant's **own order record** (it is persisted at checkout), not from
+the query string — the TapPay path appends nothing, so a query-string read yields `undefined` in
+test while appearing to work in live.
 
 ### The success page does not always get reached
 
@@ -142,23 +145,36 @@ Send server-side on `creator_subscription.checkout.completed`, and on
   needed to get a match key. **Hash it first:** Meta's `em` field takes a SHA-256 of the
   trimmed, lowercased address — never send the plaintext email. This is the higher-value half
   of the work, because renewals and refunds are invisible to the pixel.
-- **GA4 Measurement Protocol** — needs a `client_id` to join the buyer's existing session.
-  Without one the hit lands as `(not set)` and contributes nothing to attribution, so this is
-  only worth wiring together with the next section.
+- **GA4 Measurement Protocol** — joining an MP hit to the buyer's existing session needs
+  **both** `client_id` (from the `_ga` cookie) **and** `session_id` (from the
+  `_ga_<MEASUREMENT_ID>` cookie), delivered within **48 hours** of the original event. Miss
+  either and the hit still returns 2xx — MP never reports errors, so use the `debug/mp/collect`
+  endpoint to check — but lands as `(not set) / (not set)` and adds nothing to attribution.
+  **Renewals can never satisfy this**: a charge a month later is far outside the 48-hour window
+  and there is no session to rejoin, so send those as standalone `purchase` events and expect
+  them to be attributed as direct. That is correct, not a bug — recurring revenue has no new
+  campaign touch.
 
 ### Use the right key for the right event — they are not interchangeable
 
 Two different mechanisms, and conflating them silently drops data.
 
 **Your own idempotency**, per the callback contract, is always `event` **plus** an event-specific
-id: `event + sessionId` for checkout, `event + paymentId` for renewals, `event + orderId` for
-refunds. The `event` prefix is not optional — `checkout.completed` and `checkout.failed` share a
-`sessionId`, and `payment.refunded` and `.refund_failed` share an `orderId`, so dropping it makes
-each pair cancel the other out.
+id: `event + sessionId` for checkout, `event + paymentId` **or `paymentReference`** for renewals,
+`event + orderId` for refunds. The `event` prefix is not optional — `checkout.completed` and
+`checkout.failed` share a `sessionId`, and `payment.refunded` and `.refund_failed` share an
+`orderId`, so dropping it makes each pair cancel the other out.
 
-**Meta's `event_id`** is a different thing: it deduplicates a server event against a *browser*
-event for the same purchase, which only exists for the initial checkout. Use `sessionId` there,
-matching the `eventID` on the browser pixel.
+⚠️ **`payment.failed` carries no `paymentId`** — only `payment.succeeded` does, and even there it
+can be an empty string. Fall back to `paymentReference`, which both carry. Keying failures on a
+missing `paymentId` collapses every failed renewal across every subscriber onto one key
+(`…payment.failed:undefined`), so only the first is ever processed and dunning silently stops.
+
+**Meta's `event_id`** is a different thing: it deduplicates a server event against the *browser*
+event for the same purchase (a 48-hour window), which exists only for the initial checkout. Use
+`sessionId` there, matching the `eventID` on the browser pixel. Note this is a guarantee about
+browser-versus-server, not about two server deliveries — so the receiver still needs its own
+idempotency, as above.
 
 ⚠️ **Do not reuse `sessionId` as the `event_id` for renewals.** This contract holds
 `subscriptionId === checkoutSessionId === sessionId`, so every renewal on a subscription carries
@@ -167,49 +183,67 @@ renewals are exactly the revenue this section exists to capture. Use `paymentId`
 events and `orderId` for refunds. Renewal payloads also carry **no `sessionId` key at all** (they
 carry `subscriptionId`), so reading `sessionId` off one yields `undefined`.
 
-Renewal payloads carry no `merchantOrderNumber` either, and refund payloads name it
-`orderMerchantOrderNumber` — so a GA4 `transaction_id` built for the checkout event does not
-carry over unchanged to the recurring ones.
+⚠️ **Do not use `merchantOrderNumber` as the GA4 `transaction_id` on renewals.** The field *is*
+present on renewal payloads — that is the trap. It is the value frozen at checkout, so every
+renewal repeats it, and GA4 deduplicates `purchase` events by `transaction_id`: month two onward
+would be discarded. Build a per-charge id instead (`paymentId` / `paymentReference`, or your own
+id keyed off them). Refund payloads additionally carry `orderMerchantOrderNumber` for the order,
+alongside the subscription-level `merchantOrderNumber` — the two can differ.
 
-## Carrying `client_id` / `_fbp` / `_fbc` Through Checkout
+## Carrying Ad Identifiers To The Callback: Use Your Own Store
 
-Only needed for the GA4 Measurement Protocol path, or for Meta matching stronger than email
-alone.
+The server-side events above need identifiers that live in the buyer's browser — `client_id`,
+`session_id`, `_fbp`, `_fbc` — plus whatever campaign data the merchant wants to reconcile
+against (`utm_*`, `gclid`, `fbclid`).
 
-These are first-party cookies on the merchant's own domain, so read them **from the incoming
-request's `Cookie` header in your own backend**. The checkout-session call is authenticated with
-the API key and must never run in the browser:
+**Do not route these through Portaly.** Keep them on the merchant's own side:
+
+1. On **first landing**, capture `utm_*` / `gclid` / `fbclid` into the merchant's own cookie or
+   database — this is where campaign data actually originates.
+2. When creating the checkout session, read the ad cookies from the **incoming request's
+   `Cookie` header in the merchant's backend** (never `document.cookie` — the checkout-session
+   call carries the API key and must not run in the browser) and store them against the
+   merchant's own order record, keyed by the `merchantOrderNumber` they are about to send.
+3. When the signed callback arrives, look the record up by `merchantOrderNumber` (present on
+   every event) or by the `sessionId` persisted at checkout, and fire the server-side events
+   with the identifiers from the merchant's own database.
 
 ```js
 // merchant's backend, handling the request that starts checkout
 const cookie = req.headers.cookie ?? ''
 const pick = (re) => re.exec(cookie)?.[1] ?? ''
-const clientId = pick(/_ga=GA\d\.\d\.(\d+\.\d+)/)
-const fbp = pick(/_fbp=(fb\.\d\.\d+\.\d+)/)
-const fbc = pick(/_fbc=(fb\.\d\.\d+\.[\w-]+)/) // an fbclid can contain '-'
-
-// → POST /api/creator-subscription/checkout-sessions  (server-to-server, Bearer API key)
-//   { planId, metadata: { clientId, fbp, fbc } }
+await db.adContext.put(merchantOrderNumber, {
+  clientId: pick(/(?:^|;\s*)_ga=GA\d\.\d\.(\d+\.\d+)/),
+  sessionId: pick(/(?:^|;\s*)_ga_G-XXXXXXX=GS\d\.\d\.(\d+)/), // your measurement id
+  fbp: pick(/(?:^|;\s*)_fbp=(fb\.\d\.\d+\.\d+)/),
+  fbc: pick(/(?:^|;\s*)_fbc=(fb\.\d\.\d+\.[\w-]+)/), // an fbclid can contain '-'
+  utm: capturedOnFirstLanding,
+})
+// → POST /api/creator-subscription/checkout-sessions with that same merchantOrderNumber
 ```
 
-⚠️ **This breaks Python and Go receivers outright — not just this feature.** The v1 signature
-sorts every key with JavaScript `localeCompare`, which those adapters cannot reproduce for
-arbitrary keys, so they validate against a committed key whitelist and raise on anything outside
-it (`scripts/sign_callback.py`, `scripts/verify_callback.go`; see `callback-signature-v1.md`).
-`clientId`, `fbp` and `fbc` are not on that whitelist, and lowercase ASCII does not help. The
-moment a session carries them, that merchant's previously working receiver starts **401-ing the
+This works on **every runtime**, survives renewals and refunds (the record outlives the
+checkout), and keeps ad identifiers out of a payment provider's system.
+
+### Why not `metadata`?
+
+`metadata` *is* echoed back in the signed callback, so it looks like the natural carrier — but
+the v1 signature sorts keys with JavaScript `localeCompare`, which the Python and Go adapters
+cannot reproduce for arbitrary keys. They therefore accept only keys whose ordering is committed
+in the golden vectors (`_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`, `supportedKeyOrder`
+in `scripts/verify_callback.go`) and raise on anything else.
+
+None of `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` or `fbclid` is on that
+list. Put one in `metadata` and a previously working Python or Go receiver starts **401-ing the
 entire `checkout.completed` callback** — order reconciliation stops, not just the tracking.
 
-Only send these to a **Node or WebCrypto** receiver. On Python or Go, use the success-page route
-instead, or move callback verification onto a Node endpoint first.
+The list is not the same as the callback schema, and it is wider than it looks: `campaign`,
+`source`, `cart_id`, `productId`, `productName` and `code` are all on it, so a merchant who only
+wants a coarse campaign tag can safely send `metadata: { campaign, source }`. Check the constant
+before assuming a key is safe, and prefer the merchant's own store for anything else.
 
-## For Attribution The Merchant Can Reconcile, Skip GA4's Session Entirely
+## Recommend Both Layers
 
-Session stitching is best-effort, and the breakages above are not fixable from Portaly's side.
-For a number the merchant can audit, have them capture `utm_*` / `gclid` / `fbclid` into their
-own cookie or database on **first landing**, then carry it through `metadata` to the callback.
-That figure is independent of how GA4 decides to slice sessions — and when the two disagree,
+GA4's session stitching for reporting — good enough and zero cost. The merchant's own captured
+source, joined on the callback, for revenue attribution they can audit. When the two disagree,
 they know which one to trust.
-
-In practice, recommend both: GA4's session stitching for reporting (good enough, zero cost),
-and the merchant's own captured source for revenue attribution.
