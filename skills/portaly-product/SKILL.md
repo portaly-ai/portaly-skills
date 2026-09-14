@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.7.1
+version: 0.7.2
 metadata:
-  version: "0.7.1"
+  version: "0.7.2"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Also covers test mode — which test card to use, and why a test purchase sends no email and shows up in no revenue figure. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, bundle pricing of Portaly products, or is troubleshooting a Portaly test payment, test card, sandbox order, or a missing order confirmation email.
 ---
 
@@ -108,7 +108,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.7.1" }
+  { "skillName": "portaly-product", "version": "0.7.2" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -141,6 +141,9 @@ The detailed view returns most of the fields the creator configured in Portaly's
   - if `!isStock` → don't show stock
   - if `isStock && stock === 0` → out of stock; use `stockButtonName` as the CTA label
   - if `isStock && isShowStock` → show remaining count
+  - `stock` is what was available when you read it, not a hold. Another buyer can take
+    the last unit before yours pays, so treat it as display only and keep handling
+    `400 OUT_OF_STOCK` at checkout (§3).
 - `buttonName` → CTA button label (defaults to "Buy" / "立即購買" if missing)
 - `productImages` → additional gallery images for detail pages
 - `videoUrl` / `videoImage` / `videoText` → optional preview video
@@ -191,6 +194,8 @@ return Response.redirect(data.checkoutUrl, 303)
 ```
 
 Validation is up-front: if a `productId` is invalid, inactive, or out of stock, you'll get a `400` with a specific `error.code`. Real payment failures only surface after the buyer attempts to pay on the hosted page (and they retry there or you start a new session).
+
+`OUT_OF_STOCK` can hit a product your grid just showed as available — creating a session does not reserve anything, and the last unit can go to another buyer in between. Handle it as an expected outcome: refresh that item and tell the buyer it just sold out, rather than surfacing it as a failure of their action.
 
 ### 4. Let Portaly run hosted checkout
 
