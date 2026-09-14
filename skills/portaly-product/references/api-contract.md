@@ -82,7 +82,7 @@ List the calling creator's digital products. Returns a compact view — enough t
 - `sale` is the raw "sale price" field the creator entered; `null` if not set. Do **not** display this directly — show `effectivePrice` instead, which encodes whether the sale price is actually in effect.
 - `priceStatus` is `'isOriginal' | 'isSale' | 'isCountdown'` — encodes which pricing mode the creator chose. Surface it only if you want to render a "Sale!" or "Countdown!" badge; otherwise rely on `effectivePrice`.
 - `productMode` is `'normal' | 'free'`. Free products still go through checkout (for delivery + email), but `effectivePrice` will be `0`.
-- `stock` is `null` when `isStock: false`. When `isStock: true`, `stock` is the current remaining count. Out-of-stock products still appear in the list (with `stock: 0`) but cannot be checked out.
+- `stock` is `null` when `isStock: false`. When `isStock: true`, `stock` is the number of units still available — the creator's configured total minus what has already sold. Out-of-stock products still appear in the list (with `stock: 0`) but cannot be checked out. It is a point-in-time read, not a reservation: the count can drop between listing and checkout, so `400 OUT_OF_STOCK` stays possible even when the number you rendered was positive.
 - `customLocale` is the product's display language (`zh` | `en` | `undefined`); use it to drive language-specific UI on your site.
 - Fields like `productContents` (the deliverable: download links, video URLs, forms) and `thanks.*` are **never** exposed via this API. The buyer sees them only on the order success page after purchase.
 
@@ -173,7 +173,7 @@ Create a hosted checkout session for one or more products.
 There is **no payment-provider request field** — how the buyer is charged is handled entirely by Portaly's hosted checkout page and is not something you configure.
 
 Field rules:
-- `items[]`: 1..20 items. Each `productId` must belong to the calling creator and be `isActive`. If any item is stock-tracked, its `stock` must be >= 1.
+- `items[]`: 1..20 items. Each `productId` must belong to the calling creator and be `isActive`. A stock-tracked item must have at least as many units available as this session asks for — repeat entries of the same `productId` are counted together.
 - `totalAmount`: the **buyer-paid total** in `currency` minor unit (TWD = whole dollars, no cents). For a single item, it is typically equal to the product price. For a bundle, this is the discounted bundle price set by you.
 - `customerEmail`: optional. If omitted, the buyer enters it on the hosted checkout page. If supplied, the field is pre-filled — but the buyer still confirms it with an emailed verification code unless you also send `emailVerified: true`.
 - `customerName`: optional. The buyer's name from your own system, pre-filled on the hosted checkout page so they need not retype it. The buyer can still edit it, and the name they submit is what lands on the order and invoice. Max 100 chars; control and formatting characters are stripped.
@@ -211,7 +211,7 @@ Field rules:
 - `400 INVALID_REQUEST` — schema validation failed
 - `400 PRODUCT_NOT_FOUND` — one of the `items[].productId` does not exist
 - `400 PRODUCT_NOT_ACTIVE` — product is inactive
-- `400 OUT_OF_STOCK` — stock-tracked product has 0 remaining
+- `400 OUT_OF_STOCK` — a stock-tracked product has fewer units available than this session asks for (including the case where it just sold out after you listed it)
 - `400 TOTAL_AMOUNT_INVALID` — `totalAmount < 0`; or bundle contains paid items but `totalAmount <= 0`; or bundle is entirely free items but `totalAmount !== 0`
 - `401 UNAUTHORIZED` — bad API key
 - `429 RATE_LIMITED` — too many requests
@@ -584,7 +584,7 @@ Source Firestore doc lives at `profiles/{profileId}/products/{productId}` (see `
 | `productMode` | `productMode` | `'normal' \| 'free'` (defaults to `'normal'`) |
 | `isActive` | `isActive` | `Boolean()` — `'true'` and `true` both → true; `''`, `false`, undefined → false |
 | `isStock` | `isStock` | Boolean |
-| `stock` | `stock` | Number; if `!isStock`, return `null` |
+| `stock` | `stock` | Units still available: configured total minus units already sold, floored at 0; if `!isStock`, return `null` |
 | `customLocale` | `customLocale` | `'zh' \| 'en' \| undefined` |
 | `title` (detailed only) | `title` | object: keep `text`, `color`, `align` only |
 | `countdownSetting` (detailed only) | `countdownSetting` | array, pass through |
