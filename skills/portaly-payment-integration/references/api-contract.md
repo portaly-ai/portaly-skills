@@ -177,11 +177,12 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
 
 Payload example (`creator_subscription.checkout.completed`):
 
+`checkout.completed` **carries no `subscriptionId`** — `sessionId` doubles as it. Persist `sessionId`: it is the identifier the subscriptions GET / cancel / resume endpoints take, and the value later renewal and lifecycle events send back as `subscriptionId`. (`checkout.failed` has none either, for the different reason that no subscription was ever created.)
+
 ```json
 {
   "event": "creator_subscription.checkout.completed",
   "sessionId": "session_123",
-  "subscriptionId": "session_123",
   "profileId": "profile_123",
   "planId": "plan_123",
   "mode": "live",

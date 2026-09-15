@@ -739,8 +739,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `x-portaly-timestamp`
   - `x-portaly-signature`
 - Payload fields to persist:
-  - `sessionId`
-  - `subscriptionId` if present
+  - `sessionId` — also serves as the `subscriptionId`; this event does not send one
   - `mode` (`live` or `test`)
   - `merchantOrderNumber`
   - `status`
@@ -752,11 +751,12 @@ Use this when the human user needs to verify Portaly callback requests.
 
 Payload example:
 
+`checkout.completed` **carries no `subscriptionId`** — `sessionId` doubles as it. Persist `sessionId`: it is the identifier the subscriptions GET / cancel / resume endpoints take, and the value later renewal and lifecycle events send back as `subscriptionId`. (`checkout.failed` has none either, for the different reason that no subscription was ever created.)
+
 ```json
 {
   "event": "creator_subscription.checkout.completed",
   "sessionId": "session_123",
-  "subscriptionId": "session_123",
   "profileId": "profile_123",
   "planId": "plan_123",
   "mode": "live",

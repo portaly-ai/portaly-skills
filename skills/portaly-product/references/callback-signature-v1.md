@@ -29,13 +29,23 @@ default to Node merely because the normative implementation is JavaScript.
 | JVM, .NET, PHP, Ruby, Rust, or another runtime | Implement against `callback-signature-v1-vectors.json`, or use a server-side Node bridge | Do not ship until exact signatures and negative cases pass |
 
 The Python and Go adapters deliberately fail closed when v1 cannot be
-reproduced safely: object keys outside the callback schema order committed in
-the golden vectors (including arbitrary metadata keys), floating-point JSON
-numbers, integers outside JavaScript's safe range, or malformed Unicode. Route
-those payloads to the Node/WebCrypto adapter or keep the integration blocked
-until a native adapter extends and passes production-derived vectors. A
-self-sign/self-verify test is not evidence because the same bug can exist on
-both sides of that test.
+reproduced safely: object keys whose `localeCompare` ordering is not committed
+in the golden vectors, floating-point JSON numbers, integers outside
+JavaScript's safe range, or malformed Unicode. Route those payloads to the
+Node/WebCrypto adapter or keep the integration blocked until a native adapter
+extends and passes production-derived vectors. A self-sign/self-verify test is
+not evidence because the same bug can exist on both sides of that test.
+
+The committed key list is `_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`
+and `supportedKeyOrder` in `scripts/verify_callback.go` (identical in both).
+**It is wider than the callback schema** — `campaign`, `source`, `cart_id`,
+`productId`, `productName` and `code` are all on it, so a merchant tagging a
+checkout with `metadata: { campaign, source }` passes fine. Ad identifiers are
+not: `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid`
+are all absent, and lowercase ASCII does not make a key safe. Check the constant
+before assuming any custom key is. Note the list governs **keys, not values** —
+a float value is rejected even under an accepted key, so keep metadata values as
+strings.
 
 ## Exact v1 contract
 
