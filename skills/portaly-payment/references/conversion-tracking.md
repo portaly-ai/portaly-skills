@@ -95,9 +95,9 @@ treating it as the whole solution.
 
 ```js
 // merchant.example/success?order=order_001
-// Put your own order id on the URL when you create the session. Portaly does append
-// sessionId / paymentProvider / paymentStatus on the 91APP return path, but not on
-// every path, so do not depend on them being there.
+// Put your own order id on the URL when you create the session. Portaly appends
+// parameters of its own, but which ones appear varies by payment path — do not
+// depend on them being there.
 gtag('event', 'purchase', {
   transaction_id: orderNumber, // your merchantOrderNumber -- required, and never ''
   value: amount,
