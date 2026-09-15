@@ -173,15 +173,16 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
   - secret: the key's `callbackSecret`
 - **Reject callbacks whose `x-portaly-timestamp` is more than 5 minutes from now in either direction** — too old (stale/replay) or too far in the future (forged/badly-skewed). The symmetric ±5-minute window tolerates ordinary NTP drift; don't tighten the future side to "reject any future timestamp" (it 401s legitimate callbacks — see `callback-signature-v1.md`). `x-portaly-timestamp` is an ISO datetime string, not Unix seconds.
 - **Dedup on an event-specific key, not `sessionId` alone.** Because `subscriptionId === checkoutSessionId === sessionId` is identical across every event on a subscription, keying idempotency on it drops each later event (`payment.succeeded`, `cancel_requested`, `canceled`) as a false duplicate. Compose a per-event key whose varying part comes **from inside the payload**: `event + sessionId` for `checkout.*`, `` `${event}:${subscriptionId}:${chargedAt}` `` for `payment.succeeded`, the same with `failedAt` for `payment.failed`, `event + orderId` for refunds. Do **not** use `x-portaly-timestamp`: a redelivery replays the stored payload but re-signs the transport headers, so that value changes and the same charge is processed twice. Lifecycle events have **no *documented* delivery identifier**, so make the state assignment itself idempotent. `canceled` is the exception worth keying: it is terminal and emitted at most once per subscription, so `event + subscriptionId` is both safe and correct there — which matters when acting on it has non-idempotent side effects of its own, like sending a cancellation email or revoking access. `active` is re-sent whenever a subscription recovers from `past_due`.
-- Payload fields to persist: `sessionId`, `subscriptionId` (falls back to `sessionId` if absent), `mode`, `merchantOrderNumber`, `status`, `paymentReference`, `paymentMethod`, `customerEmail`, `completedAt`, `appliedDiscount?`.
+- Payload fields to persist: `sessionId` (it is also the `subscriptionId`; this event does not send one), `mode`, `merchantOrderNumber`, `status`, `paymentReference`, `paymentMethod`, `customerEmail`, `completedAt`, `appliedDiscount?`.
 
 Payload example (`creator_subscription.checkout.completed`):
+
+`checkout.completed` **carries no `subscriptionId`** — `sessionId` doubles as it. Persist `sessionId`: it is the identifier the subscriptions GET / cancel / resume endpoints take, and the value later renewal and lifecycle events send back as `subscriptionId`. (`checkout.failed` has none either, for the different reason that no subscription was ever created.)
 
 ```json
 {
   "event": "creator_subscription.checkout.completed",
   "sessionId": "session_123",
-  "subscriptionId": "session_123",
   "profileId": "profile_123",
   "planId": "plan_123",
   "mode": "live",
@@ -216,7 +217,25 @@ Payload example (`creator_subscription.checkout.completed`):
 
 Refund terminal payloads share: `event`, the subscription lifecycle base fields, `orderId`, `paymentId`, `paymentReference`, `orderMerchantOrderNumber`, `amount`, `currency`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, and `subscriptionCanceledByRefund`. Success adds `refundedAt` and `refundReference`; failure adds `refundFailedAt`, `refundFailureReason`, and nullable `refundFailureRetryable`. A separate `creator_subscription.canceled` event has no ordering guarantee; refund events deduplicate on `orderId`, while `canceled` has no delivery identifier — make the cancellation state assignment idempotent rather than permanently deduplicating it on `subscriptionId`.
 
-All events are signed and delivered the same way. Use `scripts/sign_callback.mjs` (Node/TypeScript), `scripts/sign_callback.py` (reference/other stacks), or `scripts/sign_callback.webcrypto.mjs` (edge / WebCrypto runtimes — Cloudflare/Vercel Edge, Deno, InsForge edge functions, no `node:crypto`). Do not hand-roll the key ordering: `stableJson` sorts with `localeCompare`; a naive `.sort()` is UTF-16 order and silently rejects real callbacks. Note the Python and Go adapters cannot reproduce v1's `localeCompare` ordering for arbitrary keys, so they accept only keys whose ordering is committed in the golden vectors (`_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`, `supportedKeyOrder` in `scripts/verify_callback.go`) and **fail closed on anything else** — lowercase ASCII does not make a key safe. That list is wider than the callback schema: `campaign`, `source`, `cart_id`, `productId`, `productName` and `code` are on it and pass fine. Ad identifiers are not — `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid` are all absent, and one of them in `metadata` makes such a receiver reject the whole callback. Keep ad identifiers in your own store keyed by `sessionId` (`merchantOrderNumber` is optional and absent from `checkout.failed`); check the constant before sending any other custom key, or send it only to a Node or WebCrypto receiver.
+All events are signed and delivered the same way. Use `scripts/sign_callback.mjs` (Node/TypeScript), `scripts/sign_callback.py` (reference/other stacks), or `scripts/sign_callback.webcrypto.mjs` (edge / WebCrypto runtimes — Cloudflare/Vercel Edge, Deno, InsForge edge functions, no `node:crypto`). Do not hand-roll the key ordering: `stableJson` sorts with `localeCompare`; a naive `.sort()` is UTF-16 order and silently rejects real callbacks. Note the Python and Go adapters cannot reproduce v1's `localeCompare` ordering for arbitrary keys, so they accept only keys whose ordering is committed in the golden vectors (`_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`, `supportedKeyOrder` in `scripts/verify_callback.go`) and **fail closed on anything else** — lowercase ASCII does not make a key safe. That list is wider than the callback schema: `campaign`, `source`, `cart_id`, `productId`, `productName` and `code` are on it and pass fine. Ad identifiers are not — `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid` are all absent, and one of them in `metadata` makes such a receiver reject the whole callback. Keep ad identifiers in your own store keyed by `sessionId` (`merchantOrderNumber` is optional and absent from `checkout.failed`); check the constant before sending any other custom key, or send it only to a Node or WebCrypto receiver. ⚠️ Separately, those two adapters cannot verify some events at all — see the blocked-event table below.
+
+### Events the Python / Go adapters cannot verify
+
+These payloads carry fields that are not on the committed signing key list, so
+those two adapters reject them outright. The bundled vectors do not cover these
+events, so `check_callback_vectors.mjs` still passes — see
+`callback-signature-v1.md`.
+
+| Event | Fields not on the list |
+|---|---|
+| `creator_subscription.checkout.failed` | `planName` |
+| `creator_subscription.payment.refunded` | `orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, `subscriptionCanceledByRefund`, `refundReference` |
+| `creator_subscription.payment.refund_failed` | the same minus `refundReference`, plus `refundFailedAt`, `refundFailureReason`, `refundFailureRetryable` |
+
+Every other event in this contract verifies on all four adapters, provided any
+custom `metadata` you send also stays inside the committed key list. An
+integration that must handle failed charges or refunds — and it should — needs a
+Node or WebCrypto receiver.
 
 ## Subscription Query And Lifecycle (Optional)
 

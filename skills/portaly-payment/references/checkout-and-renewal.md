@@ -84,7 +84,7 @@ In the hosted flow, Portaly handles:
 - create the checkout session
 - redirect the buyer to Portaly checkout
 - verify the signed callback
-- persist `sessionId`, `subscriptionId` if present, merchant order reference, payment status, and callback payload
+- persist `sessionId` (it doubles as the `subscriptionId` on a completed checkout), merchant order reference, payment status, and callback payload
 - use reconciliation queries when callback delivery or buyer state is uncertain
 
 ## Subscriber Self-Service Portal

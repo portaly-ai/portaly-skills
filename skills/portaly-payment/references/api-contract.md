@@ -739,8 +739,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `x-portaly-timestamp`
   - `x-portaly-signature`
 - Payload fields to persist:
-  - `sessionId`
-  - `subscriptionId` if present
+  - `sessionId` — also serves as the `subscriptionId`; this event does not send one
   - `mode` (`live` or `test`)
   - `merchantOrderNumber`
   - `status`
@@ -752,11 +751,12 @@ Use this when the human user needs to verify Portaly callback requests.
 
 Payload example:
 
+`checkout.completed` **carries no `subscriptionId`** — `sessionId` doubles as it. Persist `sessionId`: it is the identifier the subscriptions GET / cancel / resume endpoints take, and the value later renewal and lifecycle events send back as `subscriptionId`. (`checkout.failed` has none either, for the different reason that no subscription was ever created.)
+
 ```json
 {
   "event": "creator_subscription.checkout.completed",
   "sessionId": "session_123",
-  "subscriptionId": "session_123",
   "profileId": "profile_123",
   "planId": "plan_123",
   "mode": "live",
@@ -969,6 +969,24 @@ app.post("/api/portaly/callback", async (req, res) => {
   return res.status(200).json({ ok: true });
 });
 ```
+
+### Events the Python / Go adapters cannot verify
+
+These payloads carry fields that are not on the committed signing key list, so
+those two adapters reject them outright. The bundled vectors do not cover these
+events, so `check_callback_vectors.mjs` still passes — see
+`callback-signature-v1.md`.
+
+| Event | Fields not on the list |
+|---|---|
+| `creator_subscription.checkout.failed` | `planName` |
+| `creator_subscription.payment.refunded` | `orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, `subscriptionCanceledByRefund`, `refundReference` |
+| `creator_subscription.payment.refund_failed` | the same minus `refundReference`, plus `refundFailedAt`, `refundFailureReason`, `refundFailureRetryable` |
+
+Every other event in this contract verifies on all four adapters, provided any
+custom `metadata` you send also stays inside the committed key list. An
+integration that must handle failed charges or refunds — and it should — needs a
+Node or WebCrypto receiver.
 
 ## Subscription List
 

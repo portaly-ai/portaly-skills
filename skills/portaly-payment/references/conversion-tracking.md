@@ -252,6 +252,11 @@ safely send `metadata: { campaign, source }`. Two caveats: check the constant be
 other key is safe, and note the whitelist governs **keys, not values** — a float value is
 rejected even under an accepted key, so keep metadata values as strings.
 
+⚠️ And independently of `metadata`: those two adapters cannot verify some events at all, because
+those payloads carry fields that are not on the list and the bundled vectors do not cover them —
+the conformance run passes and production breaks later. See the blocked-event table in
+`api-contract.md` before choosing Python or Go.
+
 ## Recommend Both Layers
 
 GA4's session stitching for reporting — good enough and zero cost. The merchant's own captured

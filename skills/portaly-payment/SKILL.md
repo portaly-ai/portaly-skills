@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.13.0
+version: 0.14.0
 metadata:
-  version: "0.13.0"
+  version: "0.14.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -146,7 +146,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.13.0" }
+  { "skillName": "portaly-payment", "version": "0.14.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -198,7 +198,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - Call `POST /api/creator-subscription/checkout-sessions` with `Authorization: Bearer {api_key}`.
 - Send `planId` and optional `successRedirectUrl`, `cancelRedirectUrl`, `callbackUrl`, `subscriptionCallbackUrl`, `merchantOrderNumber`, and string-keyed `metadata`.
 - **If the buyer already signed in to the merchant's own product, skip making them re-enter anything**: send `customerEmail` + `customerName` to pre-fill the checkout form, and `emailVerified: true` to declare that the merchant already verified that email, which drops the emailed verification code. `emailVerified` is accepted **only** on this API-key-authenticated call — never from the buyer's browser — and is ignored without a non-blank `customerEmail`. The email field becomes read-only at checkout. See `references/api-contract.md` for the full field rules.
-  - **Custom `metadata` keys are echoed into the signed callback body. Only the Node and WebCrypto adapters can verify callbacks carrying metadata keys outside the committed schema; the Python and Go v1 adapters fail closed on them (v1 sorts keys with JavaScript `localeCompare`, which those adapters cannot reproduce for arbitrary keys). Use a Node/WebCrypto receiver, or omit custom metadata, until a future raw-byte callback contract removes this limitation.**
+  - **Custom `metadata` keys are echoed into the signed callback body. Only the Node and WebCrypto adapters can verify callbacks carrying metadata keys outside the committed schema; the Python and Go v1 adapters fail closed on them (v1 sorts keys with JavaScript `localeCompare`, which those adapters cannot reproduce for arbitrary keys). Use a Node/WebCrypto receiver, or omit custom metadata, until a future raw-byte callback contract removes this limitation. Omitting custom metadata is not on its own enough to make Python/Go safe — `checkout.failed` and both refund events are unverifiable on them whatever the metadata, see `references/api-contract.md`.**
 - `callbackUrl` receives the `checkout.completed` callback and — unless `subscriptionCallbackUrl` is set — also the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle callbacks. Set `subscriptionCallbackUrl` to route renewal/lifecycle events to a dedicated endpoint instead.
 - **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`. When omitted, Portaly attempts to auto-apply a discount via the buyer's `signupRefCode` — at session creation if you sent `emailVerified: true` with a `customerEmail`, otherwise after the buyer verifies their email inside hosted checkout (no extra call needed from the merchant).
 - **Optional `profitSharingId`**: the referral code a buyer arrived with, when the product has buyer promotion switched on. Read it **server-side** from your own cookie and pass it here — never accept it from the browser's request body, or anyone can claim someone else's sale. Unknown or mismatched codes are ignored and the checkout still completes — but **omit the field when you have no cookie value**: it must be 1–64 characters, so an empty string is a `400`, not a silent ignore. Setting up the promotion itself belongs to the `portaly-affiliate` skill.
@@ -233,8 +233,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - Require all three callback headers. Use the exact ISO string from `x-portaly-timestamp`; reject it when invalid or more than five minutes from now in either direction. The symmetric window tolerates ordinary clock skew — a strict "reject any future timestamp" rule would make legitimate callbacks fail intermittently.
 - Verify `x-portaly-signature` with the API key's `callbackSecret`, then require the authenticated body `event` to equal `x-portaly-event`.
 - V1 signs `stableJson(JSON.parse(wireBody))`, not the raw HTTP body. Never substitute code-point key sorting for JavaScript `localeCompare` semantics.
-- After verification, persist the minimum audit fields allowed by the application's data policy: `sessionId`, `subscriptionId` if present, `merchantOrderNumber`, payment identity, event, and status. Do not log the secret or full signing base.
-- If the callback payload does not include `subscriptionId`, persist `sessionId` as the recurring subscription identifier because the current implementation uses `sessionId` as `subscriptionId`.
+- After verification, persist the minimum audit fields allowed by the application's data policy: `sessionId`, `merchantOrderNumber`, payment identity, event, and status. (`sessionId` doubles as the `subscriptionId` on `checkout.completed` and every later event, but **not** on `checkout.failed` — no subscription was created there.) Do not log the secret or full signing base.
 - Use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success uses `event + subscriptionId + chargedAt` and renewal failure `event + subscriptionId + failedAt`; refund success/failure uses `event + orderId`. **Do not key renewals on `paymentId` or `paymentReference`:** `payment.failed` carries no `paymentId` at all, and `paymentReference` is an empty string on effectively every 91APP failure, so either choice collapses every failed renewal across every subscriber onto one key. `chargedAt` / `failedAt` are per-attempt timestamps that stay byte-identical across a redelivery. Do not permanently deduplicate all lifecycle events by `sessionId`/`subscriptionId`; the current lifecycle payload has no documented delivery identifier, so keep state assignments idempotent and flag stronger deduplication requirements as a product-contract gap.
 - **`callbackUrl` must use HTTPS.** Serving over plain HTTP exposes the `callbackSecret` signature and payload in transit.
 

@@ -182,7 +182,7 @@ Field rules:
 - `successRedirectUrl` / `cancelRedirectUrl`: optional. Used after the hosted checkout page completes / cancels.
 - `callbackUrl`: optional. Where Portaly sends signed webhooks for this session and its resulting orders. If omitted, you must poll the `GET /api/digital-products/checkout-sessions/{sessionId}` endpoint.
 - `merchantOrderNumber`: your internal reference. Echoed back in webhooks. Max 50 chars.
-- `metadata`: free-form string keys, max 20 keys, each value <= 500 chars. Echoed back. Do not put secrets here. **Because it is echoed into the signed callback body, keys outside the committed callback schema are only verifiable by the Node/WebCrypto adapters — the Python/Go v1 adapters fail closed on them.**
+- `metadata`: free-form string keys, max 20 keys, each value <= 500 chars. Echoed back. Do not put secrets here. **Because it is echoed into the signed callback body, keys outside the committed signing key list are only verifiable by the Node/WebCrypto adapters — the Python/Go v1 adapters fail closed on them. Note that keeping custom keys out of `metadata` is not enough to make those two adapters safe: `digital_product.checkout.failed` is unverifiable on them regardless — see the blocked-event table under Webhooks.**
 
 **Response 200**:
 ```json
@@ -450,6 +450,21 @@ Inspect the repository's language, framework, and runtime before choosing an ada
 5. Always serve `callbackUrl` over HTTPS.
 
 ---
+
+### Events the Python / Go adapters cannot verify
+
+| Event | Fields not on the committed signing key list |
+|---|---|
+| `digital_product.checkout.failed` | `paymentProvider` |
+
+`digital_product.checkout.completed` and `digital_product.order.refunded` verify
+on all four adapters — every field they carry is on the list, refunds included —
+provided any custom `metadata` you send also stays inside it (`userId`, `cartId`
+and the like are **not** on the list).
+So only an integration that handles failed checkouts needs a Node or WebCrypto
+receiver. The bundled vectors do not cover `checkout.failed`, so
+`check_callback_vectors.mjs` passes regardless — see `callback-signature-v1.md`.
+
 
 ## Bundle Pricing (Proportional Split)
 
