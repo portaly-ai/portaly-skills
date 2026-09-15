@@ -210,6 +210,9 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   `metadata: { campaign, source }` is safe. Check `scripts/sign_callback.py`
   (`_SUPPORTED_KEY_ORDER`) before assuming any other key is, and keep values as strings — the
   whitelist covers keys, not values, and a float is rejected even under an accepted key.
+  ⚠️ Independently of `metadata`, those two adapters cannot verify `checkout.failed` or either
+  refund event at all — step 4 tells you to handle both, so verify on Node or WebCrypto. See
+  `references/callback-signature-v1.md`.
 - Recommend both layers — GA4's session stitching for reporting, your own captured source for
   revenue attribution you can audit.
 

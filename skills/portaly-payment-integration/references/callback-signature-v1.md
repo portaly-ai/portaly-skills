@@ -37,15 +37,36 @@ extends and passes production-derived vectors. A self-sign/self-verify test is
 not evidence because the same bug can exist on both sides of that test.
 
 The committed key list is `_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`
-and `supportedKeyOrder` in `scripts/verify_callback.go` (identical in both).
-**It is wider than the callback schema** — `campaign`, `source`, `cart_id`,
-`productId`, `productName` and `code` are all on it, so a merchant tagging a
-checkout with `metadata: { campaign, source }` passes fine. Ad identifiers are
-not: `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid`
-are all absent, and lowercase ASCII does not make a key safe. Check the constant
-before assuming any custom key is. Note the list governs **keys, not values** —
-a float value is rejected even under an accepted key, so keep metadata values as
-strings.
+and `supportedKeyOrder` in `scripts/verify_callback.go` (identical in both). It
+is not the same set as the callback schema, and it differs in **both**
+directions — check the constant rather than reasoning from the schema.
+
+⚠️ **The Python and Go adapters cannot verify `checkout.failed` or either refund
+event.** Those payloads carry fields that are not on the committed list —
+`planName` on `creator_subscription.checkout.failed`, and
+`orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`,
+`refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`,
+`subscriptionCanceledByRefund`, `refundReference`, `refundFailedAt`,
+`refundFailureReason` and `refundFailureRetryable` on
+`creator_subscription.payment.refunded` / `.refund_failed` (the digital-product
+`checkout.failed` likewise carries `paymentProvider`). Every one of them raises
+`UnsupportedV1Payload`.
+
+**The bundled conformance run will not catch this**, because the golden vectors
+do not cover those events: `check_callback_vectors.mjs --runtime python|go`
+passes, `checkout.completed` and the lifecycle events verify in production, and
+the receiver then starts 401-ing the first failed first charge and the first
+refund — stopping dunning and refund reconciliation. Both skills tell merchants
+to handle exactly those events. **If the integration must handle `checkout.failed`
+or refunds — and it should — verify on Node or WebCrypto.**
+
+In the other direction the list is wider than the callback schema for custom
+`metadata`: `campaign`, `source`, `cart_id`, `productId`, `productName` and
+`code` are on it, so `metadata: { campaign, source }` passes fine, while ad
+identifiers do not — `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`,
+`gclid` and `fbclid` are all absent, and lowercase ASCII does not make a key
+safe. Note the list governs **keys, not values**: a float is rejected even under
+an accepted key, so keep metadata values as strings.
 
 ## Exact v1 contract
 
