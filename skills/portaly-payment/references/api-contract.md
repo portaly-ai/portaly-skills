@@ -788,9 +788,9 @@ Payload example:
 | `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Sent in `test` mode too. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds (monthly/yearly) | Not sent for the first checkout charge — that is `checkout.completed`. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
-| `creator_subscription.payment.refunded` | A payment order is fully refunded | Deduplicate on `orderId`. `amount` and `refundedAmount` are the same post-discount order amount. |
-| `creator_subscription.payment.refund_failed` | A refund reaches a terminal failure | Deduplicate on `orderId`. No money moved; statistics reversal and subscription cancellation are not rolled back, so Portaly must handle it manually. |
-| `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal. |
+| `creator_subscription.payment.refunded` | A payment order is fully refunded | Deduplicate on `event + orderId` — the two refund outcomes share an `orderId`, so without the event prefix they cancel each other out. `amount` and `refundedAmount` are the same post-discount order amount. |
+| `creator_subscription.payment.refund_failed` | A refund reaches a terminal failure | Deduplicate on `event + orderId`. No money moved; statistics reversal and subscription cancellation are not rolled back, so Portaly must handle it manually. |
+| `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal, but it *is* re-sent each time a subscription recovers from `past_due`, so treat it as repeatable. |
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Fired for any cancellation, including the 3rd-failure auto-cancel. |
 
@@ -888,7 +888,7 @@ Refund terminal payload fields shared by both events: `event`, the subscription 
 }
 ```
 
-`creator_subscription.canceled` and the refund outcome are emitted by independent backend processes, so either can arrive first or fail independently. Sort by `canceledAt` / `refundedAt`, deduplicate them separately on `subscriptionId` / `orderId`, and never treat one as proof of the other. The older orders webhook can also send a legacy `refund` event with a different payload and signature; it is a separate product with separate deduplication.
+`creator_subscription.canceled` and the refund outcome are emitted by independent backend processes, so either can arrive first or fail independently. Sort by `canceledAt` / `refundedAt` and never treat one as proof of the other. Refunds deduplicate on `event + orderId`; `canceled` is terminal and emitted at most once per subscription, so `event + subscriptionId` is a correct key for it. Do not generalise that to the other lifecycle events — `active` repeats on recovery from `past_due`. The older orders webhook can also send a legacy `refund` event with a different payload and signature; it is a separate product with separate deduplication.
 
 Verification rule:
 
@@ -900,7 +900,7 @@ Callback notes:
 
 - current implementation contract: `subscriptionId === sessionId`
 - if the callback payload consumed by the merchant side does not explicitly expose `subscriptionId`, the merchant may safely persist `sessionId` as the recurring subscription identifier
-- use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`; refund success/failure uses `event + orderId`
+- use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success uses `event + subscriptionId + chargedAt` and renewal failure `event + subscriptionId + failedAt`; refund success/failure uses `event + orderId`. Do **not** key renewals on `paymentId` or `paymentReference`: `payment.failed` carries no `paymentId`, and `paymentReference` is `''` on effectively every 91APP failure, so either collapses all failed renewals onto one key
 - lifecycle callbacks do not currently document a delivery identifier; make status assignments idempotent and do not permanently suppress all later lifecycle transitions with one `sessionId` key
 - the `mode` field indicates whether this callback originated from a live or test checkout; merchants should use it to route test callbacks to sandbox order handling
 

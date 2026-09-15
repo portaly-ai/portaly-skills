@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
 # regex is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
-version: 0.12.0
+version: 0.13.0
 metadata:
-  version: "0.12.0"
+  version: "0.13.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -146,7 +146,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.12.0" }
+  { "skillName": "portaly-payment", "version": "0.13.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -203,6 +203,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`. When omitted, Portaly attempts to auto-apply a discount via the buyer's `signupRefCode` — at session creation if you sent `emailVerified: true` with a `customerEmail`, otherwise after the buyer verifies their email inside hosted checkout (no extra call needed from the merchant).
 - **Optional `profitSharingId`**: the referral code a buyer arrived with, when the product has buyer promotion switched on. Read it **server-side** from your own cookie and pass it here — never accept it from the browser's request body, or anyone can claim someone else's sale. Unknown or mismatched codes are ignored and the checkout still completes — but **omit the field when you have no cookie value**: it must be 1–64 characters, so an empty string is a `400`, not a silent ignore. Setting up the promotion itself belongs to the `portaly-affiliate` skill.
 - Persist `sessionId`, `checkoutToken`, `checkoutUrl`, and `expiresAt` on the third-party side.
+- If the merchant will do conversion tracking (step 10), put their own order id on `successRedirectUrl` **now** — it is the only key that survives every return path, and adding it later means reissuing sessions.
 - The session response includes `appliedDiscount` when a discount was applied at session creation; `session.amount` is always the **post-discount** amount the buyer will be charged. **With `emailVerified: true` this can happen without any `discountCode`** — the buyer's `signupRefCode` resolves right away (`source: 'ref_code'`), so a merchant reconciling against `amount` may see a different number than before adopting it.
 - Redirect the buyer to `checkoutUrl`.
 
@@ -234,7 +235,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - V1 signs `stableJson(JSON.parse(wireBody))`, not the raw HTTP body. Never substitute code-point key sorting for JavaScript `localeCompare` semantics.
 - After verification, persist the minimum audit fields allowed by the application's data policy: `sessionId`, `subscriptionId` if present, `merchantOrderNumber`, payment identity, event, and status. Do not log the secret or full signing base.
 - If the callback payload does not include `subscriptionId`, persist `sessionId` as the recurring subscription identifier because the current implementation uses `sessionId` as `subscriptionId`.
-- Use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`; refund success/failure uses `event + orderId`. Do not permanently deduplicate all lifecycle events by `sessionId`/`subscriptionId`; the current lifecycle payload has no documented delivery identifier, so keep state assignments idempotent and flag stronger deduplication requirements as a product-contract gap.
+- Use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success uses `event + subscriptionId + chargedAt` and renewal failure `event + subscriptionId + failedAt`; refund success/failure uses `event + orderId`. **Do not key renewals on `paymentId` or `paymentReference`:** `payment.failed` carries no `paymentId` at all, and `paymentReference` is an empty string on effectively every 91APP failure, so either choice collapses every failed renewal across every subscriber onto one key. `chargedAt` / `failedAt` are per-attempt timestamps that stay byte-identical across a redelivery. Do not permanently deduplicate all lifecycle events by `sessionId`/`subscriptionId`; the current lifecycle payload has no documented delivery identifier, so keep state assignments idempotent and flag stronger deduplication requirements as a product-contract gap.
 - **`callbackUrl` must use HTTPS.** Serving over plain HTTP exposes the `callbackSecret` signature and payload in transit.
 
 ### 8. Manage recurring subscriptions
@@ -305,6 +306,21 @@ What to persist for recurring lifecycle:
 - The merchant must provide a `returnUrl` so the subscriber can navigate back after managing their subscriptions.
 - See `Portal Session (Subscriber Self-Service)` in `references/api-contract.md` for full endpoint details and code examples.
 
+### 10. Wire conversion tracking (optional)
+
+- Use this when the merchant asks about GA4, Google Ads, Meta Pixel, UTM attribution, or "can I put my analytics on the payment page".
+- **Portaly does not inject merchant-supplied GA4, GTM, or Meta Pixel tags into hosted checkout** — and a tag there would not give the merchant what they want anyway: the `utm_*` parameters were consumed on their own site and are not present on `portaly.ai`, Meta's `_fbc` cookie is first-party to their domain and unreadable from Portaly's, and renewals, refunds and failed charges never happen in a browser at all. Say that much, so the answer routes them somewhere instead of reading as a missing feature.
+- The merchant already holds three of the four data points they usually ask for: `merchantOrderNumber` and `planId` are values they chose themselves, and `amount` / `currency` come back in the callback. Only campaign attribution needs work, and it lives entirely on their side.
+- **Required setup merchants never think of:** add `portaly.ai` to GA4's unwanted-referrals list (Admin → Data collection and modification → Data streams → Web → Configure tag settings → Show all → List unwanted referrals). Without it, a restarted session is attributed to `portaly.ai / referral` and the campaign is lost. Say this first, every time.
+- Fire `purchase` on the merchant's **own success page**: same origin, so the `_ga` cookie and the session's campaign are intact and GA4 attributes it correctly with no extra work. No cross-domain linker is needed — precisely because the payment page runs no merchant tag. It is the accurate path, not the complete one: reaching it requires the buyer to click through from Portaly after paying, so anyone who closes the tab never fires it. Always pair it with the callback. Put your own order id on `successRedirectUrl` when you create the session, look the order up by it here, and take every other value from that record — Portaly appends parameters of its own, but which ones appear varies by payment path, so none of them is a contract.
+- Fire server-side **from the signed callback** for buyers who never return to the success page, and for renewals and refunds, which no client-side tag can ever see. The callback's `customerEmail` gives Meta's Conversions API a match key with no extra plumbing — but **hash it**: the `em` field takes a SHA-256 of the trimmed, lowercased address, never the plaintext.
+- **Keep the two kinds of id apart.** Your own idempotency is the step 7 key — stable across redeliveries, one per occurrence. Meta's `event_id` lets Meta recognise a server event and the *browser* event as one purchase — and that browser event exists only for the initial checkout — so use `sessionId` there, read from the merchant's own order record. **Give each charge its own `event_id`** (`paymentId` on `payment.succeeded`): Meta asks for a unique id per event instance, and `subscriptionId === sessionId` means reusing `sessionId` would give every renewal the same value.
+- **Key renewals on a per-attempt timestamp.** `payment.failed` carries no `paymentId`, and `paymentReference` is an empty string on effectively every 91APP failure — either choice collapses every failed renewal across every subscriber onto one key and dunning silently stops. Use `event + subscriptionId + failedAt`, and `chargedAt` for `payment.succeeded`; not `failureCount`, which resets on success. (`payment.succeeded` does carry a usable `paymentId` — it is only the failure side that has none.)
+- **`merchantOrderNumber` is a trap on renewals.** It *is* present, but frozen at checkout, so using it as a GA4 `transaction_id` makes GA4 dedup every renewal after the first. Build a per-charge id — and never send an empty `transaction_id`, which collapses every purchase into one.
+- **Ad identifiers belong in the merchant's own store, not in `metadata`.** Capture `utm_*` / `gclid` / `fbclid` on first landing, read GA4's ids via `gtag('get', …)` rather than parsing the `_ga_*` cookie (Google does not document its format and changed it in 2025), and store the record against the **`sessionId`** returned by create-session, so the callback can join on it (`merchantOrderNumber` is optional and absent from `checkout.failed`, so it is not a reliable join key). On the success page, reach that record via your own order id on the URL.
+- **Never put an ad identifier in `metadata`.** `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid` are all absent from the committed signing whitelist, so one of them makes a Python or Go receiver 401 that subscription's callbacks — and `metadata` is replayed on every renewal and refund, so reconciliation stops for the life of the subscription. Coarse tags like `campaign` and `source` *are* on the list and are safe.
+- Load `references/conversion-tracking.md` for the session-survival conditions with their Google sources, the success-page snippet, the per-event id table, and which `metadata` keys actually are safe.
+
 ## Preferred Response Shape
 
 When answering with this skill, prefer this order:
@@ -358,6 +374,8 @@ When using this skill, aim to return one or more of:
   Example prompts, parameter cheatsheet, and ref-code usage for the Discount Code APIs.
 - `references/callback-signature-v1.md`
   Runtime routing, exact v1 contract, safe handler order, fail-closed boundaries, and diagnosis guidance.
+- `references/conversion-tracking.md`
+  GA4 / Meta conversion tracking across the checkout redirect: why the payment page carries no merchant tag, the required unwanted-referrals setting, success-page and callback-side events, and Measurement Protocol / Conversions API notes.
 - `references/callback-signature-v1-vectors.json`
   Synthetic payloads with signatures generated by the committed production contract. Use these instead of self-sign/self-verify fixtures.
 - `scripts/check_callback_vectors.mjs`

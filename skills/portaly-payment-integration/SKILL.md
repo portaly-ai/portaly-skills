@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.7.0
+version: 0.8.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.7.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.8.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -94,7 +94,7 @@ Content-Type: application/json
 
 - Verify `x-portaly-signature` (HMAC-SHA256, secret = `callbackSecret`) over `{x-portaly-timestamp}.{stable_json(payload)}`.
 - Reject callbacks whose `x-portaly-timestamp` (an ISO datetime, not Unix seconds) is more than 5 minutes from now **in either direction** — too old is a stale/replayed delivery; too far in the future a forged or badly-skewed one. The symmetric ±5-minute window tolerates ordinary NTP drift; do **not** tighten the future side to "reject any future timestamp", which 401s legitimate callbacks (see `references/callback-signature-v1.md` → Safe handler order).
-- Dedup on an **event-specific** key, not `sessionId` alone. `subscriptionId === checkoutSessionId === sessionId` is the same value for every event on a subscription, so keying on it treats `payment.succeeded`, `cancel_requested`, and `canceled` as "already processed" and silently drops them. Build the key from the event type plus the subscription plus the event's own timestamp/id — e.g. `` `${x-portaly-event}:${subscriptionId}:${x-portaly-timestamp}` `` (or a per-delivery id if the payload carries one). Skip only when that composite key has already been processed.
+- Dedup on an **event-specific** key, not `sessionId` alone. `subscriptionId === checkoutSessionId === sessionId` is the same value for every event on a subscription, so keying on it treats `payment.succeeded`, `cancel_requested`, and `canceled` as "already processed" and silently drops them. Use a per-event key and take the varying part **from inside the payload** — `event + sessionId` for `checkout.*`, `` `${event}:${subscriptionId}:${chargedAt}` `` for `payment.succeeded`, the same with `failedAt` for `payment.failed`, `event + orderId` for refunds. Do **not** use `x-portaly-timestamp`: a redelivery replays the stored payload but re-signs the transport headers, so that value changes and the same charge is processed twice. Lifecycle events have **no *documented* delivery identifier**, so make the state assignment itself idempotent. `canceled` is the exception worth keying: it is terminal and emitted at most once per subscription, so `event + subscriptionId` is both safe and correct there — which matters when acting on it has non-idempotent side effects of its own, like sending a cancellation email or revoking access. `active` is re-sent whenever a subscription recovers from `past_due`, so it is not a one-shot.
 - Pick the adapter that matches the repo's runtime — `scripts/sign_callback.mjs` (Node/TS), `scripts/sign_callback.webcrypto.mjs` (edge/WebCrypto runtimes without `node:crypto`), or `scripts/sign_callback.py` (Python). Don't translate the signer from memory: the key ordering is `localeCompare`, and a naive code-point/`.sort()` silently 401s real callbacks. For an unlisted runtime, use a documented server-side bridge or keep the receiver blocked until a native implementation passes the vectors — see `references/callback-signature-v1.md`.
 - Before shipping the receiver, run `scripts/check_callback_vectors.mjs --runtime <node|webcrypto|python|go>` against the committed production-derived vectors (`references/callback-signature-v1-vectors.json`). Passing self-signed fixtures is not enough — sender and receiver can share the same ordering bug.
 - **Handle `creator_subscription.checkout.failed`, not just `.completed`.** A declined first charge emits its own callback carrying `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. It has **no `subscriptionId`** (none was created), so dedup it on `sessionId`. `test`-mode sessions emit it too — check `mode` before acting. If your endpoint was down, re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`; the subscription-keyed retry route cannot reach a failed first charge.
@@ -131,6 +131,87 @@ Mode comes from the key (`pcs_test_itg_` vs `pcs_live_itg_`) and the API is iden
 
 - Once the test-mode integration (`pcs_test_itg_…`) covers everything test mode can cover — see step 7 for what it can't — ask the merchant for a **live integration key** (`pcs_live_itg_…`) and swap `PORTALY_API_KEY`.
 - No code change is needed to switch mode; it is derived entirely from the key. That is not the same as being verified in live: the first live charge is the first time the 91APP path, the invoice, and the renewal schedule actually run, so watch that one closely.
+
+### 9. Conversion tracking (GA4 / Meta), if the merchant wants it
+
+The payment page runs on `portaly.ai` and carries **no merchant tag** — Portaly does not inject
+GA4, GTM, or Meta Pixel into it. A tag there would not give the merchant what they want anyway:
+the `utm_*` parameters were consumed on their own site and never reach `portaly.ai`, Meta's
+`_fbc` cookie is first-party to their domain and unreadable from Portaly's, and renewals,
+refunds and failed charges never happen in a browser at all. Everything below runs on your side.
+
+- **Most of it is already yours.** `merchantOrderNumber` and `planId` are values you sent; the
+  callback returns `amount` / `currency`. Only campaign attribution needs any thought.
+- **Fire `purchase` on your own success page.** Same origin, so the `_ga` cookie and the
+  session's campaign are intact and GA4 attributes it correctly — you do not set the source
+  yourself, and **no cross-domain linker is needed**, precisely because the payment page runs no
+  tag. Put your own order id on that URL when you create the session and look the order up by it
+  here — Portaly appends parameters of its own, but which ones appear varies by payment path, so
+  treat none of them as a contract. Take the amount, `sessionId` and everything else from your
+  own record. For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId` read from that
+  record.
+- **It is the accurate path, not the complete one.** Reaching it requires the buyer to click
+  through from Portaly after paying — it is not an automatic redirect — so anyone who closes the
+  tab never fires it. Pair it with the callback, and never derive entitlement from it (step 4
+  remains the source of truth).
+- **Ask whoever owns the merchant's GA4 property to add `portaly.ai` to "List unwanted
+  referrals"** (Admin → Data collection and modification → Data streams → Web → Configure tag settings → Show all). Often that is
+  a marketing owner, not you — raise it early, because without it a restarted session is
+  attributed to `portaly.ai / referral` and the campaign is lost.
+- **The session usually survives the round trip.** GA4 times out only after
+  [30 minutes of inactivity](https://support.google.com/analytics/answer/9191807), and — unlike
+  Universal Analytics —
+  ["a new campaign does not begin a new session"](https://support.google.com/analytics/answer/9964640).
+  It still breaks on a stalled 3DS/OTP, or when the buyer switches device mid-checkout (a
+  different browser is a different `client_id`; nothing recovers that). Treat stitching as
+  best-effort.
+- **Fire server-side from the callback** for buyers who never return to the success page, and
+  for renewals and refunds, which no browser tag can see. The callback's `customerEmail` gives
+  Meta's Conversions API a match key with no extra plumbing — but **hash it**: the `em` field
+  takes a SHA-256 of the trimmed, lowercased address, never the plaintext.
+- **Keep the two kinds of id apart.** Your own idempotency is step 4's composite key, unchanged.
+  Meta's `event_id` is a different mechanism — it deduplicates a server event against the
+  *browser* event for the same purchase, which exists only for the initial checkout, so use
+  `sessionId` there to match the pixel's `eventID`. It is not a substitute for your own
+  bookkeeping — keep the receiver idempotent as in step 4. **Give each charge its own `event_id`**
+  (`paymentId` on `payment.succeeded`): Meta asks for a unique id per event instance, and
+  `subscriptionId === sessionId` means reusing `sessionId` would hand every renewal the same
+  value.
+- **Key renewals on a per-attempt timestamp.** `payment.failed` carries no `paymentId`, and
+  `paymentReference` is an empty string on effectively every 91APP failure — either choice
+  collapses every failed renewal across every subscriber onto one key and dunning silently stops.
+  Use step 4's per-event key built on the payload's own `chargedAt` / `failedAt`. For GA4,
+  `merchantOrderNumber`
+  *is* present on renewals but frozen at checkout, so as a `transaction_id` it makes GA4 dedup
+  every renewal after the first — build a per-charge id from `chargedAt` / `failedAt`, and never
+  send an empty `transaction_id`, which collapses every purchase into one.
+- **GA4's Measurement Protocol** only joins an existing session if the hit carries that
+  session's identifiers and arrives inside Google's ingestion window — both are Google's
+  contract and the window differs by use case, so check their current docs rather than
+  hardcoding a number. A miss still returns 2xx (MP never reports errors) and lands silently as
+  `(not set) / (not set)`. Renewals cannot join a session at all, so send those as standalone
+  `purchase` events and expect direct attribution; that is correct, not a bug.
+- **Keep ad identifiers in your own store, not in `metadata`.** Capture `utm_*` / `gclid` /
+  `fbclid` on first landing; read GA4's `client_id` / `session_id` via
+  `gtag('get', '<measurement id>', …)` rather than parsing the `_ga_*` cookie — Google does not
+  document that format and changed it in 2025, so a hand-written regex fails silently. Save them
+  against your order record keyed by the **`sessionId`** from the create-session response: it is
+  on `checkout.completed` *and* `checkout.failed`, and arrives as `subscriptionId` /
+  `checkoutSessionId` on later events. Do not key on `merchantOrderNumber` — it is optional and
+  absent from `checkout.failed`.
+  ⚠️ **Do not route them through `metadata`.** The Python and Go adapters cannot reproduce v1's
+  `localeCompare` ordering for arbitrary keys, so they accept only keys committed in the golden
+  vectors and raise on anything else. `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`,
+  `gclid` and `fbclid` are all absent from that list, and lowercase ASCII does not help — one of
+  them in `metadata` makes your receiver 401 **that subscription's callbacks**, and because
+  `metadata` is replayed on every renewal and refund, reconciliation stops for the life of the
+  subscription rather than just at checkout. The list is wider than the callback schema, though:
+  `campaign`, `source`, `cart_id`, `productId`, `productName` and `code` are on it, so a coarse
+  `metadata: { campaign, source }` is safe. Check `scripts/sign_callback.py`
+  (`_SUPPORTED_KEY_ORDER`) before assuming any other key is, and keep values as strings — the
+  whitelist covers keys, not values, and a float is rejected even under an accepted key.
+- Recommend both layers — GA4's session stitching for reporting, your own captured source for
+  revenue attribution you can audit.
 
 ## Guardrails
 
