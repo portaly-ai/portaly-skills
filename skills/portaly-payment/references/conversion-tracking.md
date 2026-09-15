@@ -114,8 +114,8 @@ URL is buyer-editable.
 For Meta, the standard `fbq('track', 'Purchase', …)` on the same page, with `eventID` set to
 the Portaly `sessionId`, so it deduplicates against the server-side checkout event below. Read
 that `sessionId` from the merchant's **own order record** (it is persisted at checkout), not from
-the query string — the TapPay path appends nothing at all, so a query-string read yields
-`undefined` there while appearing to work on the 91APP return.
+the query string. What lands there is not dependable: `paymentProvider` is hardcoded to `91app`
+even on a TapPay return, and the bare same-page path appends nothing at all.
 
 ### The success page does not always get reached
 
@@ -126,8 +126,15 @@ On the subscription checkout this is weaker than it looks, and the two payment p
   tab there never reaches the success page. That return URL does carry `sessionId`,
   `paymentProvider` and `paymentStatus` appended by Portaly, plus the query parameters 91APP
   sent back.
-- **TapPay (test, and same-page completion)** shows a success card linking to the merchant's
-  unmodified `successRedirectUrl` — also a click, and with nothing appended.
+- **TapPay** requests 3D Secure on every charge, so the buyer is sent out and returns through
+  that *same* Portaly redirect page — the merchant URL therefore carries the same appended
+  parameters. Note `paymentProvider` is hardcoded to `91app` there, so it misreports a TapPay
+  charge; do not branch on it. Only the fallback where TapPay returns no 3DS URL completes on
+  the checkout page itself, showing a success card that links to the merchant's **unmodified**
+  `successRedirectUrl`.
+
+Either way it is a click, and either way the appended values are not a dependable contract —
+read what you need from your own order record.
 
 So treat the success page as the accurate-attribution path, not the complete one, and always
 pair it with the callback below. Never derive entitlement or payment state from it: the signed
@@ -192,11 +199,15 @@ browser event exists only for the initial checkout, so use `sessionId` there, ma
 `eventID` on the pixel. Do not lean on it for your own bookkeeping — keep the receiver
 idempotent as above.
 
-⚠️ **Give each renewal charge its own `event_id`.** This contract holds
-`subscriptionId === checkoutSessionId === sessionId`, so reusing `sessionId` hands every charge on
-a subscription the same value. Monthly renewals sit far outside Meta's 48-hour window so they
-would survive, but a **dunning retry lands about a day later — inside it** — and would be silently
-discarded. `paymentId` on `payment.succeeded` is the natural per-charge id.
+⚠️ **Give each renewal charge its own `event_id`.** Meta's own guidance is to add a unique
+`event_id` to each event *instance*: two purchases sent under one id are reported as one. This
+contract holds `subscriptionId === checkoutSessionId === sessionId`, so reusing `sessionId` hands
+every charge on a subscription the same value. `paymentId` on `payment.succeeded` is the natural
+per-charge id.
+
+Do not reason from the 48-hour number here. It is documented for browser-versus-server
+deduplication; Meta also collapses redundant *server* events but publishes no window for that, so
+"the renewals are a month apart, they will survive" is an assumption, not a guarantee.
 
 ⚠️ **Do not use `merchantOrderNumber` as the GA4 `transaction_id` on renewals.** The field *is*
 present on renewal payloads — that is the trap. It is the value frozen at checkout, so every
