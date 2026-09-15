@@ -888,7 +888,7 @@ Refund terminal payload fields shared by both events: `event`, the subscription 
 }
 ```
 
-`creator_subscription.canceled` and the refund outcome are emitted by independent backend processes, so either can arrive first or fail independently. Sort by `canceledAt` / `refundedAt`, deduplicate them separately on `subscriptionId` / `orderId`, and never treat one as proof of the other. The older orders webhook can also send a legacy `refund` event with a different payload and signature; it is a separate product with separate deduplication.
+`creator_subscription.canceled` and the refund outcome are emitted by independent backend processes, so either can arrive first or fail independently. Sort by `canceledAt` / `refundedAt` and never treat one as proof of the other. Refunds deduplicate on `orderId`; `canceled` is terminal and emitted at most once per subscription, so keep the cancellation state assignment idempotent rather than holding a permanent `subscriptionId` dedup key for lifecycle events generally. The older orders webhook can also send a legacy `refund` event with a different payload and signature; it is a separate product with separate deduplication.
 
 Verification rule:
 

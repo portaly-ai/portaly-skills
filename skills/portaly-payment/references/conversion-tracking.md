@@ -97,7 +97,7 @@ treating it as the whole solution.
 // merchant.example/success?order=order_001
 // Put your own order id on the URL when you create the session. Portaly does append
 // sessionId / paymentProvider / paymentStatus on the 91APP return path, but not on
-// every path (see below), so do not depend on them being there.
+// every path, so do not depend on them being there.
 gtag('event', 'purchase', {
   transaction_id: orderNumber, // your merchantOrderNumber -- required, and never ''
   value: amount,
@@ -116,19 +116,16 @@ the Portaly `sessionId`, so it deduplicates against the server-side checkout eve
 
 ### Two rules for this page
 
-**Read every value from the merchant's own order record, never from the query string.** Portaly
-does put parameters on the return URL, but what appears there varies by payment path and is not
-a contract you can rely on. `sessionId` is returned when the session is created — persist it
-then, and look the order up by it here.
+**Look the order up by an id the merchant put on the URL itself, and take every other value from
+that record.** Portaly does append parameters of its own to the return URL, but which ones appear
+varies by payment path, so none of them is a contract — including `sessionId`. Put your own order
+id on `successRedirectUrl` when you create the session (the snippet above does), read that back
+here, and get `sessionId`, the amount and everything else from the record it identifies.
 
 **Treat this page as the accurate path, not the complete one.** Reaching it requires the buyer to
 click through from Portaly after paying; it is not an automatic redirect, so anyone who closes
 the tab never fires the event. Always pair it with the callback below, and never derive
 entitlement or payment state from it — the signed callback is the source of truth.
-
-So treat the success page as the accurate-attribution path, not the complete one, and always
-pair it with the callback below. Never derive entitlement or payment state from it: the signed
-callback is the source of truth.
 
 ## Backstop: Fire From The Signed Callback
 
@@ -140,7 +137,8 @@ Send server-side on `creator_subscription.checkout.completed`, and on
 
 - **Meta Conversions API** — the callback carries `customerEmail`, so no extra plumbing is
   needed to get a match key. **Hash it first:** Meta's `em` field takes a SHA-256 of the
-  trimmed, lowercased address — never send the plaintext email. This is the higher-value half
+  trimmed, lowercased address — never send the plaintext email
+  ([customer information parameters](https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/customer-information-parameters)). This is the higher-value half
   of the work, because renewals and refunds are invisible to the pixel.
 - **GA4 Measurement Protocol** — an MP hit only joins the buyer's existing session if it carries
   that session's identifiers and arrives inside Google's ingestion window. Both are Google's
@@ -195,9 +193,11 @@ renewal on a subscription the same value. Use `paymentId` on `payment.succeeded`
 
 ⚠️ **Do not use `merchantOrderNumber` as the GA4 `transaction_id` on renewals.** The field *is*
 present on renewal payloads — that is the trap. It is the value frozen at checkout, so every
-renewal repeats it, and GA4 deduplicates `purchase` events by `transaction_id`: month two onward
-would be discarded. Build a per-charge id instead. For the same reason **never send an empty
-`transaction_id`** — Google deduplicates every purchase sharing `transaction_id=""` into one.
+renewal repeats it, and "Google Analytics deduplicates purchase events with the same transaction
+ID" ([GA4: minimize duplicate key events](https://support.google.com/analytics/answer/12313109)),
+so month two onward would be discarded. Build a per-charge id instead. For the same reason **never send an empty
+`transaction_id`** — Google's own warning is that it "will deduplicate all purchase events that
+have `transaction_id=""`" (same page).
 Refund payloads additionally carry `orderMerchantOrderNumber` for the order, alongside the
 subscription-level `merchantOrderNumber`; the two can differ.
 
