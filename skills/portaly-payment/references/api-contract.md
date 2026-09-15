@@ -970,6 +970,23 @@ app.post("/api/portaly/callback", async (req, res) => {
 });
 ```
 
+### Events the Python / Go adapters cannot verify
+
+These payloads carry fields that are not on the committed signing key list, so
+those two adapters reject them outright. The bundled vectors do not cover these
+events, so `check_callback_vectors.mjs` still passes — see
+`callback-signature-v1.md`.
+
+| Event | Fields not on the list |
+|---|---|
+| `creator_subscription.checkout.failed` | `planName` |
+| `creator_subscription.payment.refunded` | `orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, `subscriptionCanceledByRefund`, `refundReference` |
+| `creator_subscription.payment.refund_failed` | the same minus `refundReference`, plus `refundFailedAt`, `refundFailureReason`, `refundFailureRetryable` |
+
+Every other event in this table verifies on all four adapters. An integration
+that must handle failed charges or refunds — and it should — needs a Node or
+WebCrypto receiver.
+
 ## Subscription List
 
 Use this when the human user needs to list all subscriptions for a profile, with optional filtering and pagination.

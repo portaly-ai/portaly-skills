@@ -24,8 +24,8 @@ default to Node merely because the normative implementation is JavaScript.
 |---|---|---|
 | Node.js server | `scripts/sign_callback.mjs` | `node scripts/check_callback_vectors.mjs --runtime node` |
 | Server-side WebCrypto / edge | `scripts/sign_callback.webcrypto.mjs` | `node scripts/check_callback_vectors.mjs --runtime webcrypto` |
-| Python | `scripts/sign_callback.py` | `node scripts/check_callback_vectors.mjs --runtime python` |
-| Go | `scripts/verify_callback.go` | `node scripts/check_callback_vectors.mjs --runtime go` |
+| Python | `scripts/sign_callback.py` ⚠️ see the key-list note below | `node scripts/check_callback_vectors.mjs --runtime python` (not sufficient on its own — see below) |
+| Go | `scripts/verify_callback.go` ⚠️ see the key-list note below | `node scripts/check_callback_vectors.mjs --runtime go` (not sufficient on its own — see below) |
 | JVM, .NET, PHP, Ruby, Rust, or another runtime | Implement against `callback-signature-v1-vectors.json`, or use a server-side Node bridge | Do not ship until exact signatures and negative cases pass |
 
 The Python and Go adapters deliberately fail closed when v1 cannot be
@@ -41,24 +41,23 @@ and `supportedKeyOrder` in `scripts/verify_callback.go` (identical in both). It
 is not the same set as the callback schema, and it differs in **both**
 directions — check the constant rather than reasoning from the schema.
 
-⚠️ **The Python and Go adapters cannot verify `checkout.failed` or either refund
-event.** Those payloads carry fields that are not on the committed list —
-`planName` on `creator_subscription.checkout.failed`, and
-`orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`,
-`refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`,
-`subscriptionCanceledByRefund`, `refundReference`, `refundFailedAt`,
-`refundFailureReason` and `refundFailureRetryable` on
-`creator_subscription.payment.refunded` / `.refund_failed` (the digital-product
-`checkout.failed` likewise carries `paymentProvider`). Every one of them raises
-`UnsupportedV1Payload`.
+⚠️ **Some production events carry fields that are not on that list, and those
+events cannot be verified on Python or Go at all.** It is not only about custom
+`metadata`: several real payloads include fields the committed list has never
+seen, and each one is rejected outright (`UnsupportedV1Payload` in Python, an
+equivalent error in Go).
 
-**The bundled conformance run will not catch this**, because the golden vectors
-do not cover those events: `check_callback_vectors.mjs --runtime python|go`
-passes, `checkout.completed` and the lifecycle events verify in production, and
-the receiver then starts 401-ing the first failed first charge and the first
-refund — stopping dunning and refund reconciliation. Both skills tell merchants
-to handle exactly those events. **If the integration must handle `checkout.failed`
-or refunds — and it should — verify on Node or WebCrypto.**
+**The bundled conformance run does not catch this.** The golden vectors cover
+only `checkout.completed`, one lifecycle shape and synthetic fixtures, so
+`check_callback_vectors.mjs --runtime python|go` passes, those events verify in
+production too, and the receiver then starts 401-ing the *other* events the
+first time they fire — which for a payment integration is typically a failed
+charge or a refund, so reconciliation stops silently.
+
+**Before choosing Python or Go, check which events this skill lists as blocked**
+— see the Signed Callback section of this skill's `api-contract.md`. If any of
+them matters to the integration, verify on Node or WebCrypto instead; those two
+adapters have no key list and are unaffected.
 
 In the other direction the list is wider than the callback schema for custom
 `metadata`: `campaign`, `source`, `cart_id`, `productId`, `productName` and

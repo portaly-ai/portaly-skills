@@ -217,7 +217,24 @@ Payload example (`creator_subscription.checkout.completed`):
 
 Refund terminal payloads share: `event`, the subscription lifecycle base fields, `orderId`, `paymentId`, `paymentReference`, `orderMerchantOrderNumber`, `amount`, `currency`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, and `subscriptionCanceledByRefund`. Success adds `refundedAt` and `refundReference`; failure adds `refundFailedAt`, `refundFailureReason`, and nullable `refundFailureRetryable`. A separate `creator_subscription.canceled` event has no ordering guarantee; refund events deduplicate on `orderId`, while `canceled` has no delivery identifier — make the cancellation state assignment idempotent rather than permanently deduplicating it on `subscriptionId`.
 
-All events are signed and delivered the same way. Use `scripts/sign_callback.mjs` (Node/TypeScript), `scripts/sign_callback.py` (reference/other stacks), or `scripts/sign_callback.webcrypto.mjs` (edge / WebCrypto runtimes — Cloudflare/Vercel Edge, Deno, InsForge edge functions, no `node:crypto`). Do not hand-roll the key ordering: `stableJson` sorts with `localeCompare`; a naive `.sort()` is UTF-16 order and silently rejects real callbacks. Note the Python and Go adapters cannot reproduce v1's `localeCompare` ordering for arbitrary keys, so they accept only keys whose ordering is committed in the golden vectors (`_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`, `supportedKeyOrder` in `scripts/verify_callback.go`) and **fail closed on anything else** — lowercase ASCII does not make a key safe. That list is wider than the callback schema: `campaign`, `source`, `cart_id`, `productId`, `productName` and `code` are on it and pass fine. Ad identifiers are not — `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid` are all absent, and one of them in `metadata` makes such a receiver reject the whole callback. Keep ad identifiers in your own store keyed by `sessionId` (`merchantOrderNumber` is optional and absent from `checkout.failed`); check the constant before sending any other custom key, or send it only to a Node or WebCrypto receiver. ⚠️ Separately, those two adapters cannot verify `checkout.failed` or either refund event at all — those payloads carry fields that are not on the list, and the bundled vectors do not cover them, so the conformance run passes and production breaks later. See `callback-signature-v1.md`.
+All events are signed and delivered the same way. Use `scripts/sign_callback.mjs` (Node/TypeScript), `scripts/sign_callback.py` (reference/other stacks), or `scripts/sign_callback.webcrypto.mjs` (edge / WebCrypto runtimes — Cloudflare/Vercel Edge, Deno, InsForge edge functions, no `node:crypto`). Do not hand-roll the key ordering: `stableJson` sorts with `localeCompare`; a naive `.sort()` is UTF-16 order and silently rejects real callbacks. Note the Python and Go adapters cannot reproduce v1's `localeCompare` ordering for arbitrary keys, so they accept only keys whose ordering is committed in the golden vectors (`_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`, `supportedKeyOrder` in `scripts/verify_callback.go`) and **fail closed on anything else** — lowercase ASCII does not make a key safe. That list is wider than the callback schema: `campaign`, `source`, `cart_id`, `productId`, `productName` and `code` are on it and pass fine. Ad identifiers are not — `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid` are all absent, and one of them in `metadata` makes such a receiver reject the whole callback. Keep ad identifiers in your own store keyed by `sessionId` (`merchantOrderNumber` is optional and absent from `checkout.failed`); check the constant before sending any other custom key, or send it only to a Node or WebCrypto receiver. ⚠️ Separately, those two adapters cannot verify some events at all — see the blocked-event table below.
+
+### Events the Python / Go adapters cannot verify
+
+These payloads carry fields that are not on the committed signing key list, so
+those two adapters reject them outright. The bundled vectors do not cover these
+events, so `check_callback_vectors.mjs` still passes — see
+`callback-signature-v1.md`.
+
+| Event | Fields not on the list |
+|---|---|
+| `creator_subscription.checkout.failed` | `planName` |
+| `creator_subscription.payment.refunded` | `orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, `subscriptionCanceledByRefund`, `refundReference` |
+| `creator_subscription.payment.refund_failed` | the same minus `refundReference`, plus `refundFailedAt`, `refundFailureReason`, `refundFailureRetryable` |
+
+Every other event in this table verifies on all four adapters. An integration
+that must handle failed charges or refunds — and it should — needs a Node or
+WebCrypto receiver.
 
 ## Subscription Query And Lifecycle (Optional)
 
