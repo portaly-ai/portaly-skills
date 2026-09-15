@@ -108,9 +108,6 @@ gtag('event', 'purchase', {
 
 GA4 attaches the session's campaign automatically — do not try to set the source by hand.
 
-Read `amount` from your own record of the order, never from the query string: anything on the
-URL is buyer-editable.
-
 For Meta, the standard `fbq('track', 'Purchase', …)` on the same page, with `eventID` set to
 the Portaly `sessionId`, so it deduplicates against the server-side checkout event below.
 
@@ -119,8 +116,9 @@ the Portaly `sessionId`, so it deduplicates against the server-side checkout eve
 **Look the order up by an id the merchant put on the URL itself, and take every other value from
 that record.** Portaly does append parameters of its own to the return URL, but which ones appear
 varies by payment path, so none of them is a contract — including `sessionId`. Put your own order
-id on `successRedirectUrl` when you create the session (the snippet above does), read that back
-here, and get `sessionId`, the amount and everything else from the record it identifies.
+id on `successRedirectUrl` when you create the session, read that back here, and get `sessionId`,
+the amount and everything else from the record it identifies. Never read the amount off the URL
+in any case — it is buyer-editable.
 
 **Treat this page as the accurate path, not the complete one.** Reaching it requires the buyer to
 click through from Portaly after paying; it is not an automatic redirect, so anyone who closes
