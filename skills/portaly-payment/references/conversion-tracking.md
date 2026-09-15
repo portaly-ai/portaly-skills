@@ -99,7 +99,7 @@ treating it as the whole solution.
 // sessionId / paymentProvider / paymentStatus on the 91APP return path, but not on
 // every path (see below), so do not depend on them being there.
 gtag('event', 'purchase', {
-  transaction_id: orderNumber, // your merchantOrderNumber
+  transaction_id: orderNumber, // your merchantOrderNumber -- required, and never ''
   value: amount,
   currency: 'TWD',
   items: [{ item_id: planId, item_name: planName, price: amount, quantity: 1 }],
@@ -114,8 +114,8 @@ URL is buyer-editable.
 For Meta, the standard `fbq('track', 'Purchase', …)` on the same page, with `eventID` set to
 the Portaly `sessionId`, so it deduplicates against the server-side checkout event below. Read
 that `sessionId` from the merchant's **own order record** (it is persisted at checkout), not from
-the query string — the TapPay path appends nothing, **including live same-page completion**, so a
-query-string read yields `undefined` there while appearing to work on the live 91APP return.
+the query string — the TapPay path appends nothing at all, so a query-string read yields
+`undefined` there while appearing to work on the 91APP return.
 
 ### The success page does not always get reached
 
@@ -150,7 +150,10 @@ Send server-side on `creator_subscription.checkout.completed`, and on
   contract, not Portaly's, and the window differs by use case — **read Google's current
   Measurement Protocol docs rather than hardcoding a number from memory.** A hit that misses
   still returns 2xx (MP never reports errors), so the failure is silent: it simply lands as
-  `(not set) / (not set)`.
+  `(not set) / (not set)`. Validate payloads against
+  `https://www.google-analytics.com/debug/mp/collect`, which returns structured
+  `validationMessages` — but note it does **not** check `api_secret` or `measurement_id`, so a
+  green result there is not proof the hit landed.
   **Renewals cannot join a session at all** — a charge a month later is outside any ingestion
   window and there is no session to rejoin. Send those as standalone `purchase` events and
   expect direct attribution. That is correct, not a bug: recurring revenue has no new campaign
@@ -160,7 +163,9 @@ Send server-side on `creator_subscription.checkout.completed`, and on
 
 Two different mechanisms, and conflating them silently drops data.
 
-**Your own idempotency** is `event` **plus** a value that is unique *per delivery*:
+**Your own idempotency** is `event` **plus** a value that is unique per *occurrence* and stays
+byte-identical when the same event is redelivered (a retry replays the stored payload and only
+re-signs the transport headers, so never build the key from `x-portaly-timestamp`):
 
 | Event | Key |
 |---|---|
@@ -173,9 +178,9 @@ The `event` prefix is not optional — `checkout.completed` and `checkout.failed
 `sessionId`, and `payment.refunded` and `.refund_failed` share an `orderId`, so dropping it makes
 each pair cancel the other out.
 
-⚠️ **Do not key renewals on `paymentId` or `paymentReference`.** `payment.failed` carries no
-`paymentId` at all, and `paymentReference` is an **empty string** on effectively every 91APP
-failure — the provider payload is absent on the failure paths, and the serializer falls back to
+⚠️ **Do not key renewals on `paymentId` or `paymentReference`.** `payment.succeeded` does carry
+a usable `paymentId`, but `payment.failed` carries none at all, and `paymentReference` is an
+**empty string** on effectively every 91APP failure — the provider payload is absent on the failure paths, and the serializer falls back to
 `''`. Either choice collapses every failed renewal, across every subscriber, onto a single key,
 so only the first is ever processed and dunning silently stops. `chargedAt` / `failedAt` are
 per-attempt timestamps and do not have this problem. Do **not** substitute `failureCount`: it
@@ -187,10 +192,11 @@ browser event exists only for the initial checkout, so use `sessionId` there, ma
 `eventID` on the pixel. Do not lean on it for your own bookkeeping — keep the receiver
 idempotent as above.
 
-⚠️ **Do not reuse `sessionId` as the `event_id` for renewals.** This contract holds
-`subscriptionId === checkoutSessionId === sessionId`, so every renewal on a subscription carries
-the *same* value — Meta would treat month two onward as duplicates and discard them, and renewals
-are exactly the revenue this section exists to capture.
+⚠️ **Give each renewal charge its own `event_id`.** This contract holds
+`subscriptionId === checkoutSessionId === sessionId`, so reusing `sessionId` hands every charge on
+a subscription the same value. Monthly renewals sit far outside Meta's 48-hour window so they
+would survive, but a **dunning retry lands about a day later — inside it** — and would be silently
+discarded. `paymentId` on `payment.succeeded` is the natural per-charge id.
 
 ⚠️ **Do not use `merchantOrderNumber` as the GA4 `transaction_id` on renewals.** The field *is*
 present on renewal payloads — that is the trap. It is the value frozen at checkout, so every

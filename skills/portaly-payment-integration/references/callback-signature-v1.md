@@ -79,8 +79,10 @@ runtime. A future raw-byte/versioned contract is a separate production change.
 Use these event identities where the payload contract provides them:
 
 - checkout completion: `event + sessionId`;
-- subscription payment success/failure: `event + paymentId`, falling back to
-  `paymentReference` when that is the documented payment identity;
+- subscription payment success: `event + subscriptionId + chargedAt`;
+- subscription payment failure: `event + subscriptionId + failedAt` — `payment.failed`
+  carries no `paymentId`, and `paymentReference` is an empty string on effectively
+  every 91APP failure, so either would collapse all failed renewals onto one key;
 - digital product refund: `event + orderId`.
 
 Do not permanently deduplicate every subscription lifecycle event by

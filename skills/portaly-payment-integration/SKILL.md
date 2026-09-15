@@ -94,7 +94,7 @@ Content-Type: application/json
 
 - Verify `x-portaly-signature` (HMAC-SHA256, secret = `callbackSecret`) over `{x-portaly-timestamp}.{stable_json(payload)}`.
 - Reject callbacks whose `x-portaly-timestamp` (an ISO datetime, not Unix seconds) is more than 5 minutes from now **in either direction** — too old is a stale/replayed delivery; too far in the future a forged or badly-skewed one. The symmetric ±5-minute window tolerates ordinary NTP drift; do **not** tighten the future side to "reject any future timestamp", which 401s legitimate callbacks (see `references/callback-signature-v1.md` → Safe handler order).
-- Dedup on an **event-specific** key, not `sessionId` alone. `subscriptionId === checkoutSessionId === sessionId` is the same value for every event on a subscription, so keying on it treats `payment.succeeded`, `cancel_requested`, and `canceled` as "already processed" and silently drops them. Build the key from the event type plus the subscription plus the event's own timestamp/id — e.g. `` `${x-portaly-event}:${subscriptionId}:${x-portaly-timestamp}` `` (or a per-delivery id if the payload carries one). Skip only when that composite key has already been processed.
+- Dedup on an **event-specific** key, not `sessionId` alone. `subscriptionId === checkoutSessionId === sessionId` is the same value for every event on a subscription, so keying on it treats `payment.succeeded`, `cancel_requested`, and `canceled` as "already processed" and silently drops them. Build the key from the event type plus the subscription plus a timestamp **from inside the payload** — `` `${x-portaly-event}:${subscriptionId}:${chargedAt ?? failedAt ?? canceledAt}` ``. Do **not** use `x-portaly-timestamp`: a redelivery replays the stored payload but re-signs the transport headers, so that value changes and the same charge is processed twice. Skip only when the composite key has already been processed.
 - Pick the adapter that matches the repo's runtime — `scripts/sign_callback.mjs` (Node/TS), `scripts/sign_callback.webcrypto.mjs` (edge/WebCrypto runtimes without `node:crypto`), or `scripts/sign_callback.py` (Python). Don't translate the signer from memory: the key ordering is `localeCompare`, and a naive code-point/`.sort()` silently 401s real callbacks. For an unlisted runtime, use a documented server-side bridge or keep the receiver blocked until a native implementation passes the vectors — see `references/callback-signature-v1.md`.
 - Before shipping the receiver, run `scripts/check_callback_vectors.mjs --runtime <node|webcrypto|python|go>` against the committed production-derived vectors (`references/callback-signature-v1-vectors.json`). Passing self-signed fixtures is not enough — sender and receiver can share the same ordering bug.
 - **Handle `creator_subscription.checkout.failed`, not just `.completed`.** A declined first charge emits its own callback carrying `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. It has **no `subscriptionId`** (none was created), so dedup it on `sessionId`. `test`-mode sessions emit it too — check `mode` before acting. If your endpoint was down, re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`; the subscription-keyed retry route cannot reach a failed first charge.
@@ -149,8 +149,8 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   `sessionId` / `paymentProvider` / `paymentStatus` on the 91APP return but not on every path,
   so do not depend on them. Read the amount from your own record, never from the query string.
   For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId` — read that `sessionId`
-  from your own order record, not the query string (the TapPay path appends nothing, including
-  live same-page completion, so a query-string read is `undefined` there).
+  from your own order record, not the query string (the TapPay path appends nothing at all, so a
+  query-string read is `undefined` there).
 - **It is the accurate path, not the complete one.** After a live 91APP payment the buyer lands
   on a Portaly page and has to **click** through to your success URL — it is not an automatic
   redirect — so anyone who closes the tab never fires it. Pair it with the callback, and never
@@ -173,14 +173,16 @@ refunds and failed charges never happen in a browser at all. Everything below ru
 - **Keep the two kinds of id apart.** Your own idempotency is step 4's composite key, unchanged.
   Meta's `event_id` is a different mechanism — it deduplicates a server event against the
   *browser* event for the same purchase, which exists only for the initial checkout, so use
-  `sessionId` there to match the pixel's `eventID`. It says nothing about two server deliveries,
-  so your receiver still needs its own idempotency. **Never reuse `sessionId` as the `event_id`
-  for a renewal:** `subscriptionId === sessionId`, so every renewal carries the same value and
-  Meta would discard the second month onward.
+  `sessionId` there to match the pixel's `eventID`. Do not lean on it for your own bookkeeping —
+  keep the receiver idempotent as in step 4. **Give each renewal charge its own `event_id`**
+  (`paymentId` on `payment.succeeded`): `subscriptionId === sessionId`, so reusing `sessionId`
+  hands every charge the same value, and a dunning retry lands about a day later — inside Meta's
+  48-hour dedup window — where it would be silently discarded.
 - **Key renewals on a per-attempt timestamp.** `payment.failed` carries no `paymentId`, and
   `paymentReference` is an empty string on effectively every 91APP failure — either choice
   collapses every failed renewal across every subscriber onto one key and dunning silently stops.
-  Step 4's composite key already does the right thing; keep it. For GA4, `merchantOrderNumber`
+  Use step 4's composite key built on the payload's own `chargedAt` / `failedAt`. For GA4,
+  `merchantOrderNumber`
   *is* present on renewals but frozen at checkout, so as a `transaction_id` it makes GA4 dedup
   every renewal after the first — build a per-charge id from `chargedAt` / `failedAt`, and never
   send an empty `transaction_id`, which collapses every purchase into one.
@@ -200,7 +202,7 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   absent from `checkout.failed`.
   ⚠️ **Do not route them through `metadata`.** The Python and Go adapters cannot reproduce v1's
   `localeCompare` ordering for arbitrary keys, so they accept only keys committed in the golden
-  vectors and raise on anything else. `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`,
+  vectors and raise on anything else. `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`,
   `gclid` and `fbclid` are all absent from that list, and lowercase ASCII does not help — one of
   them in `metadata` makes your receiver 401 **that subscription's callbacks**, and because
   `metadata` is replayed on every renewal and refund, reconciliation stops for the life of the

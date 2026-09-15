@@ -900,7 +900,7 @@ Callback notes:
 
 - current implementation contract: `subscriptionId === sessionId`
 - if the callback payload consumed by the merchant side does not explicitly expose `subscriptionId`, the merchant may safely persist `sessionId` as the recurring subscription identifier
-- use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success/failure uses `event + paymentId` or the documented `paymentReference`; refund success/failure uses `event + orderId`
+- use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success uses `event + subscriptionId + chargedAt` and renewal failure `event + subscriptionId + failedAt`; refund success/failure uses `event + orderId`. Do **not** key renewals on `paymentId` or `paymentReference`: `payment.failed` carries no `paymentId`, and `paymentReference` is `''` on effectively every 91APP failure, so either collapses all failed renewals onto one key
 - lifecycle callbacks do not currently document a delivery identifier; make status assignments idempotent and do not permanently suppress all later lifecycle transitions with one `sessionId` key
 - the `mode` field indicates whether this callback originated from a live or test checkout; merchants should use it to route test callbacks to sandbox order handling
 
