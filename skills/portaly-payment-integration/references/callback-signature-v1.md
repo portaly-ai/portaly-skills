@@ -55,9 +55,9 @@ first time they fire — which for a payment integration is typically a failed
 charge or a refund, so reconciliation stops silently.
 
 **Before choosing Python or Go, check which events this skill lists as blocked**
-— see the Signed Callback section of this skill's `api-contract.md`. If any of
-them matters to the integration, verify on Node or WebCrypto instead; those two
-adapters have no key list and are unaffected.
+— see "Events the Python / Go adapters cannot verify" in this skill's
+`api-contract.md`. If any of them matters to the integration, verify on Node or
+WebCrypto instead; those two adapters have no key list and are unaffected.
 
 In the other direction the list is wider than the callback schema for custom
 `metadata`: `campaign`, `source`, `cart_id`, `productId`, `productName` and

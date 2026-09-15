@@ -458,7 +458,9 @@ Inspect the repository's language, framework, and runtime before choosing an ada
 | `digital_product.checkout.failed` | `paymentProvider` |
 
 `digital_product.checkout.completed` and `digital_product.order.refunded` verify
-on all four adapters — every field they carry is on the list, refunds included.
+on all four adapters — every field they carry is on the list, refunds included —
+provided any custom `metadata` you send also stays inside it (`userId`, `cartId`
+and the like are **not** on the list).
 So only an integration that handles failed checkouts needs a Node or WebCrypto
 receiver. The bundled vectors do not cover `checkout.failed`, so
 `check_callback_vectors.mjs` passes regardless — see `callback-signature-v1.md`.

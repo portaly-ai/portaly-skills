@@ -232,9 +232,10 @@ events, so `check_callback_vectors.mjs` still passes — see
 | `creator_subscription.payment.refunded` | `orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, `subscriptionCanceledByRefund`, `refundReference` |
 | `creator_subscription.payment.refund_failed` | the same minus `refundReference`, plus `refundFailedAt`, `refundFailureReason`, `refundFailureRetryable` |
 
-Every other event in this table verifies on all four adapters. An integration
-that must handle failed charges or refunds — and it should — needs a Node or
-WebCrypto receiver.
+Every other event in this contract verifies on all four adapters, provided any
+custom `metadata` you send also stays inside the committed key list. An
+integration that must handle failed charges or refunds — and it should — needs a
+Node or WebCrypto receiver.
 
 ## Subscription Query And Lifecycle (Optional)
 
