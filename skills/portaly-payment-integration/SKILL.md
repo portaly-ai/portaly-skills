@@ -149,13 +149,12 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   `sessionId` / `paymentProvider` / `paymentStatus` on the 91APP return but not on every path,
   so do not depend on them. Read the amount from your own record, never from the query string.
   For Meta, `fbq('track','Purchase', …)` with `eventID = sessionId` — read that `sessionId`
-  from your own order record, not the query string — what lands there is not dependable
-  (`paymentProvider` is hardcoded to `91app` even on a TapPay return, and the bare same-page
-  path appends nothing at all).
-- **It is the accurate path, not the complete one.** After a live 91APP payment the buyer lands
-  on a Portaly page and has to **click** through to your success URL — it is not an automatic
-  redirect — so anyone who closes the tab never fires it. Pair it with the callback, and never
-  derive entitlement from it (step 4 remains the source of truth).
+  from your own order record. Portaly does append parameters to the return URL, but what appears
+  there varies by payment path, so treat none of it as a contract.
+- **It is the accurate path, not the complete one.** Reaching it requires the buyer to click
+  through from Portaly after paying — it is not an automatic redirect — so anyone who closes the
+  tab never fires it. Pair it with the callback, and never derive entitlement from it (step 4
+  remains the source of truth).
 - **Ask whoever owns the merchant's GA4 property to add `portaly.ai` to "List unwanted
   referrals"** (Admin → Data collection and modification → Data streams → Web → Configure tag settings → Show all). Often that is
   a marketing owner, not you — raise it early, because without it a restarted session is
@@ -174,12 +173,11 @@ refunds and failed charges never happen in a browser at all. Everything below ru
 - **Keep the two kinds of id apart.** Your own idempotency is step 4's composite key, unchanged.
   Meta's `event_id` is a different mechanism — it deduplicates a server event against the
   *browser* event for the same purchase, which exists only for the initial checkout, so use
-  `sessionId` there to match the pixel's `eventID`. Do not lean on it for your own bookkeeping —
-  keep the receiver idempotent as in step 4. **Give each renewal charge its own `event_id`**
-  (`paymentId` on `payment.succeeded`): `subscriptionId === sessionId`, so reusing `sessionId`
-  hands every charge the same value, and Meta asks for a unique id per event instance. Do not
-  argue from the 48-hour number — it is documented for browser-versus-server dedup only; Meta
-  collapses redundant server events too but publishes no window for that.
+  `sessionId` there to match the pixel's `eventID`. It is not a substitute for your own
+  bookkeeping — keep the receiver idempotent as in step 4. **Give each charge its own `event_id`**
+  (`paymentId` on `payment.succeeded`): Meta asks for a unique id per event instance, and
+  `subscriptionId === sessionId` means reusing `sessionId` would hand every renewal the same
+  value.
 - **Key renewals on a per-attempt timestamp.** `payment.failed` carries no `paymentId`, and
   `paymentReference` is an empty string on effectively every 91APP failure — either choice
   collapses every failed renewal across every subscriber onto one key and dunning silently stops.
