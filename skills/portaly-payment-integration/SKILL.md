@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.8.0
+version: 0.9.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.8.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.9.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -210,6 +210,9 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   `metadata: { campaign, source }` is safe. Check `scripts/sign_callback.py`
   (`_SUPPORTED_KEY_ORDER`) before assuming any other key is, and keep values as strings — the
   whitelist covers keys, not values, and a float is rejected even under an accepted key.
+  ⚠️ Independently of `metadata`, those two adapters cannot verify some events at all — and step 4
+  tells you to handle events that are on that list. Check the blocked-event table in
+  `references/api-contract.md` before choosing Python or Go.
 - Recommend both layers — GA4's session stitching for reporting, your own captured source for
   revenue attribution you can audit.
 

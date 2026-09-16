@@ -739,8 +739,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `x-portaly-timestamp`
   - `x-portaly-signature`
 - Payload fields to persist:
-  - `sessionId`
-  - `subscriptionId` if present
+  - `sessionId` — also serves as the `subscriptionId`; this event does not send one
   - `mode` (`live` or `test`)
   - `merchantOrderNumber`
   - `status`
@@ -752,11 +751,12 @@ Use this when the human user needs to verify Portaly callback requests.
 
 Payload example:
 
+`checkout.completed` **carries no `subscriptionId`** — `sessionId` doubles as it. Persist `sessionId`: it is the identifier the subscriptions GET / cancel / resume endpoints take, and the value later renewal and lifecycle events send back as `subscriptionId`. (`checkout.failed` has none either, for the different reason that no subscription was ever created.)
+
 ```json
 {
   "event": "creator_subscription.checkout.completed",
   "sessionId": "session_123",
-  "subscriptionId": "session_123",
   "profileId": "profile_123",
   "planId": "plan_123",
   "mode": "live",
@@ -899,7 +899,7 @@ Verification rule:
 Callback notes:
 
 - current implementation contract: `subscriptionId === sessionId`
-- if the callback payload consumed by the merchant side does not explicitly expose `subscriptionId`, the merchant may safely persist `sessionId` as the recurring subscription identifier
+- on `checkout.completed` the payload carries no `subscriptionId` and none is needed: persist `sessionId`, which is the identifier the subscriptions GET / cancel / resume endpoints take. **`checkout.failed` is not the same case** — it has no `subscriptionId` because no subscription was ever created, so never derive one from its `sessionId`
 - use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success uses `event + subscriptionId + chargedAt` and renewal failure `event + subscriptionId + failedAt`; refund success/failure uses `event + orderId`. Do **not** key renewals on `paymentId` or `paymentReference`: `payment.failed` carries no `paymentId`, and `paymentReference` is `''` on effectively every 91APP failure, so either collapses all failed renewals onto one key
 - lifecycle callbacks do not currently document a delivery identifier; make status assignments idempotent and do not permanently suppress all later lifecycle transitions with one `sessionId` key
 - the `mode` field indicates whether this callback originated from a live or test checkout; merchants should use it to route test callbacks to sandbox order handling
@@ -947,17 +947,29 @@ app.post("/api/portaly/callback", async (req, res) => {
 
   const {
     sessionId,
-    subscriptionId = sessionId,
+    subscriptionId,
     merchantOrderNumber,
     status,
     paymentReference,
   } = req.body;
 
+  // Never default subscriptionId to sessionId unconditionally. `checkout.completed`
+  // is the one event where they are the same value, and `sessionId` is what the
+  // subscriptions GET / cancel / resume endpoints take. Every other event either
+  // sends `subscriptionId` outright or, like `checkout.failed`, never created a
+  // subscription at all -- deriving one there invents a row for a charge that
+  // never succeeded. Written as an allow-list so a future event that omits
+  // `subscriptionId` fails closed (null) instead of silently reusing `sessionId`.
+  const subscriptionRef =
+    event === "creator_subscription.checkout.completed"
+      ? sessionId
+      : subscriptionId ?? null;
+
   // Apply event-specific idempotency, then reconcile local state. Do not log
   // the callback secret, full signing base, or customer payload.
   const callbackIdentity = {
     sessionId,
-    subscriptionId,
+    subscriptionId: subscriptionRef,
     merchantOrderNumber,
     status,
     paymentReference,
@@ -969,6 +981,24 @@ app.post("/api/portaly/callback", async (req, res) => {
   return res.status(200).json({ ok: true });
 });
 ```
+
+### Events the Python / Go adapters cannot verify
+
+These payloads carry fields that are not on the committed signing key list, so
+those two adapters reject them outright. The bundled vectors do not cover these
+events, so `check_callback_vectors.mjs` still passes — see
+`callback-signature-v1.md`.
+
+| Event | Fields not on the list |
+|---|---|
+| `creator_subscription.checkout.failed` | `planName` |
+| `creator_subscription.payment.refunded` | `orderMerchantOrderNumber`, `refundedAmount`, `refundRequestedAt`, `refundRequestedBy`, `refundReason`, `refundReasonNote`, `refundProvider`, `subscriptionCanceledByRefund`, `refundReference` |
+| `creator_subscription.payment.refund_failed` | the same minus `refundReference`, plus `refundFailedAt`, `refundFailureReason`, `refundFailureRetryable` |
+
+Every other event in this contract verifies on all four adapters, provided any
+custom `metadata` you send also stays inside the committed key list. An
+integration that must handle failed charges or refunds — and it should — needs a
+Node or WebCrypto receiver.
 
 ## Subscription List
 

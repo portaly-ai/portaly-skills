@@ -24,18 +24,48 @@ default to Node merely because the normative implementation is JavaScript.
 |---|---|---|
 | Node.js server | `scripts/sign_callback.mjs` | `node scripts/check_callback_vectors.mjs --runtime node` |
 | Server-side WebCrypto / edge | `scripts/sign_callback.webcrypto.mjs` | `node scripts/check_callback_vectors.mjs --runtime webcrypto` |
-| Python | `scripts/sign_callback.py` | `node scripts/check_callback_vectors.mjs --runtime python` |
-| Go | `scripts/verify_callback.go` | `node scripts/check_callback_vectors.mjs --runtime go` |
+| Python | `scripts/sign_callback.py` ⚠️ see the key-list note below | `node scripts/check_callback_vectors.mjs --runtime python` (not sufficient on its own — see below) |
+| Go | `scripts/verify_callback.go` ⚠️ see the key-list note below | `node scripts/check_callback_vectors.mjs --runtime go` (not sufficient on its own — see below) |
 | JVM, .NET, PHP, Ruby, Rust, or another runtime | Implement against `callback-signature-v1-vectors.json`, or use a server-side Node bridge | Do not ship until exact signatures and negative cases pass |
 
 The Python and Go adapters deliberately fail closed when v1 cannot be
-reproduced safely: object keys outside the callback schema order committed in
-the golden vectors (including arbitrary metadata keys), floating-point JSON
-numbers, integers outside JavaScript's safe range, or malformed Unicode. Route
-those payloads to the Node/WebCrypto adapter or keep the integration blocked
-until a native adapter extends and passes production-derived vectors. A
-self-sign/self-verify test is not evidence because the same bug can exist on
-both sides of that test.
+reproduced safely: object keys whose `localeCompare` ordering is not committed
+in the golden vectors, floating-point JSON numbers, integers outside
+JavaScript's safe range, or malformed Unicode. Route those payloads to the
+Node/WebCrypto adapter or keep the integration blocked until a native adapter
+extends and passes production-derived vectors. A self-sign/self-verify test is
+not evidence because the same bug can exist on both sides of that test.
+
+The committed key list is `_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`
+and `supportedKeyOrder` in `scripts/verify_callback.go` (identical in both). It
+is not the same set as the callback schema, and it differs in **both**
+directions — check the constant rather than reasoning from the schema.
+
+⚠️ **Some production events carry fields that are not on that list, and those
+events cannot be verified on Python or Go at all.** It is not only about custom
+`metadata`: several real payloads include fields the committed list has never
+seen, and each one is rejected outright (`UnsupportedV1Payload` in Python, an
+equivalent error in Go).
+
+**The bundled conformance run does not catch this.** The golden vectors cover
+only `checkout.completed`, one lifecycle shape and synthetic fixtures, so
+`check_callback_vectors.mjs --runtime python|go` passes, those events verify in
+production too, and the receiver then starts 401-ing the *other* events the
+first time they fire — which for a payment integration is typically a failed
+charge or a refund, so reconciliation stops silently.
+
+**Before choosing Python or Go, check which events this skill lists as blocked**
+— see "Events the Python / Go adapters cannot verify" in this skill's
+`api-contract.md`. If any of them matters to the integration, verify on Node or
+WebCrypto instead; those two adapters have no key list and are unaffected.
+
+In the other direction the list is wider than the callback schema for custom
+`metadata`: `campaign`, `source`, `cart_id`, `productId`, `productName` and
+`code` are on it, so `metadata: { campaign, source }` passes fine, while ad
+identifiers do not — `clientId`, `fbp`, `fbc`, `session_id`, `utm_source`,
+`gclid` and `fbclid` are all absent, and lowercase ASCII does not make a key
+safe. Note the list governs **keys, not values**: a float is rejected even under
+an accepted key, so keep metadata values as strings.
 
 ## Exact v1 contract
 
