@@ -147,6 +147,32 @@ Single-product detailed view — all fields safe for pre-purchase display. Use t
 - `404 PRODUCT_NOT_FOUND` — productId does not exist under this creator
 - `404 PRODUCT_NOT_ACTIVE` — product exists but is `isActive: false` (use `includeInactive=true` if you specifically need to fetch inactive products)
 
+### POST `/api/digital-products/{productId}/status`
+
+Publish a product or take it off sale.
+
+**Requires a full-access key.** A key issued for integration-only use is rejected with `403 KEY_SCOPE_FORBIDDEN` — those keys can create checkouts but cannot change the catalog.
+
+**Request body** (all optional):
+```json
+{ "isActive": false }
+```
+
+- `isActive`: `true` publishes it, `false` takes it off sale. **Omit the field entirely to flip whatever the current state is** — useful for a toggle control, but send the explicit boolean whenever you know the state you want, so a double-submit cannot leave the product in the opposite state from the one the creator asked for.
+
+**Response**: the product in its new state, same shape as `GET /api/digital-products/{productId}`.
+
+**What deactivating does**: new checkout sessions naming that product are refused with `PRODUCT_NOT_ACTIVE`, and it drops out of `GET /api/digital-products` unless you pass `includeInactive=true`. Orders already placed are untouched — buyers keep their deliverables and their order-success pages, and refunds still work.
+
+**Errors** — this endpoint relays the catalog service, so only the first one carries an `error.code`. Branch on the HTTP status here, not on the code.
+- `400 INVALID_REQUEST` — `isActive` was sent as something other than a boolean, or the JSON body is malformed
+- `400` (no code) — the product is not publishable yet, for example it has no deliverable content attached. `message` names the missing requirement
+- `403 KEY_SCOPE_FORBIDDEN` — integration-only key
+- `404` (no code) — productId does not exist under this creator. `GET /api/digital-products/{productId}` answers the same condition with `PRODUCT_NOT_FOUND`; this one does not
+- `429` (no code) — write endpoints are rate limited more tightly than reads; retry after a pause
+
+---
+
 ### POST `/api/digital-products/checkout-sessions`
 
 Create a hosted checkout session for one or more products.
