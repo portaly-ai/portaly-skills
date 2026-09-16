@@ -164,11 +164,12 @@ Publish a product or take it off sale.
 
 **What deactivating does**: new checkout sessions naming that product are refused with `PRODUCT_NOT_ACTIVE`, and it drops out of `GET /api/digital-products` unless you pass `includeInactive=true`. Orders already placed are untouched — buyers keep their deliverables and their order-success pages, and refunds still work.
 
-**Errors**:
-- `400` — `isActive` was sent as something other than a boolean, or the product is not publishable yet (for example it has no deliverable content attached). The message says which.
+**Errors** — this endpoint relays the catalog service, so only the first one carries an `error.code`. Branch on the HTTP status here, not on the code.
+- `400 INVALID_REQUEST` — `isActive` was sent as something other than a boolean, or the JSON body is malformed
+- `400` (no code) — the product is not publishable yet, for example it has no deliverable content attached. `message` names the missing requirement
 - `403 KEY_SCOPE_FORBIDDEN` — integration-only key
-- `404 PRODUCT_NOT_FOUND` — productId does not exist under this creator
-- `429` — write endpoints are rate limited more tightly than reads; retry after a pause
+- `404` (no code) — productId does not exist under this creator. `GET /api/digital-products/{productId}` answers the same condition with `PRODUCT_NOT_FOUND`; this one does not
+- `429` (no code) — write endpoints are rate limited more tightly than reads; retry after a pause
 
 ---
 
