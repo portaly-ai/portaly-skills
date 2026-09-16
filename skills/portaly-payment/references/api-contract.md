@@ -953,12 +953,17 @@ app.post("/api/portaly/callback", async (req, res) => {
     paymentReference,
   } = req.body;
 
-  // Do NOT default subscriptionId to sessionId. On `checkout.completed` the two
-  // are the same value and `sessionId` is what later calls take; on
-  // `checkout.failed` no subscription was ever created, and defaulting here
-  // would invent a subscription row for a charge that never succeeded.
+  // Never default subscriptionId to sessionId unconditionally. `checkout.completed`
+  // is the one event where they are the same value, and `sessionId` is what the
+  // subscriptions GET / cancel / resume endpoints take. Every other event either
+  // sends `subscriptionId` outright or, like `checkout.failed`, never created a
+  // subscription at all -- deriving one there invents a row for a charge that
+  // never succeeded. Written as an allow-list so a future event that omits
+  // `subscriptionId` fails closed (null) instead of silently reusing `sessionId`.
   const subscriptionRef =
-    event === "creator_subscription.checkout.failed" ? null : subscriptionId ?? sessionId;
+    event === "creator_subscription.checkout.completed"
+      ? sessionId
+      : subscriptionId ?? null;
 
   // Apply event-specific idempotency, then reconcile local state. Do not log
   // the callback secret, full signing base, or customer payload.
