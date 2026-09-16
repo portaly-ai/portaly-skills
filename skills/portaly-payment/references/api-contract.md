@@ -899,7 +899,7 @@ Verification rule:
 Callback notes:
 
 - current implementation contract: `subscriptionId === sessionId`
-- if the callback payload consumed by the merchant side does not explicitly expose `subscriptionId`, the merchant may safely persist `sessionId` as the recurring subscription identifier
+- on `checkout.completed` the payload carries no `subscriptionId` and none is needed: persist `sessionId`, which is the identifier the subscriptions GET / cancel / resume endpoints take. **`checkout.failed` is not the same case** — it has no `subscriptionId` because no subscription was ever created, so never derive one from its `sessionId`
 - use event-specific idempotency: checkout completion uses `event + sessionId`; renewal success uses `event + subscriptionId + chargedAt` and renewal failure `event + subscriptionId + failedAt`; refund success/failure uses `event + orderId`. Do **not** key renewals on `paymentId` or `paymentReference`: `payment.failed` carries no `paymentId`, and `paymentReference` is `''` on effectively every 91APP failure, so either collapses all failed renewals onto one key
 - lifecycle callbacks do not currently document a delivery identifier; make status assignments idempotent and do not permanently suppress all later lifecycle transitions with one `sessionId` key
 - the `mode` field indicates whether this callback originated from a live or test checkout; merchants should use it to route test callbacks to sandbox order handling
@@ -947,17 +947,24 @@ app.post("/api/portaly/callback", async (req, res) => {
 
   const {
     sessionId,
-    subscriptionId = sessionId,
+    subscriptionId,
     merchantOrderNumber,
     status,
     paymentReference,
   } = req.body;
 
+  // Do NOT default subscriptionId to sessionId. On `checkout.completed` the two
+  // are the same value and `sessionId` is what later calls take; on
+  // `checkout.failed` no subscription was ever created, and defaulting here
+  // would invent a subscription row for a charge that never succeeded.
+  const subscriptionRef =
+    event === "creator_subscription.checkout.failed" ? null : subscriptionId ?? sessionId;
+
   // Apply event-specific idempotency, then reconcile local state. Do not log
   // the callback secret, full signing base, or customer payload.
   const callbackIdentity = {
     sessionId,
-    subscriptionId,
+    subscriptionId: subscriptionRef,
     merchantOrderNumber,
     status,
     paymentReference,
