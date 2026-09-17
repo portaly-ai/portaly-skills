@@ -579,7 +579,7 @@ Use this when the human user needs reconciliation or a status page.
   - `appliedDiscount`
   - `customer.name`
   - `customer.email`
-  - `customer.phone` — the mobile number the buyer entered; empty until they submit, and always empty when `collectPhone` is off
+  - `customer.phone` — the mobile number the buyer entered; empty until they submit, and empty when nothing was collected. A zero-amount live checkout that still saves a card collects one even when `collectPhone` is off
   - `collectPhone` — whether this checkout asks for a mobile number (copied from the plan when the session was created)
   - `plan.{id, name, amount, currency, status}`
   - `expiresAt`
@@ -752,7 +752,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `paymentReference`
   - `paymentMethod`
   - `customerEmail`
-  - `customerPhone?` — present on `checkout.completed` only when the plan collects one (`collectPhone`). Absent, not empty, otherwise.
+  - `customerPhone?` — present on `checkout.completed` whenever a number was collected: when the plan's `collectPhone` is on, and also on a zero-amount live checkout that still saves a card, where the card-binding step requires one regardless. Absent, not empty, otherwise.
   - `completedAt`
   - `appliedDiscount?` — present when a discount was applied to this checkout. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. The payload's `amount` is the actually-charged (post-discount) amount.
 
