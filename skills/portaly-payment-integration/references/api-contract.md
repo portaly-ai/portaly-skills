@@ -54,6 +54,11 @@ Use this at **runtime**, every time you need to render a plan list or a pay butt
   - `data[].imageUrl` — resolved public image URL, or `null`
   - `data[].collectPhone` — whether the hosted checkout asks the buyer for a mobile number and refuses the payment without one. On by default for plans created from 2026-09 onwards; the merchant turns it on or off per plan in their dashboard, and it is absent on older plans, which don't ask. You pass nothing at session creation — just expect `customerPhone` on the completed callback when it is `true`.
   - `data[].listPrice` — optional display-only reference ("原價"). Show it struck-through next to `amount` **only when `listPrice > amount`**. It is never charged — `amount` is the sole source of truth for checkout.
+  - `data[].wavePricing` — `null`, or the merchant's running scheduled price increase ("波段優惠"): the price starts low and steps up at a fixed interval until the campaign ends, capped at `amount`. One-time fixed-price plans only. When non-null it carries:
+    - `price` — what checkout charges **right now**. Display this instead of `amount`.
+    - `priceEndsAt` — ISO 8601; when this price steps up. Use it as the countdown target and refetch the plan once it passes.
+    - `nextPrice` — the price after `priceEndsAt` (equals `amount` on the last segment).
+    - `campaignEndsAt` — ISO 8601; when the campaign ends and the price returns to `amount`.
   - `data[].externalInformationUrl`
   - `data[].createdAt`
   - `data[].updatedAt`
@@ -67,8 +72,10 @@ const res = await fetch(
 );
 const { data: plans } = await res.json();
 
-// Render: name, amount (+ struck-through listPrice if higher), imageUrl, billingPeriod.
-// Only show a pay button when plan.status === 'active'.
+// Render: name, the current price (wavePricing?.price ?? amount), imageUrl, billingPeriod,
+// and a struck-through listPrice when it is higher. Only show a pay button when
+// plan.status === 'active'.
+const currentPrice = (plan) => plan.wavePricing?.price ?? plan.amount;
 ```
 
 ## Session Creation
