@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.8.0
+version: 0.9.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -77,7 +77,7 @@ Content-Type: application/json
 ### 2. Fetch active plans at runtime
 
 - `GET /api/creator-subscription/plans?status=active` with `Authorization: Bearer {PORTALY_API_KEY}`.
-- Render each plan's `name`, `amount`, `billingPeriod`, `imageUrl`. If `listPrice` is present **and higher than `amount`**, show it struck-through next to `amount` as the "was" price — it is display-only and never affects what's charged.
+- Render each plan's `name`, `amount`, `billingPeriod`, `imageUrl`. `collectPhone` tells you whether that plan's checkout will ask the buyer for a mobile number — the merchant owns that switch, you send nothing for it, and you receive `customerPhone` on the completed callback when it is on. If `listPrice` is present **and higher than `amount`**, show it struck-through next to `amount` as the "was" price — it is display-only and never affects what's charged.
 - Only show a pay button for a plan whose `status` is `"active"`. Never render, price, or discount-code anything you didn't just fetch — no hardcoded plan lists, no build-time snapshot.
 - See `references/api-contract.md` → "Read Subscription Plans" for full field list and example.
 
@@ -86,6 +86,7 @@ Content-Type: application/json
 - `POST /api/creator-subscription/checkout-sessions` with `planId`, `callbackUrl` (must be HTTPS), and optionally `successRedirectUrl` / `cancelRedirectUrl` / `metadata` / `discountCode` (pass through a buyer-entered code verbatim — never generate or manage codes yourself).
   - Also optionally `profitSharingId` — the referral code a buyer arrived with when the merchant runs buyer promotion. Read it **server-side** from your own cookie; never accept it from the browser's request body, or anyone can claim someone else's sale. Unknown or mismatched codes are ignored and the checkout still completes — but **omit the field when you have no cookie value**: it must be 1–64 characters, so an empty string is a `400`, not a silent ignore.
 - If your users are already signed in to your product, also send `customerEmail` + `customerName` (pre-fills the checkout form) and `emailVerified: true` (drops the emailed verification code, because you already verified that email). Server-side only — the buyer-facing routes silently drop `emailVerified` (no error to handle), and it is ignored here without a non-blank `customerEmail`.
+- When the plan has `collectPhone: true`, the hosted checkout asks the buyer for a **mobile number** and won't take the payment without one. You don't collect it, pass it, or validate it — it comes back as `customerPhone` on the completed callback and as `customer.phone` on the session query.
 - Redirect the buyer to the returned `data.checkoutUrl`. Treat it as authoritative; never reconstruct it.
 - Persist `sessionId`, `checkoutToken`, `expiresAt`.
 - See `references/api-contract.md` → "Session Creation" for the full request/response shape.

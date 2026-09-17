@@ -162,6 +162,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `pricingType`: optional, `fixed` (default) or `dynamic`. Dynamic pricing plans must use `one-time` billing period; the actual amount is set per checkout session. **Locked after creation** — see the Update section below.
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional merchant-side product id
+  - `collectPhone`: optional boolean, **defaults to `true` on a new plan**. When on, the hosted checkout asks the buyer for a mobile number and refuses the payment without one; it comes back as `customerPhone` on the completed callback. Send `false` for a plan that should not ask.
   - `externalInformationUrl`: optional object with `url` and `text` (both required when present)
 - Request body (fixed pricing):
 
@@ -207,6 +208,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `data.pricingType`
   - `data.status`
   - `data.merchantPlanId`
+  - `data.collectPhone` — whether the checkout asks the buyer for a mobile number. Absent on plans created before 2026-09, which do not ask.
   - `data.imageUrl` (resolved public image URL, or `null`)
   - `data.externalInformationUrl`
   - `data.createdAt`
@@ -224,6 +226,7 @@ Use this when the human user wants the Agent to create or maintain the product b
   - `listPrice`: optional positive number. Same display-only "原價" semantics as create — struck-through reference price shown above `amount`; never charged.
   - `status`: optional, `active` or `inactive`
   - `merchantPlanId`: optional
+  - `collectPhone`: optional boolean. Turns the checkout's mobile-number field on or off for this plan. Only affects sessions created afterwards — a checkout already in flight keeps the setting it was created with.
   - `externalInformationUrl`: optional object with `url` and `text` (both required when present); previously settable only at create time
   - plan image: not part of this request body at all — update it via `POST /api/creator-subscription/plans/{planId}/images` instead (see below)
 - **Locked fields — set at creation, cannot be changed afterward:**
@@ -576,6 +579,8 @@ Use this when the human user needs reconciliation or a status page.
   - `appliedDiscount`
   - `customer.name`
   - `customer.email`
+  - `customer.phone` — the mobile number the buyer entered; empty until they submit, and always empty when `collectPhone` is off
+  - `collectPhone` — whether this checkout asks for a mobile number (copied from the plan when the session was created)
   - `plan.{id, name, amount, currency, status}`
   - `expiresAt`
   - `createdAt`
@@ -747,6 +752,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `paymentReference`
   - `paymentMethod`
   - `customerEmail`
+  - `customerPhone?` — present on `checkout.completed` only when the plan collects one (`collectPhone`). Absent, not empty, otherwise.
   - `completedAt`
   - `appliedDiscount?` — present when a discount was applied to this checkout. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. The payload's `amount` is the actually-charged (post-discount) amount.
 
@@ -766,6 +772,7 @@ Payload example:
   "currency": "TWD",
   "customerEmail": "buyer@example.com",
   "customerName": "Buyer",
+  "customerPhone": "0912345678",
   "invoice": {
     "type": "b2c",
     "carrierType": "phone",

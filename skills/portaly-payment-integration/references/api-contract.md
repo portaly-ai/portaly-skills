@@ -52,6 +52,7 @@ Use this at **runtime**, every time you need to render a plan list or a pay butt
   - `data[].status` (`active` | `inactive`)
   - `data[].merchantPlanId`
   - `data[].imageUrl` — resolved public image URL, or `null`
+  - `data[].collectPhone` — whether the hosted checkout asks the buyer for a mobile number and refuses the payment without one. On by default for plans created from 2026-09 onwards; the merchant turns it on or off per plan in their dashboard, and it is absent on older plans, which don't ask. You pass nothing at session creation — just expect `customerPhone` on the completed callback when it is `true`.
   - `data[].listPrice` — optional display-only reference ("原價"). Show it struck-through next to `amount` **only when `listPrice > amount`**. It is never charged — `amount` is the sole source of truth for checkout.
   - `data[].externalInformationUrl`
   - `data[].createdAt`
@@ -160,7 +161,8 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
   - `GET /api/creator-subscription/checkout-sessions/{sessionId}`
 - Required headers:
   - `Authorization: Bearer {portaly_payment_api_key}`
-- Useful response fields (this endpoint returns the **nested** checkout-session object, not the flat callback payload): `status`, `merchantOrderNumber`, `amount`, `billingPeriod`, `appliedDiscount`, `customer.name`, `customer.email`, `plan.{id, name, amount, currency, status}`, `expiresAt`, `createdAt`, `updatedAt`
+- Useful response fields (this endpoint returns the **nested** checkout-session object, not the flat callback payload): `status`, `merchantOrderNumber`, `amount`, `billingPeriod`, `appliedDiscount`, `customer.name`, `customer.email`, `customer.phone`, `collectPhone`, `plan.{id, name, amount, currency, status}`, `expiresAt`, `createdAt`, `updatedAt`
+- `customer.phone` is the mobile number the buyer typed at checkout — empty until they submit, and always empty when `collectPhone` is `false`.
 - There is **no** flat `customerEmail`, no `metadata`, and no `completedAt` on this response — the buyer email is `customer.email`, and completion time is only carried by the checkout callback's `completedAt`, not by this query. Read the buyer email as `data.customer.email`.
 - Common uses: status pages, reconciliation jobs, callback retry fallback (for non-`completed` outcomes, since the checkout callback only fires on `completed`)
 
@@ -173,7 +175,8 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
   - secret: the key's `callbackSecret`
 - **Reject callbacks whose `x-portaly-timestamp` is more than 5 minutes from now in either direction** — too old (stale/replay) or too far in the future (forged/badly-skewed). The symmetric ±5-minute window tolerates ordinary NTP drift; don't tighten the future side to "reject any future timestamp" (it 401s legitimate callbacks — see `callback-signature-v1.md`). `x-portaly-timestamp` is an ISO datetime string, not Unix seconds.
 - **Dedup on an event-specific key, not `sessionId` alone.** Because `subscriptionId === checkoutSessionId === sessionId` is identical across every event on a subscription, keying idempotency on it drops each later event (`payment.succeeded`, `cancel_requested`, `canceled`) as a false duplicate. Compose a per-event key whose varying part comes **from inside the payload**: `event + sessionId` for `checkout.*`, `` `${event}:${subscriptionId}:${chargedAt}` `` for `payment.succeeded`, the same with `failedAt` for `payment.failed`, `event + orderId` for refunds. Do **not** use `x-portaly-timestamp`: a redelivery replays the stored payload but re-signs the transport headers, so that value changes and the same charge is processed twice. Lifecycle events have **no *documented* delivery identifier**, so make the state assignment itself idempotent. `canceled` is the exception worth keying: it is terminal and emitted at most once per subscription, so `event + subscriptionId` is both safe and correct there — which matters when acting on it has non-idempotent side effects of its own, like sending a cancellation email or revoking access. `active` is re-sent whenever a subscription recovers from `past_due`.
-- Payload fields to persist: `sessionId`, `subscriptionId` (falls back to `sessionId` if absent), `mode`, `merchantOrderNumber`, `status`, `paymentReference`, `paymentMethod`, `customerEmail`, `completedAt`, `appliedDiscount?`.
+- Payload fields to persist: `sessionId`, `subscriptionId` (falls back to `sessionId` if absent), `mode`, `merchantOrderNumber`, `status`, `paymentReference`, `paymentMethod`, `customerEmail`, `customerPhone?`, `completedAt`, `appliedDiscount?`.
+- `customerPhone` is present on `checkout.completed` only when the plan collects one (see `collectPhone` under Read Subscription Plans). It is absent — not empty — otherwise, so treat it as optional and never make it a required column on the way in.
 
 Payload example (`creator_subscription.checkout.completed`):
 
@@ -191,6 +194,7 @@ Payload example (`creator_subscription.checkout.completed`):
   "currency": "TWD",
   "customerEmail": "buyer@example.com",
   "customerName": "Buyer",
+  "customerPhone": "0912345678",
   "completedAt": "2026-03-12T10:05:00.000Z",
   "metadata": { "source": "web" },
   "paymentReference": "txn_123456",
