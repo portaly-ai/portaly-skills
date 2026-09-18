@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.9.0
+version: 0.10.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.9.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.10.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -78,6 +78,7 @@ Content-Type: application/json
 
 - `GET /api/creator-subscription/plans?status=active` with `Authorization: Bearer {PORTALY_API_KEY}`.
 - Render each plan's `name`, `amount`, `billingPeriod`, `imageUrl`. `collectPhone` tells you whether that plan's checkout will ask the buyer for a mobile number — the merchant owns that switch, you send nothing for it, and you receive `customerPhone` on the completed callback when it is on. If `listPrice` is present **and higher than `amount`**, show it struck-through next to `amount` as the "was" price — it is display-only and never affects what's charged.
+- If `wavePricing` is non-null the merchant is running a scheduled price increase ("波段優惠"): show `wavePricing.price` as the current price instead of `amount`, count down to `wavePricing.priceEndsAt`, and refetch the plan once that passes so the displayed price keeps matching what checkout charges.
 - Only show a pay button for a plan whose `status` is `"active"`. Never render, price, or discount-code anything you didn't just fetch — no hardcoded plan lists, no build-time snapshot.
 - See `references/api-contract.md` → "Read Subscription Plans" for full field list and example.
 
@@ -217,7 +218,8 @@ refunds and failed charges never happen in a browser at all. Everything below ru
 ## Guardrails
 
 - **This is an integration-scope key, not a money-movement or management key.** Never initiate a refund, create/update a plan, change merchant config, create/update/delete a discount code, or upload a plan/merchant image — all return `403 KEY_SCOPE_FORBIDDEN`. Explain the boundary and stop there; don't retry, look for a bypass, or ask for another key.
-- **Runtime fetch only.** Plan names, prices, `listPrice`, and discount codes must never be hardcoded in source, config files, or a build-time static page. Plans can be added, repriced, or archived by the merchant at any time — always read them live via `GET /plans`.
+- **Runtime fetch only.** Plan names, prices, `listPrice`, and discount codes must never be hardcoded in source, config files, or a build-time static page. Plans can be added, repriced, or archived by the merchant at any time — always read them live via `GET /plans`. A plan under `wavePricing` reprices itself on a schedule, so a statically rendered or long-cached page will show a stale price.
+- **Never send a price you computed yourself.** For a fixed-price plan `POST /checkout-sessions` ignores any `amount` you pass and recalculates the wave price server-side from the plan. If the buyer crosses a step boundary between page load and checkout, the session carries the new price — read the charged amount back from the session or the callback rather than trusting what the page displayed.
 - `callbackUrl` must be HTTPS. Serving over plain HTTP exposes the signature and payload in transit.
 - Verify every callback's HMAC signature; reject any timestamp more than 5 minutes from now in either direction (symmetric skew window — don't special-case "any future timestamp"); dedup on an event-specific key (event type + `subscriptionId` + the event's timestamp/id), never on `sessionId` alone — see Workflow step 4.
 - **Windows encoding:** run `chcp 65001` (cmd) or `$OutputEncoding = [System.Text.Encoding]::UTF8` (PowerShell) before rendering non-ASCII plan names/descriptions, so they don't come out garbled.
