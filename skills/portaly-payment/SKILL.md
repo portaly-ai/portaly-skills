@@ -1,8 +1,8 @@
 ---
 name: portaly-payment
-# Top-level `version` is what portaly-vercel's skill-versions endpoint parses (its
-# regex is anchored to the start of a line, so it cannot read the indented
-# metadata.version). Keep the two in sync until that parser reads YAML. See POR-4237.
+# Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
+# is anchored to the start of a line, so it cannot read the indented
+# metadata.version). Keep the two in sync until that parser reads YAML.
 version: 0.14.1
 metadata:
   version: "0.14.1"
