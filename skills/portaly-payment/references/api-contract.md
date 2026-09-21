@@ -752,7 +752,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `paymentReference`
   - `paymentMethod`
   - `customerEmail`
-  - `customerPhone?` — present on `checkout.completed` whenever a number was collected: when the plan's `collectPhone` is on, and also on a zero-amount live checkout that still saves a card, where the card-binding step requires one regardless. Absent, not empty, otherwise.
+  - `customerPhone?` — present on `checkout.completed` whenever a number was collected: when the plan's `collectPhone` is on, and also on a zero-amount live checkout that still saves a card, where the hosted checkout asks for one regardless. Absent, not empty, otherwise.
   - `completedAt`
   - `appliedDiscount?` — present when a discount was applied to this checkout. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. The payload's `amount` is the actually-charged (post-discount) amount.
 
