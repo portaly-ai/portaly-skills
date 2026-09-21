@@ -199,8 +199,7 @@ rm -rf ~/.claude/skills/portaly-payment-skill
 npx skills add portaly-ai/portaly-skills --all -g
 ```
 
-舊的 repository 已封存：
-- `real-engine-tw/portaly-payment-skill`（已封存）
+舊的 repository 已封存。
 
 ## Windows 注意事項
 

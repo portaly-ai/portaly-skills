@@ -199,8 +199,7 @@ rm -rf ~/.claude/skills/portaly-payment-skill
 npx skills add portaly-ai/portaly-skills --all -g
 ```
 
-The old repositories have been archived:
-- `real-engine-tw/portaly-payment-skill` (archived)
+The old repository has been archived.
 
 ## License
 

@@ -70,11 +70,11 @@ function checkArtifactParity() {
 }
 
 // A skill states its version in up to three places: the line-anchored top-level
-// `version:` (the only one portaly-vercel's skill-versions endpoint can parse),
+// `version:` (the only one Portaly's skill-versions endpoint can parse),
 // an optional indented `metadata.version`, and the literal in its "Report the
 // installed skill version" example, which is what the agent actually sends. A
 // drift between them is invisible in production: the dashboard either flags a
-// current install as stale or lets a stale one look current. See POR-4237.
+// current install as stale or lets a stale one look current.
 // Iterate the directory rather than a hardcoded list — a new skill must be
 // covered on the day it lands, not whenever someone remembers to add it here.
 function checkSkillVersionConsistency() {
@@ -88,7 +88,7 @@ function checkSkillVersionConsistency() {
     assert.match(
       version,
       /^\d+\.\d+\.\d+$/,
-      `${skillName}: version must be plain semver — portaly-vercel's parser rejects anything else`
+      `${skillName}: version must be plain semver — Portaly's parser rejects anything else`
     );
 
     // `metadata:` is genuinely optional — only some skills carry the block, so

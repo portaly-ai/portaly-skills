@@ -53,10 +53,16 @@ keys with JavaScript `localeCompare` semantics and otherwise mirrors
 `JSON.stringify`, including dropping `undefined` object properties, converting
 `undefined` array elements to `null`, and leaving `&`, `<`, and `>` unescaped.
 
-Do not sign the raw v1 HTTP body. Do not use code-point ordering such as Go
-`sort.Strings`, Python `sorted()`, or Rust `BTreeMap` and assume it is
-equivalent. The built-in keys `canceledAt` and `cancelEffectiveAt` already
-produce a different order under code-point sorting.
+Do not sign the raw v1 HTTP body. Do not use code-point ordering such as
+JavaScript `[].sort()`, Go `sort.Strings`, Python `sorted()`, or Rust
+`BTreeMap` and assume it is equivalent. JavaScript's own default sort is
+code-point, so running the same language as the sender is not enough — the
+comparator has to be `localeCompare`. The built-in keys `canceledAt` and
+`cancelEffectiveAt` already produce a different order under code-point
+sorting, which is why a code-point receiver verifies `checkout.completed`
+and then fails every subscription lifecycle and renewal event. Digital
+product payloads carry no such built-in pair today, but any `metadata` key
+you supply can introduce one.
 
 V1 has a protocol-level limitation: the sender does not pin locale or ICU, and
 receivers must reconstruct JavaScript serialization. Passing the committed
