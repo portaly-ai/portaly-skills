@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.10.1
+version: 0.11.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.10.1" }
+{ "skillName": "portaly-payment-integration", "version": "0.11.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -77,7 +77,7 @@ Content-Type: application/json
 ### 2. Fetch active plans at runtime
 
 - `GET /api/creator-subscription/plans?status=active` with `Authorization: Bearer {PORTALY_API_KEY}`.
-- Render each plan's `name`, `amount`, `billingPeriod`, `imageUrl`. `collectPhone` tells you whether that plan's checkout will ask the buyer for a mobile number — the merchant owns that switch, you send nothing for it, and you receive `customerPhone` on the completed callback when it is on. If `listPrice` is present **and higher than `amount`**, show it struck-through next to `amount` as the "was" price — it is display-only and never affects what's charged.
+- Render each plan's `name`, `amount`, `billingPeriod`, `imageUrl`. `collectPhone` tells you whether that plan's checkout will ask the buyer for a mobile number — the merchant owns that switch, you send nothing for it, and you receive `customerPhone` on the completed callback when it is on. A non-empty `termsOfService` means the hosted checkout will make the buyer read and tick the merchant's terms before paying — also merchant-owned (they can edit or switch it off at any time), nothing for you to send or store, and empty means there is no terms step. If `listPrice` is present **and higher than `amount`**, show it struck-through next to `amount` as the "was" price — it is display-only and never affects what's charged.
 - If `wavePricing` is non-null the merchant is running a scheduled price increase ("波段優惠"): show `wavePricing.price` as the current price instead of `amount`, count down to `wavePricing.priceEndsAt`, and refetch the plan once that passes so the displayed price keeps matching what checkout charges.
 - Only show a pay button for a plan whose `status` is `"active"`. Never render, price, or discount-code anything you didn't just fetch — no hardcoded plan lists, no build-time snapshot.
 - See `references/api-contract.md` → "Read Subscription Plans" for full field list and example.
@@ -88,6 +88,7 @@ Content-Type: application/json
   - Also optionally `profitSharingId` — the referral code a buyer arrived with when the merchant runs buyer promotion. Read it **server-side** from your own cookie; never accept it from the browser's request body, or anyone can claim someone else's sale. Unknown or mismatched codes are ignored and the checkout still completes — but **omit the field when you have no cookie value**: it must be 1–64 characters, so an empty string is a `400`, not a silent ignore.
 - If your users are already signed in to your product, also send `customerEmail` + `customerName` (pre-fills the checkout form) and `emailVerified: true` (drops the emailed verification code, because you already verified that email). Server-side only — the buyer-facing routes silently drop `emailVerified` (no error to handle), and it is ignored here without a non-blank `customerEmail`.
 - When the plan has `collectPhone: true`, the hosted checkout asks the buyer for a **mobile number** and won't take the payment without one. You don't collect it, pass it, or validate it — it comes back as `customerPhone` on the completed callback and as `customer.phone` on the session query.
+- When the plan has a non-empty `termsOfService`, the hosted checkout shows a **terms-of-service** checkbox and the buyer must open and accept the terms before the pay button unlocks. Nothing for you to build: don't add your own consent step for the same terms, don't pass anything at session creation, and don't expect a consent field on the callback — a `completed` session means the buyer accepted.
 - Redirect the buyer to the returned `data.checkoutUrl`. Treat it as authoritative; never reconstruct it.
 - Persist `sessionId`, `checkoutToken`, `expiresAt`.
 - See `references/api-contract.md` → "Session Creation" for the full request/response shape.
