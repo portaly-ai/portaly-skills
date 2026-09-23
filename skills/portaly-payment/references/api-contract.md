@@ -1136,7 +1136,7 @@ Use this when the human user needs the invoice records for a profile — invoice
   - `data[].customerName`
   - `data[].customerEmail`
   - `data[].invoice`: the requested carrier info (`{ type, carrierType, carrierNumber, company, companyId }`) or `null`
-  - `data[].invoiceStatus`: `pending` | `processing` | `issued` | `voided` | `skipped` | `not_applicable`. `voided` = issued, then cancelled because the payment was refunded; if the tax platform rejects that cancellation the status stays `issued` and `invoiceLastError` starts with `Invoice void failed:`. `skipped` = test mode or a zero-amount charge — no invoice will ever be issued
+  - `data[].invoiceStatus`: `pending` | `processing` | `issued` | `voided` | `skipped` | `not_applicable`. `voided` = issued, then cancelled because the payment was refunded; if the tax platform rejects that cancellation the status stays `issued` and `invoiceLastError` starts with `Invoice void failed:`. `skipped` = test mode, a zero-amount charge, or a payment refunded before its invoice was issued — no invoice will ever be issued
   - `data[].invoiceTaskId`
   - `data[].invoiceLastError`
   - `data[].invoiceIssuedAt`
