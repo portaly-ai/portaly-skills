@@ -31,8 +31,8 @@ _SUPPORTED_KEY_ORDER = tuple(
     refundProvider refundReason refundReasonNote refundReference
     refundRequestedAt refundRequestedBy rule sessionId source status
     subscriptionCanceledByRefund subscriptionId tappayPayment totalAmount
-    tradeId type value verificationCharge verificationRefund willCancel zebra
-    zero zeta
+    tracking tradeId type value verificationCharge verificationRefund
+    willCancel zebra zero zeta
     """.split()
 )
 _SUPPORTED_KEY_RANK = {key: index for index, key in enumerate(_SUPPORTED_KEY_ORDER)}

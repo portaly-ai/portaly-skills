@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.9.0
+version: 0.10.0
 metadata:
-  version: "0.9.0"
+  version: "0.10.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Also covers test mode — which test card to use, and why a test purchase sends no email and shows up in no revenue figure. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, bundle pricing of Portaly products, publishing or unpublishing a Portaly product (taking one off sale from their own site), or is troubleshooting a Portaly test payment, test card, sandbox order, or a missing order confirmation email.
 ---
 
@@ -108,7 +108,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.9.0" }
+  { "skillName": "portaly-product", "version": "0.10.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -223,7 +223,7 @@ x-portaly-signature: <hex>
 
 Inspect the repository's stack, then load `references/callback-signature-v1.md` and use the matching Node, WebCrypto, Python, or Go adapter. Run `scripts/check_callback_vectors.mjs` for that runtime before shipping. V1 verifies `${timestamp}.${stableJson(JSON.parse(wireBody))}` — not the raw HTTP body — with `PORTALY_CALLBACK_SECRET`, then requires `x-portaly-event` to match the authenticated body event.
 
-**Custom `metadata` keys and callback verification:** the `metadata` you send at create-session time (e.g. `userId`, `cartId`) is echoed into the signed callback body. The Python and Go v1 adapters **fail closed** on metadata keys outside the committed schema, because v1 sorts object keys with JavaScript `localeCompare` and those adapters cannot reproduce that ordering for arbitrary keys. If the receiver is Python or Go, either verify with the Node/WebCrypto adapter or keep custom keys out of `metadata`, until a future raw-byte callback contract removes this limitation.
+**Custom `metadata` keys and callback verification:** the `metadata` you send at create-session time is echoed into the signed callback body. v1 sorts object keys with JavaScript `localeCompare`, which the Python and Go adapters cannot reproduce for arbitrary keys, so they **fail closed** on any metadata key outside the committed schema. Put your own data under the `tracking` key as a JSON string (`metadata: { tracking: JSON.stringify({ userId, cartId }) }`): `tracking` is committed in the vectors and verifies under every adapter, and since the list governs keys rather than values one key carries any structure. For any other custom key, verify with the Node/WebCrypto adapter.
 
 Persist:
 - `sessionId` (combined with `event` as the checkout idempotency key — see below)

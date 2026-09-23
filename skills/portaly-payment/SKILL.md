@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.15.0
+version: 0.16.0
 metadata:
-  version: "0.15.0"
+  version: "0.16.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -146,7 +146,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.15.0" }
+  { "skillName": "portaly-payment", "version": "0.16.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -318,7 +318,7 @@ What to persist for recurring lifecycle:
 - **Keep the two kinds of id apart.** Your own idempotency is the step 7 key — stable across redeliveries, one per occurrence. Meta's `event_id` lets Meta recognise a server event and the *browser* event as one purchase — and that browser event exists only for the initial checkout — so use `sessionId` there, read from the merchant's own order record. **Give each charge its own `event_id`** (`paymentId` on `payment.succeeded`): Meta asks for a unique id per event instance, and `subscriptionId === sessionId` means reusing `sessionId` would give every renewal the same value.
 - **Key renewals on a per-attempt timestamp.** `payment.failed` carries no `paymentId`, and `paymentReference` is an empty string on effectively every 91APP failure — either choice collapses every failed renewal across every subscriber onto one key and dunning silently stops. Use `event + subscriptionId + failedAt`, and `chargedAt` for `payment.succeeded`; not `failureCount`, which resets on success. (`payment.succeeded` does carry a usable `paymentId` — it is only the failure side that has none.)
 - **`merchantOrderNumber` is a trap on renewals.** It *is* present, but frozen at checkout, so using it as a GA4 `transaction_id` makes GA4 dedup every renewal after the first. Build a per-charge id — and never send an empty `transaction_id`, which collapses every purchase into one.
-- **Ad identifiers belong in the merchant's own store, not in `metadata`.** Capture `utm_*` / `gclid` / `fbclid` on first landing, read GA4's ids via `gtag('get', …)` rather than parsing the `_ga_*` cookie (Google does not document its format and changed it in 2025), and store the record against the **`sessionId`** returned by create-session, so the callback can join on it (`merchantOrderNumber` is optional and absent from `checkout.failed`, so it is not a reliable join key). On the success page, reach that record via your own order id on the URL.
+- **Ad identifiers go in the merchant's own store, or in `metadata` under `tracking` — never as their own `metadata` keys.** Capture `utm_*` / `gclid` / `fbclid` on first landing and read GA4's ids via `gtag('get', …)` rather than parsing the `_ga_*` cookie (Google does not document its format and changed it in 2025). Then either store the record against the **`sessionId`** returned by create-session and let the callback join on it (`merchantOrderNumber` is optional and absent from `checkout.failed`, so it is not a reliable join key), or send `metadata: { tracking: JSON.stringify({ utm_source, gclid, … }) }` — `tracking` is the one custom key committed in the callback vectors, so it verifies under every adapter, and because the list governs keys rather than values a JSON string in it carries any structure you like without ever extending the list. Prefer the store-and-join route for subscriptions: `metadata` is replayed on every renewal and lifecycle event for the life of the subscription. On the success page, reach your record via your own order id on the URL.
 - **Never put an ad identifier in `metadata`.** `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid` are all absent from the committed signing whitelist, so one of them makes a Python or Go receiver 401 that subscription's callbacks — and `metadata` is replayed on every renewal and refund, so reconciliation stops for the life of the subscription. Coarse tags like `campaign` and `source` *are* on the list and are safe.
 - Load `references/conversion-tracking.md` for the session-survival conditions with their Google sources, the success-page snippet, the per-event id table, and which `metadata` keys actually are safe.
 

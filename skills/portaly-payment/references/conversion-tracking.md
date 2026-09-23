@@ -232,25 +232,35 @@ measurement id *minus* its `G-` prefix, which is easy to get wrong. A regex that
 fails silently — empty identifier, 2xx response, `(not set)` attribution — which is the exact
 failure this section exists to prevent. Use `gtag('get', …)`.
 
-### Why not `metadata`?
+### Carrying them in `metadata` instead: the `tracking` key
 
-`metadata` *is* echoed back in the signed callback, so it looks like the natural carrier — but
-the v1 signature sorts keys with JavaScript `localeCompare`, which the Python and Go adapters
-cannot reproduce for arbitrary keys. They therefore accept only keys whose ordering is committed
-in the golden vectors (`_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`, `supportedKeyOrder`
-in `scripts/verify_callback.go` — the two lists are identical) and raise on anything else.
+Skipping the store above and sending the identifiers through `metadata` works, but **only under
+the `tracking` key**:
 
-None of `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` or `fbclid` is
-on that list. Put one in `metadata` and a Python or Go receiver starts **401-ing that
-subscription's callbacks** — and not only at checkout: `metadata` is copied onto the subscription
-at first charge and replayed on every renewal, refund and lifecycle event, so order
-reconciliation stops for the life of the subscription.
+```json
+{ "metadata": { "tracking": "{\"utm_source\":\"newsletter\",\"gclid\":\"Cj0K…\"}" } }
+```
 
-The list is wider than the callback schema, though: `campaign`, `source`, `cart_id`, `productId`,
-`productName` and `code` are all on it, so a merchant who only wants a coarse campaign tag can
-safely send `metadata: { campaign, source }`. Two caveats: check the constant before assuming any
-other key is safe, and note the whitelist governs **keys, not values** — a float value is
-rejected even under an accepted key, so keep metadata values as strings.
+The v1 signature sorts keys with JavaScript `localeCompare`, which the Python and Go adapters
+cannot reproduce for arbitrary keys. They accept only keys whose ordering is committed in the
+golden vectors (`_SUPPORTED_KEY_ORDER` in `scripts/sign_callback.py`, `supportedKeyOrder` in
+`scripts/verify_callback.go` — the two lists are identical) and raise on anything else. `tracking`
+is committed; `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and
+`fbclid` are **not**. Send one of those as its own key and a Python or Go receiver starts
+**401-ing that subscription's callbacks** — and not only at checkout: `metadata` is copied onto
+the subscription at first charge and replayed on every renewal, refund and lifecycle event, so
+order reconciliation stops for the life of the subscription.
+
+The list governs **keys, not values**, which is why one `tracking` key covers every identifier
+you will ever add: put a JSON string in it and parse it on receipt. Keep the value a string — a
+float is rejected even under an accepted key. `campaign`, `source`, `cart_id`, `productId`,
+`productName` and `code` are also committed if you prefer a flat coarse tag.
+
+**For subscriptions, prefer the store-and-join approach above.** Whatever you put in `metadata`
+is replayed on every renewal, refund and lifecycle event for the life of the subscription, so a
+click id captured once keeps travelling long after it stopped meaning anything. `tracking` is the
+better fit for one-off checkouts, or when you genuinely cannot write a row before creating the
+session.
 
 ## Recommend Both Layers
 

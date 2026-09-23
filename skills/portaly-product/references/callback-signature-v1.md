@@ -34,10 +34,20 @@ the golden vectors (including arbitrary metadata keys), floating-point JSON
 numbers, integers outside JavaScript's safe range, or malformed Unicode. That
 order covers every key Portaly itself sends, including the bookkeeping keys it
 adds inside `metadata`, so only keys you add to `metadata` can fall outside it.
-Route those payloads to the Node/WebCrypto adapter or keep the integration
-blocked until a native adapter extends and passes production-derived vectors. A
-self-sign/self-verify test is not evidence because the same bug can exist on
-both sides of that test.
+
+**Use the `tracking` key for your own data.** It is committed in the vectors and
+verifies under every adapter, and the list governs keys, not values — so put a
+JSON string in it and carry whatever structure you like without ever extending
+this list:
+
+```json
+{ "metadata": { "tracking": "{\"utm_source\":\"newsletter\",\"ref\":\"partner-a\"}" } }
+```
+
+For any other custom key, route the payload to the Node/WebCrypto adapter or
+keep the integration blocked until a native adapter extends and passes
+production-derived vectors. A self-sign/self-verify test is not evidence
+because the same bug can exist on both sides of that test.
 
 ## Exact v1 contract
 
