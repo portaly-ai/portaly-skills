@@ -31,9 +31,11 @@ default to Node merely because the normative implementation is JavaScript.
 The Python and Go adapters deliberately fail closed when v1 cannot be
 reproduced safely: object keys outside the callback schema order committed in
 the golden vectors (including arbitrary metadata keys), floating-point JSON
-numbers, integers outside JavaScript's safe range, or malformed Unicode. Route
-those payloads to the Node/WebCrypto adapter or keep the integration blocked
-until a native adapter extends and passes production-derived vectors. A
+numbers, integers outside JavaScript's safe range, or malformed Unicode. That
+order covers every key Portaly itself sends, including the bookkeeping keys it
+adds inside `metadata`, so only keys you add to `metadata` can fall outside it.
+Route those payloads to the Node/WebCrypto adapter or keep the integration
+blocked until a native adapter extends and passes production-derived vectors. A
 self-sign/self-verify test is not evidence because the same bug can exist on
 both sides of that test.
 
@@ -112,8 +114,9 @@ requirement for the product owner instead of inventing an identifier.
 
 The vectors were generated from a committed Portaly production signer with
 synthetic data and a fake fixture secret. They cover the incident's mixed-case
-`cancel*` keys, nested insertion order, Unicode values, HTML characters, arrays,
-nulls, booleans, integers, wrong secrets, changed timestamps, tampering, short
+`cancel*` keys, a declined checkout whose `metadata` carries Portaly's own
+keys, nested insertion order, Unicode values, HTML characters, arrays, nulls,
+booleans, integers, wrong secrets, changed timestamps, tampering, short
 signatures, and uppercase hex.
 
 Run the matching adapter before shipping. If the command cannot run or any

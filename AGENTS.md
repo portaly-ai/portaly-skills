@@ -107,6 +107,14 @@ When that test sends you here, or when you otherwise learn of an API change:
    repos, so it has drifted before. Once this repo's change is on `main`, that side has
    `npx tsx scripts/sync-skills.ts --apply` (dry-run without `--apply`) to pull the versions
    across; before then it is a hand edit.
+6. If any callback payload gains a key — including a bookkeeping key Portaly writes into
+   `metadata` (portaly-vibe `docs/creator-subscription/data-model-and-api.md` lists them) —
+   add it to `_SUPPORTED_KEY_ORDER` / `supportedKeyOrder` in all three skills' adapters and
+   regenerate the `known-callback-key-order` vector with the production signer. Both adapters
+   fail closed on an unlisted key, so a Python or Go receiver starts rejecting that event while
+   Portaly only sees a failed delivery; this list has drifted before, taking every real
+   `checkout.*` and refund event with it. `node evals/run-conformance.mjs --runtime all` must
+   pass.
 
 ## Provider Abstraction
 
