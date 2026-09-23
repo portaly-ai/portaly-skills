@@ -44,6 +44,10 @@ this list:
 { "metadata": { "tracking": "{\"utm_source\":\"newsletter\",\"ref\":\"partner-a\"}" } }
 ```
 
+The value must be a string. An object under `tracking` is walked like any
+other object, so its inner keys are checked against the same list and fail
+closed — stringify it first.
+
 For any other custom key, route the payload to the Node/WebCrypto adapter or
 keep the integration blocked until a native adapter extends and passes
 production-derived vectors. A self-sign/self-verify test is not evidence

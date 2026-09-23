@@ -124,6 +124,7 @@ func TestFailsClosedOutsideProvenDomain(t *testing.T) {
 		map[string]any{"hyphen-key": "value"},
 		map[string]any{"metadata": map[string]any{"unknown-key": "value"}},
 		map[string]any{"metadata": map[string]any{"userId": "u_1", "cartId": "c_1"}},
+		map[string]any{"metadata": map[string]any{"tracking": map[string]any{"utm_source": "newsletter"}}},
 		map[string]any{"amount": json.Number("1.25")},
 		map[string]any{"amount": json.Number("9007199254740992")},
 		map[string]any{"status": "contains � replacement"},

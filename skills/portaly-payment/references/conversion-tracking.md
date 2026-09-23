@@ -252,8 +252,9 @@ the subscription at first charge and replayed on every renewal, refund and lifec
 order reconciliation stops for the life of the subscription.
 
 The list governs **keys, not values**, which is why one `tracking` key covers every identifier
-you will ever add: put a JSON string in it and parse it on receipt. Keep the value a string — a
-float is rejected even under an accepted key. `campaign`, `source`, `cart_id`, `productId`,
+you will ever add: put a JSON string in it and parse it on receipt. Keep the value a string — an
+object under `tracking` has its inner keys checked against the list and fails closed, and a float
+is rejected even under an accepted key. `campaign`, `source`, `cart_id`, `productId`,
 `productName` and `code` are also committed if you prefer a flat coarse tag.
 
 **For subscriptions, prefer the store-and-join approach above.** Whatever you put in `metadata`

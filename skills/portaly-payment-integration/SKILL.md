@@ -212,7 +212,8 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   **that subscription's callbacks**, and because `metadata` is replayed on every renewal and
   refund, reconciliation stops for the life of the subscription rather than just at checkout.
   Since the list covers keys and not values, one `tracking` key holds everything:
-  `metadata: { tracking: JSON.stringify({ utm_source, gclid }) }`. `campaign`, `source`,
+  `metadata: { tracking: JSON.stringify({ utm_source, gclid }) }`. Stringify it — an object under
+  `tracking` has its inner keys checked against the list and fails closed. `campaign`, `source`,
   `cart_id`, `productId`, `productName` and `code` are also committed if a flat coarse tag is
   enough. Check `scripts/sign_callback.py` (`_SUPPORTED_KEY_ORDER`) before assuming any other key
   is, and keep values as strings — a float is rejected even under an accepted key.

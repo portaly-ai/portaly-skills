@@ -193,7 +193,7 @@ const res = await fetch(`${HOST}/api/digital-products/checkout-sessions`, {
     successRedirectUrl: 'https://your-site.com/thanks',
     cancelRedirectUrl: 'https://your-site.com/cart',
     merchantOrderNumber: yourInternalId,
-    metadata: { userId: '...', cartId: '...' },  // custom keys → verify with Node/WebCrypto (Python/Go v1 adapters fail closed on metadata keys outside the committed schema)
+    metadata: { tracking: JSON.stringify({ userId: '...', cartId: '...' }) },  // your own data goes under `tracking` as one string (≤ 500 chars) — the Python/Go v1 adapters fail closed on other keys outside the committed schema
   }),
 })
 const { data } = await res.json()
@@ -223,7 +223,7 @@ x-portaly-signature: <hex>
 
 Inspect the repository's stack, then load `references/callback-signature-v1.md` and use the matching Node, WebCrypto, Python, or Go adapter. Run `scripts/check_callback_vectors.mjs` for that runtime before shipping. V1 verifies `${timestamp}.${stableJson(JSON.parse(wireBody))}` — not the raw HTTP body — with `PORTALY_CALLBACK_SECRET`, then requires `x-portaly-event` to match the authenticated body event.
 
-**Custom `metadata` keys and callback verification:** the `metadata` you send at create-session time is echoed into the signed callback body. v1 sorts object keys with JavaScript `localeCompare`, which the Python and Go adapters cannot reproduce for arbitrary keys, so they **fail closed** on any metadata key outside the committed schema. Put your own data under the `tracking` key as a JSON string (`metadata: { tracking: JSON.stringify({ userId, cartId }) }`): `tracking` is committed in the vectors and verifies under every adapter, and since the list governs keys rather than values one key carries any structure. For any other custom key, verify with the Node/WebCrypto adapter.
+**Custom `metadata` keys and callback verification:** the `metadata` you send at create-session time is echoed into the signed callback body. v1 sorts object keys with JavaScript `localeCompare`, which the Python and Go adapters cannot reproduce for arbitrary keys, so they **fail closed** on any metadata key outside the committed schema. Put your own data under the `tracking` key as a JSON string (`metadata: { tracking: JSON.stringify({ userId, cartId }) }`): `tracking` is committed in the vectors and verifies under every adapter, and since the list governs keys rather than values one key carries any structure. The string counts toward the 500-character limit on each `metadata` value, so keep it to the fields you will actually read back. For any other custom key, verify with the Node/WebCrypto adapter.
 
 Persist:
 - `sessionId` (combined with `event` as the checkout idempotency key — see below)

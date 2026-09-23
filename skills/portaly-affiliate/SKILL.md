@@ -3,9 +3,9 @@ name: portaly-affiliate
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.1
+version: 0.1.2
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
 description: Set up buyer promotion on Portaly Payment so the creator's own customers earn a commission for referring other buyers — switch promotion on for the product and set the one commission rate every eligible plan shares, then capture the referral code on the creator's own site and attach it to the checkout session server-side. Portaly hosts the promoter-facing part — buyers get their referral link on Portaly's own purchase-complete page, and Portaly computes, records and pays every commission. One-time fixed-price plans only, Taiwan accounts only. Trigger when the user wants an affiliate, referral, ambassador or partner program, wants their customers, students, members or buyers to promote a product for a cut, or mentions 分潤 / 推廣連結 / 聯盟行銷 / 佣金 / 推廣夥伴 / 推薦獎金 on top of Portaly Payment.
 ---
 
@@ -70,7 +70,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-affiliate", "version": "0.1.1" }
+{ "skillName": "portaly-affiliate", "version": "0.1.2" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -298,7 +298,7 @@ Write for a creator who is not an engineer: what will happen, then how. Use thei
 8. **Never hand out a referral link before the switch is confirmed on.** Sales through it would earn the promoter nothing.
 9. **Never restate or invent the payout rules.** They are Portaly Rewards' to state and they change; link to `https://rewards.portaly.cc` instead of copying conditions into the chat, the creator's site, or their FAQ.
 10. **Never claim a test run earned anything.** Test-mode purchases produce no commission, and the completion page issues no referral link for them.
-11. **Never invent endpoints or fields.** This skill uses exactly: `GET`/`PUT /api/creator-subscription/promotion`, `GET /api/creator-subscription/config` (to read `appBaseUrl`), `GET /api/creator-subscription/discount-codes` (to re-base the figure, step 3), `promotionUrl` via `PUT /api/creator-subscription/plans/{planId}`, `profitSharingId` on checkout-session creation, and `POST /api/creator-subscription/skill-version` to report the version. Nothing beyond that list. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata` (the Python and Go callback adapters fail closed on custom metadata keys).
+11. **Never invent endpoints or fields.** This skill uses exactly: `GET`/`PUT /api/creator-subscription/promotion`, `GET /api/creator-subscription/config` (to read `appBaseUrl`), `GET /api/creator-subscription/discount-codes` (to re-base the figure, step 3), `promotionUrl` via `PUT /api/creator-subscription/plans/{planId}`, `profitSharingId` on checkout-session creation, and `POST /api/creator-subscription/skill-version` to report the version. Nothing beyond that list. If something 404s, say the feature isn't enabled on their account and stop — don't smuggle attribution through `metadata`, `tracking` included: Portaly credits a referral only from `profitSharingId`, so a code carried in `metadata` earns the promoter nothing.
 12. **Turning promotion on with a live key needs an explicit yes**, with the covered plans, the rate and the mode restated first.
 13. **Never mass-message the creator's buyers for them.** Portaly already emails each buyer their own invitation; anything beyond that — exporting a customer list, a broadcast — is the creator's to decide and theirs to do.
 14. **Never interrogate the creator field by field.** Derive what you can from their project, propose the whole mapping in one table, and ask once. A creator with ten plans must not be asked ten questions.
