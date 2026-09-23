@@ -822,7 +822,7 @@ Failed-first-charge payload (`creator_subscription.checkout.failed`):
 }
 ```
 
-- **`metadata` is echoed here too**, exactly as on `checkout.completed` — the same object you sent to create-session, so a declined charge can still be joined back to whatever context you stored. Portaly adds its own `paymentReference`, `paymentMethod`, `paidAmount` and `failureReason` keys alongside yours, so read your keys by name instead of treating the object as exactly what you sent. The key-ordering limit in `references/conversion-tracking.md` applies unchanged: ad identifiers still do not belong in `metadata`.
+- **`metadata` is echoed here too**, as on `checkout.completed` — the object you sent to create-session, so a declined charge can still be joined back to whatever context you stored. Portaly also keeps bookkeeping keys of its own in the same object; they are not part of this contract and may change, so read only the keys you sent. In particular, a `paidAmount` key on this event is the amount that was attempted, not money received. The key-ordering limit in `references/conversion-tracking.md` applies unchanged: ad identifiers still do not belong in `metadata`.
 - **No `subscriptionId`, on purpose.** Every other `creator_subscription.*` event follows `subscriptionId === checkoutSessionId === sessionId`, but a declined first charge never creates a subscription. Key this event on `sessionId` alone; do not synthesize a subscription record from it.
 - Covers both payment paths (TapPay and 91APP). Not to be confused with `creator_subscription.payment.failed`, which is a **renewal** failure on an existing subscription and does carry `subscriptionId`.
 - **`test` mode dispatches it too** — check `mode` before acting on it in production systems.
