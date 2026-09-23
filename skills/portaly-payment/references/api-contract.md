@@ -679,6 +679,7 @@ Current identifier contract:
 - Behavior:
   - clears the pending cancellation
   - allows future recurring renewal to continue
+  - sends `creator_subscription.active` when the subscription is `active`; a `past_due` subscription gets no webhook until a renewal succeeds
 
 ```json
 {}
@@ -805,8 +806,8 @@ Payload example:
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
 | `creator_subscription.payment.refunded` | A payment order is fully refunded | Deduplicate on `event + orderId` — the two refund outcomes share an `orderId`, so without the event prefix they cancel each other out. `amount` and `refundedAmount` are the same post-discount order amount. |
 | `creator_subscription.payment.refund_failed` | A refund reaches a terminal failure | Deduplicate on `event + orderId`. No money moved; statistics reversal and subscription cancellation are not rolled back, so Portaly must handle it manually. |
-| `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal, but it *is* re-sent each time a subscription recovers from `past_due`, so treat it as repeatable. A hosted checkout creates the subscription already active, so this also fires on the first checkout — in **no guaranteed order** relative to `checkout.completed`. Don't make handling it depend on having processed `checkout.completed` first. |
-| `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
+| `creator_subscription.active` | Subscription transitions **into** active, or a pending cancellation is resumed | Not re-sent for an already-active renewal, but it *is* re-sent each time a subscription recovers from `past_due` and each time `POST /subscriptions/{id}/resume` clears a pending cancellation (`status` stays `active`, `cancelAtPeriodEnd` goes back to `false`), so treat it as repeatable. A hosted checkout creates the subscription already active, so this also fires on the first checkout — in **no guaranteed order** relative to `checkout.completed`. Don't make handling it depend on having processed `checkout.completed` first. |
+| `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | Sent again on every cancel after a resume, so don't dedupe it on `subscriptionId` alone. |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Fired for any cancellation, including the 3rd-failure auto-cancel. |
 
 All events are signed and delivered the same way as `checkout.completed`. They are POSTed to the subscription's `subscriptionCallbackUrl` when set, otherwise to the checkout `callbackUrl`. Differentiate by the `x-portaly-event` header / payload `event` field. Idempotency is event-specific; see the callback notes below instead of globally deduplicating by `subscriptionId`.
