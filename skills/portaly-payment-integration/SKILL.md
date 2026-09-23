@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.12.0
+version: 0.13.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.12.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.13.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -194,25 +194,29 @@ refunds and failed charges never happen in a browser at all. Everything below ru
   hardcoding a number. A miss still returns 2xx (MP never reports errors) and lands silently as
   `(not set) / (not set)`. Renewals cannot join a session at all, so send those as standalone
   `purchase` events and expect direct attribution; that is correct, not a bug.
-- **Keep ad identifiers in your own store, not in `metadata`.** Capture `utm_*` / `gclid` /
+- **Keep ad identifiers in your own store, or in `metadata` under `tracking`.** Capture `utm_*` / `gclid` /
   `fbclid` on first landing; read GA4's `client_id` / `session_id` via
   `gtag('get', '<measurement id>', …)` rather than parsing the `_ga_*` cookie — Google does not
   document that format and changed it in 2025, so a hand-written regex fails silently. Save them
   against your order record keyed by the **`sessionId`** from the create-session response: it is
   on `checkout.completed` *and* `checkout.failed`, and arrives as `subscriptionId` /
   `checkoutSessionId` on later events. Do not key on `merchantOrderNumber` — it is optional and
-  absent from `checkout.failed`.
-  ⚠️ **Do not route them through `metadata`.** The Python and Go adapters cannot reproduce v1's
-  `localeCompare` ordering for arbitrary keys, so they accept only keys committed in the golden
-  vectors and raise on anything else. `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`,
-  `gclid` and `fbclid` are all absent from that list, and lowercase ASCII does not help — one of
-  them in `metadata` makes your receiver 401 **that subscription's callbacks**, and because
-  `metadata` is replayed on every renewal and refund, reconciliation stops for the life of the
-  subscription rather than just at checkout. The list is wider than the callback schema, though:
-  `campaign`, `source`, `cart_id`, `productId`, `productName` and `code` are on it, so a coarse
-  `metadata: { campaign, source }` is safe. Check `scripts/sign_callback.py`
-  (`_SUPPORTED_KEY_ORDER`) before assuming any other key is, and keep values as strings — the
-  whitelist covers keys, not values, and a float is rejected even under an accepted key.
+  absent from `checkout.failed`. To skip that store, send them as a JSON string under the single
+  `tracking` key instead (see below); prefer the store for subscriptions, whose `metadata` is
+  replayed on every renewal and lifecycle event.
+  ⚠️ **In `metadata`, they go under `tracking` and nowhere else.** The Python and Go adapters
+  cannot reproduce v1's `localeCompare` ordering for arbitrary keys, so they accept only keys
+  committed in the golden vectors and raise on anything else. `tracking` is committed;
+  `clientId`, `client_id`, `fbp`, `fbc`, `session_id`, `utm_source`, `gclid` and `fbclid` are all
+  absent, and lowercase ASCII does not help — one of them as its own key makes your receiver 401
+  **that subscription's callbacks**, and because `metadata` is replayed on every renewal and
+  refund, reconciliation stops for the life of the subscription rather than just at checkout.
+  Since the list covers keys and not values, one `tracking` key holds everything:
+  `metadata: { tracking: JSON.stringify({ utm_source, gclid }) }`. Stringify it — an object under
+  `tracking` has its inner keys checked against the list and fails closed. `campaign`, `source`,
+  `cart_id`, `productId`, `productName` and `code` are also committed if a flat coarse tag is
+  enough. Check `scripts/sign_callback.py` (`_SUPPORTED_KEY_ORDER`) before assuming any other key
+  is, and keep values as strings — a float is rejected even under an accepted key.
 - Recommend both layers — GA4's session stitching for reporting, your own captured source for
   revenue attribution you can audit.
 

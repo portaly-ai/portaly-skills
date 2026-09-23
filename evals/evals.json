@@ -17,13 +17,14 @@
     {
       "id": 2,
       "prompt": "我的 API 是 FastAPI / Python。請加 Portaly 訂閱 callback，metadata 可能由使用者自訂。不要加 Node service。",
-      "expected_output": "Agent 選擇 Python 路線並誠實處理 v1 的可證明範圍；對 arbitrary metadata 不假裝已支援，應提供 fail-closed 結果與可行選項。",
+      "expected_output": "Agent 選擇 Python 路線並誠實處理 v1 的可證明範圍；使用者自訂資料建議以 JSON 字串收進 `tracking`（Python adapter 驗得過），其他 arbitrary metadata key 不假裝已支援，應提供 fail-closed 結果與可行選項。",
       "expectations": [
         "Selects the Python adapter because the inspected runtime is FastAPI/Python",
         "Runs the Python production-derived callback vectors",
         "Explains that arbitrary metadata keys are outside the committed native key ordering and fail closed",
+        "Offers carrying the user-defined metadata as one JSON string under the `tracking` key, which the Python adapter verifies",
         "Does not silently translate JavaScript localeCompare with Python sorted",
-        "Leaves the integration blocked or asks the user to choose an evidence-backed bridge or protocol change when Node is forbidden"
+        "For any custom key kept outside `tracking`, leaves the integration blocked or asks the user to choose an evidence-backed bridge or protocol change when Node is forbidden"
       ]
     },
     {

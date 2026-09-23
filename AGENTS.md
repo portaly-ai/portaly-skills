@@ -116,6 +116,11 @@ When that test sends you here, or when you otherwise learn of an API change:
    `checkout.*` and refund event with it. `node evals/run-conformance.mjs --runtime all` must
    pass.
 
+   Do **not** extend the list with integrator-supplied keys such as `utm_source` or `gclid`.
+   `tracking` exists for that: it is committed, and because the list governs keys rather than
+   values a JSON string under it carries any structure an integrator invents. Adding their keys
+   one at a time is unbounded and each one needs its own production-derived vector.
+
 ## Provider Abstraction
 
 API host defaults to `https://portaly.ai`, overridable via `PORTALY_API_HOST`. See `PROVIDER.md` for the backend compatibility contract.
