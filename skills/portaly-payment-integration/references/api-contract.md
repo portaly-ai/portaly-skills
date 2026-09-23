@@ -215,7 +215,7 @@ Payload example (`creator_subscription.checkout.completed`):
 
 | `x-portaly-event` | When | Notes |
 |---|---|---|
-| `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge. |
+| `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge, after the subscription and its first order are written — `GET /subscriptions/{sessionId}` works as soon as it arrives. |
 | `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | Payload: `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`, `metadata`. **No `subscriptionId`** — none was created; dedup on `sessionId`. Sent in `test` mode too. Re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds | Not sent for the first checkout charge. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on every failed attempt; `willCancel: true` + `status: canceled` on the 3rd consecutive failure. |
@@ -283,6 +283,8 @@ The following endpoints move money or manage the merchant's product catalog, bra
 - `POST /api/creator-subscription/discount-codes` / `PUT /api/creator-subscription/discount-codes/{codeId}` / `DELETE /api/creator-subscription/discount-codes/{codeId}` — discount code create/update/delete
 
 If the merchant needs a new plan, a price change, updated branding, or a new discount code, ask them to do it in the Portaly dashboard — then re-fetch `GET /plans` at runtime; no redeploy needed on your side.
+
+`POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` is not blocked for this key, but it is **not part of this integration**: it only marks the session and sends `checkout.completed` / `.failed` — no subscription, payment record, order, or invoice is created, so `GET /subscriptions/{sessionId}` returns `404` and nothing renews. Never use it to finish a hosted checkout that looks stuck; poll the session instead.
 
 ## Rate Limiting
 

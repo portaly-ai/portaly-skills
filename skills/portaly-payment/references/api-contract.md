@@ -700,6 +700,13 @@ Common validation notes:
 
 Use this only for controlled recovery or non-hosted payment flows.
 
+What it does — and does not do:
+
+- It **only** sets the session to `completed` / `failed`, records the discount-code redemption (on `completed`), and sends `creator_subscription.checkout.completed` / `.failed` to `callbackUrl`.
+- It creates **no** subscription, payment record, order, or invoice. After it, `GET /subscriptions/{sessionId}` returns `404` and cancel / resume have nothing to act on; a monthly or yearly plan never renews; the payment never reaches the merchant's Portaly revenue, `GET /orders`, or payout; no e-invoice is issued.
+- The `checkout.completed` it sends looks the same as a hosted one, so a receiver that treats that event as "subscription exists" will be wrong for manually completed sessions. Track which sessions you completed this way.
+- Never use it to "finish" a hosted checkout that looks stuck — the buyer's payment may still be in flight. Poll `GET /checkout-sessions/{sessionId}` instead.
+
 - Endpoint:
   - `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete`
 - Required headers:
@@ -733,7 +740,8 @@ Allowed `status` values:
 
 - `completed`
 - `failed`
-- `canceled`
+
+`canceled` is rejected with `400` — it is not a status a session can be finalized into.
 
 ## Signed Callback
 
@@ -791,7 +799,7 @@ Payload example:
 
 | `x-portaly-event` | When | Notes |
 |---|---|---|
-| `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge. |
+| `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge, after the subscription and its first order are written — `GET /subscriptions/{sessionId}` works as soon as it arrives. A session finished through manual `POST /complete` sends it too but has no subscription (see Manual Completion). |
 | `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Carries `metadata`. Sent in `test` mode too. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds (monthly/yearly) | Not sent for the first checkout charge — that is `checkout.completed`. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
@@ -1127,7 +1135,7 @@ Use this when the human user needs the invoice records for a profile — invoice
   - `data[].customerName`
   - `data[].customerEmail`
   - `data[].invoice`: the requested carrier info (`{ type, carrierType, carrierNumber, company, companyId }`) or `null`
-  - `data[].invoiceStatus`: `pending` | `processing` | `issued` | `not_applicable`
+  - `data[].invoiceStatus`: `pending` | `processing` | `issued` | `voided` | `skipped` | `not_applicable`. `voided` = issued, then cancelled because the payment was refunded; if the tax platform rejects that cancellation the status stays `issued` and `invoiceLastError` starts with `Invoice void failed:`. `skipped` = test mode or a zero-amount charge — no invoice will ever be issued
   - `data[].invoiceTaskId`
   - `data[].invoiceLastError`
   - `data[].invoiceIssuedAt`
