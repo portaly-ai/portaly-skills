@@ -221,7 +221,7 @@ Payload example (`creator_subscription.checkout.completed`):
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on every failed attempt; `willCancel: true` + `status: canceled` on the 3rd consecutive failure. |
 | `creator_subscription.payment.refunded` | A merchant/admin refund succeeds | Deduplicate on `event + orderId` (the two refund outcomes share an `orderId`); integration-scope keys receive the event but cannot initiate the refund. |
 | `creator_subscription.payment.refund_failed` | A merchant/admin refund reaches terminal failure | Deduplicate on `event + orderId`; no money moved and Portaly must handle it manually. |
-| `creator_subscription.active` | Subscription transitions into active | Not re-sent for an already-active renewal. |
+| `creator_subscription.active` | Subscription transitions into active | Not re-sent for an already-active renewal. Also fires on the first checkout, in **no guaranteed order** relative to `checkout.completed` — don't make handling it depend on having processed `checkout.completed` first. |
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Includes the 3rd-failure auto-cancel. |
 

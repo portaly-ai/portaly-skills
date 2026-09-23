@@ -805,7 +805,7 @@ Payload example:
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
 | `creator_subscription.payment.refunded` | A payment order is fully refunded | Deduplicate on `event + orderId` — the two refund outcomes share an `orderId`, so without the event prefix they cancel each other out. `amount` and `refundedAmount` are the same post-discount order amount. |
 | `creator_subscription.payment.refund_failed` | A refund reaches a terminal failure | Deduplicate on `event + orderId`. No money moved; statistics reversal and subscription cancellation are not rolled back, so Portaly must handle it manually. |
-| `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal, but it *is* re-sent each time a subscription recovers from `past_due`, so treat it as repeatable. |
+| `creator_subscription.active` | Subscription transitions **into** active | Not re-sent for an already-active renewal, but it *is* re-sent each time a subscription recovers from `past_due`, so treat it as repeatable. A hosted checkout creates the subscription already active, so this also fires on the first checkout — in **no guaranteed order** relative to `checkout.completed`. Don't make handling it depend on having processed `checkout.completed` first. |
 | `creator_subscription.cancel_requested` | `cancelAtPeriodEnd` set true | — |
 | `creator_subscription.canceled` | Subscription becomes `canceled` | Fired for any cancellation, including the 3rd-failure auto-cancel. |
 
