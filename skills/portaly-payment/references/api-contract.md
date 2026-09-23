@@ -792,7 +792,7 @@ Payload example:
 | `x-portaly-event` | When | Notes |
 |---|---|---|
 | `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge. |
-| `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Sent in `test` mode too. |
+| `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Carries `metadata`. Sent in `test` mode too. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds (monthly/yearly) | Not sent for the first checkout charge — that is `checkout.completed`. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
 | `creator_subscription.payment.refunded` | A payment order is fully refunded | Deduplicate on `event + orderId` — the two refund outcomes share an `orderId`, so without the event prefix they cancel each other out. `amount` and `refundedAmount` are the same post-discount order amount. |
@@ -817,10 +817,12 @@ Failed-first-charge payload (`creator_subscription.checkout.failed`):
   "currency": "TWD",
   "customerEmail": "buyer@example.com",
   "failureReason": "TapPay payment failed",
-  "failedAt": "2026-03-12T10:05:00.000Z"
+  "failedAt": "2026-03-12T10:05:00.000Z",
+  "metadata": { "source": "web" }
 }
 ```
 
+- **`metadata` is echoed here too**, exactly as on `checkout.completed` — the same object you sent to create-session, so a declined charge can still be joined back to whatever context you stored. Portaly adds its own `paymentReference`, `paymentMethod`, `paidAmount` and `failureReason` keys alongside yours, so read your keys by name instead of treating the object as exactly what you sent. The key-ordering limit in `references/conversion-tracking.md` applies unchanged: ad identifiers still do not belong in `metadata`.
 - **No `subscriptionId`, on purpose.** Every other `creator_subscription.*` event follows `subscriptionId === checkoutSessionId === sessionId`, but a declined first charge never creates a subscription. Key this event on `sessionId` alone; do not synthesize a subscription record from it.
 - Covers both payment paths (TapPay and 91APP). Not to be confused with `creator_subscription.payment.failed`, which is a **renewal** failure on an existing subscription and does carry `subscriptionId`.
 - **`test` mode dispatches it too** — check `mode` before acting on it in production systems.

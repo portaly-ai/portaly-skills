@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.8.1
+version: 0.9.0
 metadata:
-  version: "0.8.1"
+  version: "0.9.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Also covers test mode — which test card to use, and why a test purchase sends no email and shows up in no revenue figure. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, bundle pricing of Portaly products, publishing or unpublishing a Portaly product (taking one off sale from their own site), or is troubleshooting a Portaly test payment, test card, sandbox order, or a missing order confirmation email.
 ---
 
@@ -108,7 +108,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.8.1" }
+  { "skillName": "portaly-product", "version": "0.9.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -243,7 +243,7 @@ When a buyer's payment attempt is declined, Portaly sends:
 x-portaly-event: digital_product.checkout.failed
 ```
 
-The payload carries `sessionId`, `profileId`, `merchantOrderNumber`, `mode`, `paymentProvider`, `totalAmount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. No order exists, so there is no `orders[]` — use `event + sessionId` as the idempotency key. **`test`-mode sessions emit it too** (check `mode`), so a sandbox endpoint starts receiving it as soon as you deploy a handler.
+The payload carries `sessionId`, `profileId`, `merchantOrderNumber`, `mode`, `paymentProvider`, `totalAmount`, `currency`, `customerEmail`, `failureReason`, `failedAt`, `metadata`. No order exists, so there is no `orders[]` — use `event + sessionId` as the idempotency key. **`test`-mode sessions emit it too** (check `mode`), so a sandbox endpoint starts receiving it as soon as you deploy a handler.
 
 Use it to follow up with the buyer (retry link, reminder email) instead of silently losing the sale. Portaly retries a failing endpoint with exponential backoff, up to 5 attempts.
 

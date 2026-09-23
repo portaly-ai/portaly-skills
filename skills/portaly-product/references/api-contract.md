@@ -380,7 +380,7 @@ x-portaly-signature: <hex string>
 |---|---|
 | `digital_product.checkout.completed` | All orders in the bundle are `paid`. Fired once per session. |
 | `digital_product.order.refunded` | An individual order is refunded. Fired once **per order** (so a bundle of 5 can fire 5 times if all refunded). |
-| `digital_product.checkout.failed` | The buyer's payment attempt failed. Fired once per session, idempotency key `sessionId`. Sent in `test` mode too (`mode` says which). |
+| `digital_product.checkout.failed` | The buyer's payment attempt failed. Fired once per session, idempotency key `sessionId`. Carries `metadata`. Sent in `test` mode too (`mode` says which). |
 | `digital_product.order.canceled` | Reserved. Currently not emitted. |
 
 ### Payload — `checkout.completed`
@@ -427,11 +427,12 @@ x-portaly-signature: <hex string>
   "currency": "TWD",
   "customerEmail": "buyer@example.com",
   "failureReason": "Card declined",
-  "failedAt": "2026-05-19T12:50:00Z"
+  "failedAt": "2026-05-19T12:50:00Z",
+  "metadata": { "your_field": "value" }
 }
 ```
 
-No order was created, so there are no `orders[]` and no `orderId`. `failureReason` is a short merchant-facing message — the raw gateway response is never included. There is **no** callback for an abandoned checkout (buyer never paid and the 30-minute window lapsed); query `GET /api/digital-products/checkout-sessions?outcome=abandoned` for those.
+`metadata` is the object you sent to create-session, echoed back exactly as on `checkout.completed` (`{}` when you sent none), so a declined payment can still be joined to your own record. No order was created, so there are no `orders[]` and no `orderId`. `failureReason` is a short merchant-facing message — the raw gateway response is never included. There is **no** callback for an abandoned checkout (buyer never paid and the 30-minute window lapsed); query `GET /api/digital-products/checkout-sessions?outcome=abandoned` for those.
 
 If your endpoint was down when this fired, Portaly retries with exponential backoff (up to 5 attempts) before giving up.
 

@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.14.2
+version: 0.15.0
 metadata:
-  version: "0.14.2"
+  version: "0.15.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -146,7 +146,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.14.2" }
+  { "skillName": "portaly-payment", "version": "0.15.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -217,7 +217,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 
 - The primary external confirmation is the signed callback to `callbackUrl`.
 - **Two checkout-time callbacks exist**: `creator_subscription.checkout.completed` when the first charge succeeds, and `creator_subscription.checkout.failed` when it is declined. Handle both — a merchant who only listens for `.completed` never learns which buyers failed to pay.
-- `creator_subscription.checkout.failed` carries `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`. It **deliberately has no `subscriptionId`** — a failed first charge means no subscription was ever created, so use `sessionId` as both the identifier and the idempotency key.
+- `creator_subscription.checkout.failed` carries `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`, `metadata`. It **deliberately has no `subscriptionId`** — a failed first charge means no subscription was ever created, so use `sessionId` as both the identifier and the idempotency key.
 - **`test`-mode sessions emit it too** (the payload's `mode` says which), so a sandbox endpoint will start receiving `checkout.failed` as soon as you deploy a handler.
 - Cancelled and expired checkouts still have no callback — poll `GET /api/creator-subscription/checkout-sessions/{sessionId}` for those.
 - To re-deliver a checkout callback your endpoint missed: `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. Use the session-keyed route for a failed first charge; `/subscriptions/{id}/retry-callback` cannot find it, because there is no subscription.
