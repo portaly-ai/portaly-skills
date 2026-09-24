@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.16.0
+version: 0.16.1
 metadata:
-  version: "0.16.0"
+  version: "0.16.1"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -45,8 +45,9 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - API endpoints accept both live and test keys except order refund: `POST /orders/{orderId}/refund` currently requires a live full-scope key. The mode is derived from the key, not from a request parameter.
 - Test mode is intended for integration testing. Real charges are not made in test mode when using TapPay sandbox credentials.
 - **Never invent a card number.** A test-mode checkout page prints the test card to use, in a highlighted box just below the card fields — tell the user to read it off the page. That card only works on the `checkoutUrl` this integration creates; it is rejected anywhere a real charge is taken, with a raw gateway error rather than a friendly one.
-- **Test mode and live mode do not use the same payment provider.** A test checkout charges through TapPay on the checkout page itself; a live checkout hands the buyer to 91APP and finishes on its callback. So a green test run has not exercised the live redirect-and-return path, and `paymentMethod` in the callback is `tappay` in test and `91app` in live — don't hardcode it. Don't treat those two as the only possible values either: a subscription completed through `POST /checkout-sessions/{sessionId}/complete` carries whatever `paymentMethod` the merchant sent.
+- **Test mode and live mode do not use the same payment provider.** A test checkout charges through TapPay on the checkout page itself; a live checkout hands the buyer to 91APP and finishes on its callback. So a green test run has not exercised the live redirect-and-return path, and `paymentMethod` in the callback is `tappay` in test and `91app` in live — don't hardcode it. Don't treat those two as the only possible values either: a session completed through `POST /checkout-sessions/{sessionId}/complete` carries whatever `paymentMethod` the merchant sent (and has no subscription behind it — see §6).
 - **A test-mode subscription never renews.** The renewal job skips test subscriptions outright, so a second-cycle `creator_subscription.payment.succeeded` will never arrive however long the user waits. Exercise the renewal handler with a replayed payload, not by waiting for the clock.
+- **To see `creator_subscription.canceled` in test mode without waiting for `cancelEffectiveAt`**, refund the test order from the Orders table (toolbar toggle on **Test**): the subscription is canceled at once and `canceled` is sent. Test refunds do **not** send `payment.refunded`, so that handler still needs a replayed payload.
 - **The sandbox ledger is off the settlement chain.** Tell the creator before they test, so they don't go hunting for something that was never meant to be there: test orders never reach revenue, balance or payouts, generate no affiliate or promotion commission, issue no invoice, and cannot be reviewed (so no review invite is sent). They *are* listed in `https://portaly.cc/admin/creator-subscription` once the orders table's **Live/Test** toggle is switched to **Test**, which is also where they can be refunded — that is the check to hand the creator. Don't call it a "test tab": the page's tabs are Subscriptions and Orders, and the mode toggle sits in the table's own toolbar.
 - **Plans and merchant config are shared across modes.** They belong to the merchant (`profileId`), not to the API key mode. A plan created with a live key is visible and usable with a test key, and vice versa. Do **not** create duplicate plans when switching between live and test keys — query existing plans first with `GET /api/creator-subscription/plans` and reuse them.
 
@@ -146,7 +147,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.16.0" }
+  { "skillName": "portaly-payment", "version": "0.16.1" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -217,12 +218,13 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 
 - The primary external confirmation is the signed callback to `callbackUrl`.
 - **Two checkout-time callbacks exist**: `creator_subscription.checkout.completed` when the first charge succeeds, and `creator_subscription.checkout.failed` when it is declined. Handle both — a merchant who only listens for `.completed` never learns which buyers failed to pay.
+- For a hosted checkout, `checkout.completed` is sent only after Portaly has written the subscription and its first order, so the handler may immediately call `GET /subscriptions/{sessionId}`, cancel, or resume with the callback's `sessionId`. In the rare case that recording fails after the buyer was charged, the callback is still sent so the merchant learns about the payment — a `404` from `GET /subscriptions/{sessionId}` right after `checkout.completed` means "contact Portaly support", not "retry until it appears".
 - `creator_subscription.checkout.failed` carries `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`, `metadata`. It **deliberately has no `subscriptionId`** — a failed first charge means no subscription was ever created, so use `sessionId` as both the identifier and the idempotency key.
 - **`test`-mode sessions emit it too** (the payload's `mode` says which), so a sandbox endpoint will start receiving `checkout.failed` as soon as you deploy a handler.
 - Cancelled and expired checkouts still have no callback — poll `GET /api/creator-subscription/checkout-sessions/{sessionId}` for those.
 - To re-deliver a checkout callback your endpoint missed: `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. Use the session-keyed route for a failed first charge; `/subscriptions/{id}/retry-callback` cannot find it, because there is no subscription.
 - **Recurring renewals and refunds also emit signed callbacks** (same signing/verification as the checkout callback): `creator_subscription.payment.succeeded` / `.failed` cover renewal charges; `creator_subscription.payment.refunded` / `.refund_failed` are terminal outcomes for one payment order. Refund events deduplicate on `orderId`, not `subscriptionId`. Lifecycle events (`creator_subscription.active` / `.cancel_requested` / `.canceled`) are delivered the same way. Switch on the `x-portaly-event` header. See `references/api-contract.md` → Signed Callback for the full event table and payloads, and `references/checkout-and-renewal.md` for renewal behavior.
-- Use manual `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` only as an exception flow when the user is building a non-hosted or recovery flow.
+- Use manual `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` only as an exception flow when the user is building a non-hosted or recovery flow. It **only** marks the session `completed` / `failed`, records the discount-code redemption, and sends `checkout.completed` / `checkout.failed`. It creates **no** subscription, payment record, order, or invoice: `GET /subscriptions/{sessionId}` returns `404`, nothing renews, nothing reaches the merchant's Portaly revenue or payout, and no e-invoice is issued. Never use it to "finish" a hosted checkout that looks stuck — poll the session instead.
 - **Current implementation contract:** `subscriptionId === checkoutSessionId === sessionId`.
 - When a recurring checkout succeeds, human user's system may use the callback's `sessionId` directly as the `subscriptionId` for later cancel or resume API calls.
 - Make it explicit to the human user that this is the current Portaly implementation contract and should be persisted on their side after checkout completion.

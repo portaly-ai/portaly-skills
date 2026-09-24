@@ -15,7 +15,7 @@ This reference is supplemental background for third-party integrators. It explai
 2. Portaly returns a `checkoutUrl` and `sessionId`.
 3. The merchant redirects the buyer to `checkoutUrl`.
 4. The buyer completes Portaly hosted checkout.
-5. After payment is finalized, Portaly sends the signed callback if `callbackUrl` was provided.
+5. After payment is finalized and the subscription and first order are written, Portaly sends the signed callback if `callbackUrl` was provided — so the subscription is already readable when it arrives.
 6. The merchant verifies the callback signature and updates its own order or subscription state.
 
 Current identifier contract:
