@@ -3,9 +3,9 @@ name: portaly-affiliate
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.2
+version: 0.1.3
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
 description: Set up buyer promotion on Portaly Payment so the creator's own customers earn a commission for referring other buyers — switch promotion on for the product and set the one commission rate every eligible plan shares, then capture the referral code on the creator's own site and attach it to the checkout session server-side. Portaly hosts the promoter-facing part — buyers get their referral link on Portaly's own purchase-complete page, and Portaly computes, records and pays every commission. One-time fixed-price plans only, Taiwan accounts only. Trigger when the user wants an affiliate, referral, ambassador or partner program, wants their customers, students, members or buyers to promote a product for a cut, or mentions 分潤 / 推廣連結 / 聯盟行銷 / 佣金 / 推廣夥伴 / 推薦獎金 on top of Portaly Payment.
 ---
 
@@ -70,7 +70,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-affiliate", "version": "0.1.2" }
+{ "skillName": "portaly-affiliate", "version": "0.1.3" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -186,7 +186,7 @@ For each plan, find the codes whose `rules[]` reach it — a rule with `appliesT
 | `discount.type: "percent"` | `round(amount × (100 - discount.value) / 100)` |
 | `discount.type: "free"` | **No figure.** Those sales charge nothing, so they pay the promoter nothing — say that instead of quoting a number |
 
-A `signupRefCode` discount applies with no code passed at checkout at all, so a plan carrying a ref-code rule is in the discounted case even when the creator believes they send nothing. Carry the base you land on into `references/partner-program-copy.md` as `{計算基數}`, alongside `{金額}` = `round({計算基數} × commissionRate / 100)` — the same formula the API uses for `commissionAmount`, so re-basing keeps the two numbers consistent. The published copy states both, so the sentence stays true when a buyer pays less. That copy labels it 成交金額 rather than 售價 on purpose: on a discounted plan the base is below the list price, and publishing it as 售價 would contradict the price on the creator's own product page.
+Carry the base you land on into `references/partner-program-copy.md` as `{計算基數}`, alongside `{金額}` = `round({計算基數} × commissionRate / 100)` — the same formula the API uses for `commissionAmount`, so re-basing keeps the two numbers consistent. The published copy states both, so the sentence stays true when a buyer pays less. That copy labels it 成交金額 rather than 售價 on purpose: on a discounted plan the base is below the list price, and publishing it as 售價 would contradict the price on the creator's own product page.
 
 ### 4. Switch promotion on
 

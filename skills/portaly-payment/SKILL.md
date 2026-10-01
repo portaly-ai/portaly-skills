@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.16.1
+version: 0.17.0
 metadata:
-  version: "0.16.1"
+  version: "0.17.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -147,7 +147,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.16.1" }
+  { "skillName": "portaly-payment", "version": "0.17.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -190,7 +190,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   - **Redemption window**: `redeemFrom` / `redeemBy`.
   - **Caps**: `maxRedemptions` (total) / `maxRedemptionsPerCustomer` (per email).
 - Codes are shared across **live and test** modes (same as plans).
-- Codes also serve as **ref codes**: record the code as `signupRefCode` at user registration. When a buyer with a recorded `signupRefCode` later checks out and verifies their email, Portaly auto-applies the matching rule, provided the code is still within its `redeemBy` window.
+- Portaly never picks a code for the buyer: a discount applies only when you pass `discountCode` on the checkout session or the buyer types a code on the hosted checkout page. For referral links, keep the code on the user in your own app and pass it at checkout (see `references/discount-code-examples.md`).
 - See `references/discount-code-examples.md` for example prompts and the parameter cheatsheet.
 - **Money-moving guard**: live-mode discount creation requires explicit user confirmation (same rule as live-mode plan creation).
 
@@ -202,11 +202,11 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - **If the buyer already signed in to the merchant's own product, skip making them re-enter anything**: send `customerEmail` + `customerName` to pre-fill the checkout form, and `emailVerified: true` to declare that the merchant already verified that email, which drops the emailed verification code. `emailVerified` is accepted **only** on this API-key-authenticated call — never from the buyer's browser — and is ignored without a non-blank `customerEmail`. The email field becomes read-only at checkout. See `references/api-contract.md` for the full field rules.
   - **Custom `metadata` keys are echoed into the signed callback body. Put your own data under the single `tracking` key as a JSON string — `metadata: { tracking: JSON.stringify({ … }) }` — which every adapter verifies. The Python and Go v1 adapters fail closed on any other key outside the committed schema (v1 sorts keys with JavaScript `localeCompare`, which those adapters cannot reproduce for arbitrary keys), and on an object under `tracking`, whose inner keys are checked the same way — so stringify it. For any other custom key, use a Node/WebCrypto receiver.**
 - `callbackUrl` receives the `checkout.completed` callback and — unless `subscriptionCallbackUrl` is set — also the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle callbacks. Set `subscriptionCallbackUrl` to route renewal/lifecycle events to a dedicated endpoint instead.
-- **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`. When omitted, Portaly attempts to auto-apply a discount via the buyer's `signupRefCode` — at session creation if you sent `emailVerified: true` with a `customerEmail`, otherwise after the buyer verifies their email inside hosted checkout (no extra call needed from the merchant).
+- **Optional `discountCode`**: when provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE`.
 - **Optional `profitSharingId`**: the referral code a buyer arrived with, when the product has buyer promotion switched on. Read it **server-side** from your own cookie and pass it here — never accept it from the browser's request body, or anyone can claim someone else's sale. Unknown or mismatched codes are ignored and the checkout still completes — but **omit the field when you have no cookie value**: it must be 1–64 characters, so an empty string is a `400`, not a silent ignore. Setting up the promotion itself belongs to the `portaly-affiliate` skill.
 - Persist `sessionId`, `checkoutToken`, `checkoutUrl`, and `expiresAt` on the third-party side.
 - If the merchant will do conversion tracking (step 10), put their own order id on `successRedirectUrl` **now** — it is the only key that survives every return path, and adding it later means reissuing sessions.
-- The session response includes `appliedDiscount` when a discount was applied at session creation; `session.amount` is always the **post-discount** amount the buyer will be charged. **With `emailVerified: true` this can happen without any `discountCode`** — the buyer's `signupRefCode` resolves right away (`source: 'ref_code'`), so a merchant reconciling against `amount` may see a different number than before adopting it.
+- The session response includes `appliedDiscount` when the `discountCode` you passed was applied; `session.amount` is always the **post-discount** amount the buyer will be charged.
 - Redirect the buyer to `checkoutUrl`.
 
 ### 5. Let Portaly run hosted checkout
@@ -374,7 +374,7 @@ When using this skill, aim to return one or more of:
 - `references/checkout-and-renewal.md`
   Use only as optional background for the high-level checkout lifecycle and renewal behavior.
 - `references/discount-code-examples.md`
-  Example prompts, parameter cheatsheet, and ref-code usage for the Discount Code APIs.
+  Example prompts, parameter cheatsheet, and referral-link handling for the Discount Code APIs.
 - `references/callback-signature-v1.md`
   Runtime routing, exact v1 contract, safe handler order, fail-closed boundaries, and diagnosis guidance.
 - `references/conversion-tracking.md`

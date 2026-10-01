@@ -45,20 +45,9 @@ The most common combinations:
 - **free + repeating(1)** → trial-style first-period freebie
 - **fixed + forever** → loyalty / founder pricing
 
-## Ref-code usage
+## Referral links
 
-Discount codes can double as registration ref codes:
-
-1. Vibe coder creates a code (e.g. `EARLYBIRD`) via this skill.
-2. The third-party app's signup flow accepts a `?ref=EARLYBIRD` URL parameter.
-3. When the same buyer later starts a checkout, Portaly auto-applies the matching rule for the chosen plan once the buyer's email is verified — no need to pass `discountCode` on the session.
-
-Things to check before recommending the ref-code path:
-
-- The code must already exist in Portaly **before** any user registers with it; otherwise sync silently drops the field with `errors: [{ reason: 'unknown_signup_ref_code' }]`.
-- `signup_ref_code` is **first-write-wins** per (profileId, email) — the first sync that records a code wins; later syncs that pass a different code are dropped with `errors: [{ reason: 'signup_ref_code_already_recorded' }]`.
-- The code must still be within `redeemBy` at checkout time. Expired codes silently no-op (no error shown to the buyer).
-- Per-customer caps still apply.
+Portaly does not record referral codes per user or apply them automatically. To give buyers who signed up through a referral link a discount, store the code on the user in your own app and pass it as `discountCode` when you create that user's checkout session. If the code can no longer be used — expired, disabled, or the buyer already hit its per-customer cap — session creation returns `400`, so retry without `discountCode` rather than blocking the purchase.
 
 ## Live-mode confirmation
 

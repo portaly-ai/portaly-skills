@@ -399,9 +399,9 @@ Founder pricing (fixed forever, single plan):
 
 `DELETE /api/creator-subscription/discount-codes/{codeId}` soft-deletes by flipping `status` to `disabled`. Disabled codes are excluded from default `GET` listings; pass `?status=disabled` to inspect them.
 
-### Ref-code Usage
+### Referral codes
 
-A discount code can also serve as a registration ref code. The vibe coder records the code as the user's `signupRefCode` at registration; once that buyer triggers a checkout and verifies their email, Portaly auto-applies the matching rule for the chosen plan.
+Portaly does not record referral codes per user or apply them automatically. To give buyers who signed up through a referral link a discount, store the code on the user in your own app and pass it as `discountCode` when you create that user's checkout session. If the code can no longer be used — expired, disabled, or the buyer already hit its per-customer cap — session creation returns `400`, so retry without `discountCode` rather than blocking the purchase.
 
 ### Rate limit
 
@@ -425,8 +425,8 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `subscriptionCallbackUrl`: optional. When set, recurring renewal and lifecycle callbacks are delivered here instead of `callbackUrl` (the checkout-completion callback still goes to `callbackUrl`). Falls back to `callbackUrl` when empty.
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context. **Echoed into the signed callback body.** Put your own data under the `tracking` key as a JSON string, not an object — it is committed in the callback vectors and verifies under every adapter, while an object there has its inner keys checked and fails closed. Any other custom key is only verifiable by the Node/WebCrypto adapters; the Python/Go v1 adapters fail closed on it.
-  - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, a discount may still be auto-applied via the buyer's `signupRefCode`: at session creation when you send `emailVerified: true` with a `customerEmail`, otherwise once the buyer verifies their email inside hosted checkout.
-  - `customerEmail`: optional pre-known buyer email, pre-filled on the hosted checkout page. On its own it is informational only — the buyer still confirms it with an emailed verification code, and that buyer-confirmed email is the one used to look up the buyer's `signupRefCode` and to enforce the per-customer cap. Send `emailVerified: true` alongside it to skip that code.
+  - `discountCode`: optional. When provided, Portaly validates and applies the discount up-front. Invalid codes return `400 INVALID_DISCOUNT_CODE` (`reason` describes the failure: not found / not applicable to this plan / out of redemption window / per-customer cap reached). When omitted, the session starts at the plan price; the buyer can still type a code on the hosted checkout page.
+  - `customerEmail`: optional pre-known buyer email, pre-filled on the hosted checkout page. On its own it is informational only — the buyer still confirms it with an emailed verification code, and that buyer-confirmed email is the one used to enforce the per-customer cap. Send `emailVerified: true` alongside it to skip that code.
   - `customerName`: optional. The buyer's name from your own system, pre-filled on the hosted checkout page so they need not retype it. The buyer can still edit it, and the name they submit is what lands on the order and invoice. Max 100 chars; control and formatting characters are stripped.
   - `emailVerified`: optional boolean. Set to `true` to declare that **you** have already verified `customerEmail` in your own product — the buyer then skips the emailed verification code entirely. Ignored unless `customerEmail` is also present and non-blank. Only accepted on this API-key-authenticated create call; every request the buyer's browser can make silently drops the field (no error is returned, so there is nothing to handle — it simply has no effect). Never pass it from front-end code. The email field is rendered read-only at checkout, because a buyer editing it would invalidate your declaration. Portaly verifies that the declaration came from you, not that the mailbox is real — accuracy, and the consequences of getting it wrong, are yours.
   - `profitSharingId`: optional. The referral code a buyer arrived with when you run buyer promotion on a plan — the `ps` value from the promotion link, which your server reads from its own cookie. Only accepted on this API-key-authenticated create call; a request the buyer's browser can make must never carry it, or anyone could claim someone else's sale. 1–64 characters. **Omit the field entirely when you have no cookie value — an empty string is a validation error (`400`), not a silent ignore.** An unknown, disabled, or mismatched code *is* silently ignored and the checkout still completes — losing the attribution is bad, losing the sale is worse. Only meaningful on plans that have buyer promotion switched on (one-time, fixed-price plans); see the `portaly-affiliate` skill.
@@ -477,8 +477,7 @@ Request body (dynamic pricing plan):
   - `data.checkoutToken`: server-side token for provider routes or manual completion
   - `data.expiresAt`: session expiry timestamp
   - `data.amount`: the amount the buyer will be charged — the **post-discount** total when a discount applied at creation, otherwise the plan's amount.
-  - `data.appliedDiscount`: `null` when no discount applied at session creation. Otherwise `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`, and `data.amount` is the post-discount total (`finalAmount`). Two ways it can be present: a `discountCode` you passed (`source: 'manual'`), or — **new with `emailVerified`** — the buyer's `signupRefCode` resolved on the spot, because a declared-verified email is known and trusted at creation time (`source: 'ref_code'`).
-  - **If you reconcile against `data.amount`, note that adopting `emailVerified: true` can change it**: a session that previously came back at the plan price may now come back already ref-code discounted, without you sending any `discountCode`. Without `emailVerified`, that lookup still happens — just later, after the buyer verifies their email inside hosted checkout, and the session `amount` is updated then.
+  - `data.appliedDiscount`: `null` when no discount applied at session creation. Otherwise `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`, and `data.amount` is the post-discount total (`finalAmount`). It is present only when the `discountCode` you passed was applied, so `source` is always `'manual'` here.
 
 ```json
 {
@@ -637,7 +636,7 @@ Current identifier contract:
   "appliedRule": { "appliesTo": {...}, "discount": {...}, "duration": {...} },  // same shape as a rule in the discount code
   "startedAt": "2026-08-01T00:00:00.000Z",
   "endsAt": "2026-11-01T00:00:00.000Z",   // null = forever
-  "source": "manual",                      // "manual" = discountCode sent at checkout; "ref_code" = auto-applied from the buyer's signupRefCode
+  "source": "manual",                      // "manual" = discountCode sent at checkout; "ref_code" = only on subscriptions created before signup ref codes were retired
   "originalAmount": 1000,                  // undiscounted price at checkout; absent on subscriptions created before this was recorded
   "finalAmount": 700                       // price actually charged at checkout; absent on subscriptions created before this was recorded
 }
