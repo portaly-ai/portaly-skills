@@ -129,7 +129,7 @@ Request body (fixed pricing plan):
   - `data.checkoutToken`: server-side token for manual completion (rare)
   - `data.expiresAt`: session expiry timestamp
   - `data.amount`: the amount the buyer will be charged — the **post-discount** total (`appliedDiscount.finalAmount`) when a discount applied, otherwise the plan's `amount`
-  - `data.appliedDiscount?`: present when the `discountCode` you passed was applied, so `source` is always `'manual'` here. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`. When present, `data.amount` is the **post-discount** amount.
+  - `data.appliedDiscount?`: present when the `discountCode` you passed was applied. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' }`. When present, `data.amount` is the **post-discount** amount.
 
 ```json
 {

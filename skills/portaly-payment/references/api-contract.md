@@ -477,7 +477,7 @@ Request body (dynamic pricing plan):
   - `data.checkoutToken`: server-side token for provider routes or manual completion
   - `data.expiresAt`: session expiry timestamp
   - `data.amount`: the amount the buyer will be charged — the **post-discount** total when a discount applied at creation, otherwise the plan's amount.
-  - `data.appliedDiscount`: `null` when no discount applied at session creation. Otherwise `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`, and `data.amount` is the post-discount total (`finalAmount`). It is present only when the `discountCode` you passed was applied, so `source` is always `'manual'` here.
+  - `data.appliedDiscount`: `null` when no discount applied at session creation. Otherwise `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' }`, and `data.amount` is the post-discount total (`finalAmount`). It is present only when the `discountCode` you passed was applied.
 
 ```json
 {
@@ -636,7 +636,7 @@ Current identifier contract:
   "appliedRule": { "appliesTo": {...}, "discount": {...}, "duration": {...} },  // same shape as a rule in the discount code
   "startedAt": "2026-08-01T00:00:00.000Z",
   "endsAt": "2026-11-01T00:00:00.000Z",   // null = forever
-  "source": "manual",                      // "manual" = discountCode sent at checkout; "ref_code" = only on subscriptions created before signup ref codes were retired
+  "source": "manual",                      // always "manual": a discountCode sent at checkout or entered by the buyer
   "originalAmount": 1000,                  // undiscounted price at checkout; absent on subscriptions created before this was recorded
   "finalAmount": 700                       // price actually charged at checkout; absent on subscriptions created before this was recorded
 }
@@ -762,7 +762,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `customerEmail`
   - `customerPhone?` — present on `checkout.completed` whenever a number was collected: when the plan's `collectPhone` is on, and also on a zero-amount live checkout that still saves a card, where the hosted checkout asks for one regardless. Absent, not empty, otherwise.
   - `completedAt`
-  - `appliedDiscount?` — present when a discount was applied to this checkout. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' | 'ref_code' }`; `source` is always `'manual'` for a new checkout. The payload's `amount` is the actually-charged (post-discount) amount.
+  - `appliedDiscount?` — present when a discount was applied to this checkout. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' }`. The payload's `amount` is the actually-charged (post-discount) amount.
 
 Payload example:
 
