@@ -70,7 +70,7 @@ Helps users integrate Portaly Payment hosted checkout, including merchant setup,
 - Merchant config and plan creation via API
 - Hosted checkout session flow
 - Fixed plans for subscriptions (`monthly` / `yearly`) and **dynamic plans** for one-time purchases, donations, tip jars, or any buyer-specified amount — the amount is set per checkout session. Yearly plans use 12-month deferred disbursement: the buyer pays upfront, the creator receives 1/12 of net revenue per month, and refunds are blocked once the first installment has been released.
-- Discount codes — fixed / percent / free, repeating or forever, with ref-code auto-apply at checkout
+- Discount codes — fixed / percent / free, repeating or forever, applied at checkout
 - Runtime-aware HMAC-SHA256 callback verification for Node.js, server-side WebCrypto, Python, and Go, with production-derived conformance vectors
 - Recurring subscription management (cancel / resume)
 - Subscriber self-service portal

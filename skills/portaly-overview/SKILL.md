@@ -1,6 +1,6 @@
 ---
 name: portaly-overview
-version: 0.2.0
+version: 0.2.1
 description: Orientation and navigation for what Portaly's open APIs can do — subscription payments, digital products, discount codes, buyer promotion, subscriber self-service, and order/invoice queries — plus an API catalog and where to find Portaly's API docs. Trigger when the user asks "what can Portaly do", "what APIs does Portaly have", wants a list or catalog of Portaly's APIs/endpoints, is evaluating Portaly's payment or product APIs before committing to an integration, is looking for Portaly API documentation, or is deciding which Portaly skill to install.
 ---
 
@@ -30,7 +30,7 @@ Both `portaly-payment` and `portaly-product` share the same API host and the sam
 Portaly's open (third-party-facing) API surface currently covers:
 
 - **Subscription payments** — monthly and yearly recurring plans, one-time and dynamic (buyer/system-specified amount) pricing, hosted checkout sessions, recurring renewal callbacks, cancel/resume lifecycle management, and a subscriber self-service portal.
-- **Discount codes** — fixed/percent/free discounts with repeating or forever durations, applied at checkout or auto-applied via signup ref codes.
+- **Discount codes** — fixed/percent/free discounts with repeating or forever durations, applied at checkout.
 - **Digital products** — single-item or custom bundle checkout for a creator's existing digital products (courses, templates, downloads), hosted payment + email, signed webhook events.
 - **Orders and invoices** — query payment/order records and invoice status for reconciliation.
 - **Buyer promotion** — let a creator's own buyers earn a commission for referring other buyers on a one-time plan. Portaly issues the referral link on its hosted purchase-complete page and owns the ledger, settlement and payout; the creator's site only remembers which link a buyer arrived with. Taiwan accounts only.
@@ -45,7 +45,7 @@ The open API surface, by group. Endpoints listed here are representative, not ex
 |---|---|---|
 | Merchant config | Merchant name / logo shown on hosted checkout | `GET/PUT /api/creator-subscription/config` |
 | Subscription plans | Create and manage monthly / yearly / one-time plans | `GET/POST /api/creator-subscription/plans`, `PUT .../plans/{planId}` |
-| Discount codes | Fixed / percent / free discounts, signup ref codes | `GET/POST /api/creator-subscription/discount-codes`, `GET .../discount-codes/lookup` |
+| Discount codes | Fixed / percent / free discounts | `GET/POST /api/creator-subscription/discount-codes`, `GET .../discount-codes/lookup` |
 | Checkout sessions | Start a hosted checkout for a plan | `POST /api/creator-subscription/checkout-sessions`, `GET .../checkout-sessions/{sessionId}` |
 | Subscriptions | Query and manage active subscriptions | `GET /api/creator-subscription/subscriptions`, `POST .../subscriptions/{subscriptionId}/cancel`, `.../resume` |
 | Orders & invoices | Reconciliation and e-invoice status | `GET /api/creator-subscription/orders`, `GET .../invoices` |
@@ -126,7 +126,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-overview", "version": "0.2.0" }
+  { "skillName": "portaly-overview", "version": "0.2.1" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
