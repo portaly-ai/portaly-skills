@@ -1,6 +1,6 @@
 ---
 name: portaly-overview
-version: 0.2.1
+version: 0.2.2
 description: Orientation and navigation for what Portaly's open APIs can do — subscription payments, digital products, discount codes, buyer promotion, subscriber self-service, and order/invoice queries — plus an API catalog and where to find Portaly's API docs. Trigger when the user asks "what can Portaly do", "what APIs does Portaly have", wants a list or catalog of Portaly's APIs/endpoints, is evaluating Portaly's payment or product APIs before committing to an integration, is looking for Portaly API documentation, or is deciding which Portaly skill to install.
 ---
 
@@ -46,7 +46,7 @@ The open API surface, by group. Endpoints listed here are representative, not ex
 | Merchant config | Merchant name / logo shown on hosted checkout | `GET/PUT /api/creator-subscription/config` |
 | Subscription plans | Create and manage monthly / yearly / one-time plans | `GET/POST /api/creator-subscription/plans`, `PUT .../plans/{planId}` |
 | Discount codes | Fixed / percent / free discounts | `GET/POST /api/creator-subscription/discount-codes`, `GET .../discount-codes/lookup` |
-| Checkout sessions | Start a hosted checkout for a plan | `POST /api/creator-subscription/checkout-sessions`, `GET .../checkout-sessions/{sessionId}` |
+| Checkout sessions | Start a hosted checkout for a plan; list unfinished checkouts (abandoned carts / declined first charges) for reconciliation and follow-up | `POST /api/creator-subscription/checkout-sessions`, `GET .../checkout-sessions`, `GET .../checkout-sessions/{sessionId}` |
 | Subscriptions | Query and manage active subscriptions | `GET /api/creator-subscription/subscriptions`, `POST .../subscriptions/{subscriptionId}/cancel`, `.../resume` |
 | Orders & invoices | Reconciliation and e-invoice status | `GET /api/creator-subscription/orders`, `GET .../invoices` |
 | Subscriber portal | Self-service portal for subscribers | `POST /api/creator-subscription/portal-sessions` |
@@ -126,7 +126,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-overview", "version": "0.2.1" }
+  { "skillName": "portaly-overview", "version": "0.2.2" }
   ```
 - `version` is this skill's `version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
