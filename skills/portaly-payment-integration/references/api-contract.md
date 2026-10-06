@@ -197,9 +197,9 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
   - Buyer phones cannot be seeded by the merchant at session creation. If you need to join abandoned sessions back to your own user, pass your own user id via `metadata` at session creation.
   - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts.
 - Common uses:
-  - abandoned-cart email campaigns (`outcome=abandoned`)
+  - abandoned-cart email campaigns — `outcome=abandoned`, then **filter out `paymentSubmitted: true`** before sending (those rows are a lost callback, not a lost buyer)
   - declined-payment follow-up (`outcome=failed`)
-  - periodic reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`)
+  - periodic reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`) — `paymentSubmitted: true` rows are the ones that most need checking against the integrator's own records
 
 ## Signed Callback
 

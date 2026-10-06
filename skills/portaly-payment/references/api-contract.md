@@ -621,9 +621,9 @@ Use this when the merchant needs **the unfinished-checkout list** — abandoned 
   - Buyer phones cannot be seeded by the merchant at session creation. If the merchant needs to join back to their own user, pass their own user id via `metadata` at session creation.
   - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts.
 - Common uses:
-  - abandoned-cart email campaigns (`outcome=abandoned`)
+  - abandoned-cart email campaigns — `outcome=abandoned`, then **filter out `paymentSubmitted: true`** before sending (those rows are a lost callback, not a lost buyer)
   - declined-payment follow-up (`outcome=failed`)
-  - monthly reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`)
+  - monthly reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`) — `paymentSubmitted: true` rows are the ones that most need checking against the merchant's own records
 
 ## Subscription Query And Lifecycle
 
