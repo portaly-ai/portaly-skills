@@ -588,7 +588,42 @@ Use this when the human user needs reconciliation or a status page.
 - Common uses:
   - merchant status pages
   - reconciliation jobs
-  - callback retry fallback
+  - callback retry fallback for one known session (for bulk retrieval, use `GET /checkout-sessions` list — see below)
+
+## Session List
+
+Use this when the merchant needs **the unfinished-checkout list** — abandoned carts, declined first charges, in-flight sessions — to reconcile, re-market, or audit. This is the only way to get those: `GET /orders` only returns records that settled, and the `creator_subscription.checkout.failed` callback only fires on provider declines (not when the buyer closed the tab or let the session expire).
+
+- Endpoint:
+  - `GET /api/creator-subscription/checkout-sessions`
+- Required headers:
+  - `Authorization: Bearer {portaly_payment_api_key}` (`read`-tier rate limit, 120/minute)
+- Query parameters (all optional):
+  - `outcome` — comma-separated subset of `completed`, `failed`, `abandoned`, `pending`. Unknown values are rejected with 400. Example: `outcome=failed,abandoned`.
+  - `startDate` / `endDate` — filter by `createdAt`. A bare `YYYY-MM-DD` is read as a Taipei (UTC+8) calendar day; a datetime without a timezone offset is also read as Taipei. Include `Z` or `±HH:MM` to use the value as given. Same rules as `GET /orders`.
+  - `limit` — 1–200, defaults to 50.
+  - `startAfter` — cursor from the previous page's `pagination.nextCursor`.
+- Scope: the API key's `profileId` + `mode`. A test key can never see live sessions, and vice versa.
+- Response: `{ data: SessionListItem[], pagination: { hasMore, nextCursor, count } }`. Each `SessionListItem`:
+  - `sessionId`, `outcome`, `status` (raw status, for debugging — use `outcome` for logic), `mode`
+  - `planId`, `planName`, `amount`, `currency`, `merchantOrderNumber`
+  - `customerName`, `customerEmail`, `customerPhone` (empty until buyer submits; see `customer.phone` note above)
+  - `metadata` — the metadata the merchant sent at session creation, Portaly-owned payment-secret keys stripped
+  - `failureReason`, `paymentCanceled`, `paymentSubmitted`
+  - `createdAt`, `updatedAt`, `expiresAt`
+- The response is a **flat summary**, not the hydrated single-session shape — no nested `customer.*`, no `plan.*`, no `invoice`. Buyer email lives in `customerEmail` (top-level), unlike the single-session response.
+- Important behavior for `outcome`:
+  - **`abandoned` matches the Portaly dashboard "Unfinished checkouts" tab**. An `initiated` session (buyer handed to 91APP, waiting for the provider to report back) gets a **3.5-hour grace period** after `expiresAt` before it is counted as `abandoned`. Buyers currently mid-payment therefore do **not** appear in the `abandoned` list — if they did, the merchant could email "you did not finish" to someone who was still paying.
+  - **`abandoned` combined with `paymentSubmitted: true`** means the buyer did submit payment but the callback was lost. The money may already be in the merchant's account — **reconcile that row, do not re-market to it**.
+  - **`paymentCanceled: true`** is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It only fires on the `failed` outcome, and signals the buyer bailed on the 91APP page rather than being declined by the bank.
+- Known limits of the list (not bugs; call them out when the merchant notices):
+  - The earlier the buyer bailed, the sparser the row — `customerEmail` is written at OTP submission, `customerName` / `customerPhone` only when the buyer presses pay (and phone only on plans with `collectPhone`). Sessions that stopped at `checkout_ready` without the buyer touching anything have at most an email.
+  - Buyer phones cannot be seeded by the merchant at session creation. If the merchant needs to join back to their own user, pass their own user id via `metadata` at session creation.
+  - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts.
+- Common uses:
+  - abandoned-cart email campaigns (`outcome=abandoned`)
+  - declined-payment follow-up (`outcome=failed`)
+  - monthly reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`)
 
 ## Subscription Query And Lifecycle
 
@@ -1156,7 +1191,7 @@ All creator-subscription API endpoints are rate limited **except** checkout sess
 
 | Group | Window | Max requests | Applies to |
 |---|---|---|---|
-| read | 1 minute | 120 | GET checkout-sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders, GET orders/{id}, GET invoices |
+| read | 1 minute | 120 | GET checkout-sessions, GET checkout-sessions/{id}, GET subscriptions, GET subscriptions/{id}, GET plans, GET config, GET orders, GET orders/{id}, GET invoices |
 | write | 1 minute | 20 | POST cancel, POST resume, POST orders/{id}/refund, PUT plans/{id}, PUT config, POST plans |
 | api-keys | 1 minute | 10 | POST/GET/DELETE api-keys |
 
