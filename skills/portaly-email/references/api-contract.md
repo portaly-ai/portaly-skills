@@ -34,14 +34,15 @@ account answers `403 FORBIDDEN`. Creating a key needs the Premium plan.
 | 401 | `INVALID_API_KEY` | Missing, malformed, unknown or revoked key |
 | 403 | `FORBIDDEN` | Invite-only beta and this account has not been invited |
 | 403 | `PERMISSION_DENIED` | Needs a `full` key (only the domain endpoints) |
-| 429 | `RATE_LIMITED` | Per-key rate limit; `Retry-After` header says when |
+| 429 | `RATE_LIMITED` | Per-key rate limit; `Retry-After` header says how many seconds to wait |
 | 503 | `RATE_LIMIT_UNAVAILABLE` | Rate limiting briefly unavailable, request refused; retry after `Retry-After` |
 | 500 | `INTERNAL_ERROR` | Portaly-side failure; nothing was sent. Retry; for a send, with the same `Idempotency-Key` |
 
 - Rate limits, per key per minute: `POST /emails` 60 **recipients** (an email to 50 people uses 50),
   `POST /batches` 10 requests, reads (`GET /emails`, `GET /emails/{id}`, `GET /domains`, `GET /quota`)
-  120, `POST /emails/{id}/cancel` and `POST /domains` 20. Responses carry `X-RateLimit-Limit`,
-  `X-RateLimit-Remaining`, `X-RateLimit-Reset`.
+  120, `POST /emails/{id}/cancel` and `POST /domains` 20. A batch counts once toward its own 10;
+  its recipients do not use the 60. Responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+  `X-RateLimit-Reset` (Unix seconds); `Retry-After` is always in seconds.
 
 ---
 
@@ -55,8 +56,12 @@ Header `Idempotency-Key` (optional, 1–256 chars, strongly recommended). The bo
   per user; if the content changes, use a new key.
 - Scoped to the account and the sending domain (a batch key: the account).
 - Requests refused by a check (quota, suppression, limits, domain) are not remembered — a retry is
-  checked again. A send that answered `502` holds its key: retries answer `409` until the outcome is
-  known, then `200`.
+  checked again. A send that answered `502` holds its key: retries answer `409` until delivery
+  events show the mail service accepted it, then `200` with the original id. If it was never
+  accepted, the key stays `409` for good.
+- List results do not include the key. Tag each email with it (`{ "name": "ref", "value": "<key>" }`)
+  to find it again with `GET /emails?tag=ref:<key>`; build keys from letters, digits, `_` and `-` so
+  they fit a tag value.
 
 ```json
 {
@@ -78,9 +83,9 @@ Header `Idempotency-Key` (optional, 1–256 chars, strongly recommended). The bo
 
 | Field | Rules |
 |---|---|
-| `sender` | Required. `email` (≤ 320, ASCII) must be on a verified custom domain this key may use, or `sandbox.portaly.tw` — there the local part is 3–32 of `a–z 0–9 . _ -`, must not contain `portaly`, and must not be reserved (`noreply`, `no-reply`, `support`, `info`, `admin`, …), and it only delivers to the account owner's verified sign-in email. `name` optional, ≤ 100 chars, no line breaks, non-ASCII fine. |
+| `sender` | Required. `email` (≤ 320, ASCII) must be on a verified custom domain this key may use, or `sandbox.portaly.tw` — there the local part is 3–32 of `a–z 0–9 . _ -` (case-insensitive), must not contain `portaly`, and must not be reserved (`noreply`, `no-reply`, `support`, `info`, `admin`, …), and it only delivers to the account owner's verified sign-in email. `name` optional, ≤ 100 chars, no line breaks, non-ASCII fine. |
 | `recipients` | Required, 1–50 `{ email, type? }`, `type` = `to` (default) / `cc` / `bcc`, at least one `to`. One message: cc recipients see each other. A repeated address is sent once. |
-| `replyTo` | Optional. One address or an array of up to 10. |
+| `replyTo` | Optional. One address or an array of up to 10. Set it when the sending subdomain does not receive mail, or replies go nowhere. |
 | `subject` | Required, 1–998 chars, no line breaks. |
 | `html` / `text` | At least one; each ≤ 900,000 bytes. `text` is derived from `html` when omitted. |
 | `tags` | Optional, ≤ 10 `{ name, value }`, each 1–256 of `A–Z a–z 0–9 _ -`, unique names, no `portaly-` prefix. |
@@ -111,7 +116,7 @@ Responses:
 | 403 | `DOMAIN_NOT_ACTIVE` | Domain suspended — contact Portaly support. |
 | 403 | `RECIPIENT_NOT_ALLOWED` | Sandbox sending to someone other than the account owner. |
 | 403 | `HARD_BOUNCE_LIMIT_REACHED` | The domain hit today's hard-bounce limit; usually suspended at the next check. |
-| 409 | `IDEMPOTENCY_KEY_IN_USE` | First attempt still in flight, or it answered `502` and the outcome is not known yet. Retry with the same key for up to about 10 minutes, never forever; still `409` means it most likely never went out — find it with `GET /emails?status=unknown`, then alert or resend with a new key (small duplicate risk). |
+| 409 | `IDEMPOTENCY_KEY_IN_USE` | First attempt still in flight, or it answered `502` and the outcome is not known yet. Retry with the same key for up to about 10 minutes, never forever; still `409` means it most likely never went out — find it with `GET /emails?status=unknown&tag=ref:<key>`, then alert or resend with a new key (small duplicate risk). |
 | 422 | `RECIPIENT_SUPPRESSED` | Every `to` is on Portaly's suppression list (hard bounce, or spam complaints to several Portaly senders); nothing sent. |
 | 422 | `MESSAGE_REJECTED` | Rejected by the mail service. The same key keeps answering this — fix the message and use a new key. |
 | 422 | `ATTACHMENT_DOWNLOAD_FAILED` | An attachment URL did not answer 200 in time. |
