@@ -93,8 +93,9 @@ Header `Idempotency-Key` (optional, 1–256 chars, strongly recommended). The bo
 | `attachments` | Optional, ≤ 10 `{ filename, content \| url, contentType?, contentId? }`. `content` is base64 (≈ 3 MB max, the request is capped at 4.5 MB); `url` is public https, downloaded when the request arrives (all URLs together within 20 s, ≤ 3 redirects). `contentId` embeds it inline for `<img src="cid:…">`. Email + attachments ≤ 10 MB. Executable extensions are refused. |
 | `scheduledAt` | Optional ISO 8601 with time zone, ≥ 1 minute and at most 30 days minus 10 minutes ahead. |
 
-Optional fields may be omitted or sent as `null`. An empty `replyTo`, `html` or `text` also counts as
-omitted; an empty `scheduledAt` or `idempotencyKey` is rejected.
+Optional fields may be omitted or sent as `null`. An empty string in an optional text field
+(`replyTo`, `html`, `text`, a recipient `type`, attachment fields) also counts as omitted; an empty
+`scheduledAt` or `idempotencyKey` is rejected.
 
 Responses:
 
@@ -216,7 +217,7 @@ Email `status` — whether it was handed to the mail service:
 ## GET `/api/email/emails` — list
 
 Only emails sent through the API (not admin broadcasts), newest first. Each item has the same shape
-as `GET /emails/{id}`.
+as `GET /emails/{id}`. Empty parameters (`?startAfter=`) are ignored.
 
 | Query | |
 |---|---|
