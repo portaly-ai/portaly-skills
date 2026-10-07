@@ -34,7 +34,7 @@ Portaly's open (third-party-facing) API surface currently covers:
 - **Digital products** — single-item or custom bundle checkout for a creator's existing digital products (courses, templates, downloads), hosted payment + email, signed webhook events.
 - **Orders and invoices** — query payment/order records and invoice status for reconciliation.
 - **Buyer promotion** — let a creator's own buyers earn a commission for referring other buyers on a one-time plan. Portaly issues the referral link on its hosted purchase-complete page and owns the ledger, settlement and payout; the creator's site only remembers which link a buyer arrived with. Taiwan accounts only.
-- **Transactional email** (beta) — send the app's own receipts, sign-in codes and notifications from the creator's verified domain; delivery status per recipient and remaining quota. Broadcasts to an audience stay in the Portaly admin.
+- **Transactional email** (invite-only beta) — send the app's own receipts, sign-in codes and notifications from the creator's verified domain; delivery status per recipient and remaining quota. Broadcasts to an audience stay in the Portaly admin.
 
 Payments, products and promotion are exposed under two API key prefixes (`pcs_live_*` / `pcs_test_*`) — one key covers all of them. Email is separate: it uses an email API key (`pem_*`) that cannot call payment endpoints, and a payment key cannot send email.
 
@@ -55,7 +55,7 @@ The open API surface, by group. Endpoints listed here are representative, not ex
 | Webhooks | Signed callbacks for payment / subscription / product events | 8 event types (`creator_subscription.*`, `digital_product.*`) |
 | Reviews | Embed verified-buyer review widget (hosted iframe, not a JSON API) | `https://portaly.ai/embed/reviews/{slug}` (iframe embed, no API key) |
 | Buyer promotion | Switch buyer promotion on for the product and set the one commission rate every eligible one-time plan shares | `GET/PUT /api/creator-subscription/promotion` |
-| Email (beta, `pem_*` key) | Send transactional email from the creator's domain, track delivery, check quota | `POST /api/email/emails`, `POST /api/email/batches`, `GET /api/email/emails/{id}`, `GET /api/email/quota` |
+| Email (invite-only beta, `pem_*` key) | Send transactional email from the creator's domain, track delivery, check quota | `POST /api/email/emails`, `POST /api/email/batches`, `GET /api/email/emails/{id}`, `GET /api/email/quota` |
 
 **Do not treat this table as the full contract.** When the user needs the complete, always-current endpoint list, fetch it live instead of relying on this file:
 
@@ -110,11 +110,11 @@ When this skill's summaries and those docs disagree, **the docs at `https://port
   ```bash
   npx skills add portaly-ai/portaly-skills --skill portaly-affiliate
   ```
-- **`portaly-email`** — install for sending the app's own transactional email (receipts, verification codes, notifications) from the creator's domain. Beta: the Portaly account must be on the email allowlist. Not for newsletters — those are sent from the Portaly admin.
+- **`portaly-email`** — install for sending the app's own transactional email (receipts, verification codes, notifications) from the creator's domain. Invite-only beta: only accounts Portaly has invited can use it. Not for newsletters — those are sent from the Portaly admin.
   ```bash
   npx skills add portaly-ai/portaly-skills --skill portaly-email
   ```
-- If the user has no Portaly account or API key yet: they register at `https://portaly.cc/payment` and create an API key at `https://portaly.cc/admin/creator-subscription` (both are human-operated pages — open them in a browser for the user; the matching skill's workflow covers this step in detail).
+- If the user has no Portaly account or API key yet: they register at `https://portaly.cc/payment` and create an API key at `https://portaly.cc/admin/creator-subscription` — or, for email, an email API key at `https://portaly.cc/admin/email/api-keys` (all human-operated pages — open them in a browser for the user; the matching skill's workflow covers this step in detail).
 - Once installed, **follow that skill's own Workflow section** for the actual integration steps (API key setup, session creation, callback/webhook verification, etc.). This skill does not repeat those steps — it only tells you which one to load.
 
 ## Report the Installed Skill Version

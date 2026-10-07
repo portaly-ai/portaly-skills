@@ -6,10 +6,10 @@ name: portaly-email
 version: 0.1.0
 metadata:
   version: "0.1.0"
-description: "Help users send transactional email (order receipts, sign-in codes, notifications) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived."
+description: "Help users send transactional email (order receipts, sign-in codes, notifications) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
 ---
 
-# Portaly Email
+# Portaly Email (Beta)
 
 Use this skill to help a human user (a creator, usually not an engineer) wire their app's own
 email — receipts, verification codes, password resets, notifications — to Portaly's email API.
@@ -19,10 +19,11 @@ This is **transactional email only**: one message triggered by something one per
 Newsletters and announcements to an audience are sent from the Portaly admin
 (`https://portaly.cc/admin/email`), not through this API.
 
-> **Beta.** The Portaly account must be on the email allowlist — otherwise every call answers
-> `403 FORBIDDEN`, and there is nothing the agent can do about it except tell the user to contact
-> Portaly. Sending from a custom domain also needs the Premium plan, which carries the monthly
-> quota (without it, sends answer `429 SEND_QUOTA_EXCEEDED`).
+> **Beta — invite only.** Portaly Email is in beta and only accounts Portaly has invited can use it.
+> Any other account gets `403 FORBIDDEN` on every call, and there is nothing the agent can do about
+> it except tell the user to contact Portaly. Creating an email API key also needs the Premium plan,
+> which carries the monthly quota. Say this before any setup work if the user has not mentioned being
+> invited.
 
 ## API Host
 
@@ -39,10 +40,13 @@ disagree, the docs win.
 
 1. **Key** — the human creates an email API key in the Portaly admin and puts it in `.env` as
    `PORTALY_EMAIL_API_KEY`. (Workflow step 1.)
-2. **Sandbox first** — until a domain is verified, send from `<name>@sandbox.portaly.tw` (pick any
-   name; reserved ones like `admin` answer `400 INVALID_SENDER`). It only delivers to the Portaly
-   account's own email, up to 50 a day. Good enough to prove the code works.
-3. **Domain** — the human binds a sending subdomain and adds the DNS records. (Workflow step 2.)
+2. **Sandbox first** — until a domain is verified, send from `<name>@sandbox.portaly.tw`. It only
+   delivers to the account owner's verified sign-in email, up to 50 a day. `<name>` is 3–32 letters,
+   digits, `.`, `_` or `-`, must not contain `portaly`, and must not be a reserved name such as
+   `noreply`, `no-reply`, `support`, `info` or `admin` (`400 INVALID_SENDER`) — e.g. `orders` or
+   `hello`. Good enough to prove the code works.
+3. **Domain** — the human binds a sending subdomain and adds the DNS records, then makes sure the
+   key covers that domain. (Workflow step 2.)
 4. **Send** from server-side code with an `Idempotency-Key`. (Workflow step 3.)
 5. **Handle the response and track delivery** — retry what is retryable, alert on quota, and record
    bounced and complained addresses. (Workflow steps 4–5.)
@@ -55,8 +59,11 @@ disagree, the docs win.
   Keys start with `pem_` and are shown **once**.
 - Permission: `sending` (send, list, look up, cancel, quota) is enough for an app that only sends.
   Choose `full` only if this integration should also bind domains through the API.
-- The key is also limited to the sending domains picked when it was created. A key limited to
-  `sandbox.portaly.tw` is effectively the test key — there is no separate test mode.
+- The key only sends from the domains picked when it was created. Before any domain is verified the
+  admin's default is `sandbox.portaly.tw` alone, so a key created now cannot send from the real
+  domain later (`403 DOMAIN_NOT_ALLOWED`). Either pick 「全部網域」 (all domains, including ones bound
+  later — `full` keys always have it) or have the human create another key after step 2. A key
+  limited to `sandbox.portaly.tw` is effectively the test key — there is no separate test mode.
 - **This is not the Portaly Payment key.** `pcs_live_` / `pcs_test_` keys cannot send email, and a
   `pem_` key cannot call payment endpoints. A project using both keeps both.
 - **Never ask the user to paste the key into chat.** Tell them to add it to `.env` themselves:
@@ -72,9 +79,9 @@ disagree, the docs win.
 
 ### 1.5 Report the installed skill version
 
-Report this skill's version once per session so the creator's Portaly dashboard can flag an outdated
-install. The body carries only the skill name and version. Mention it to the user once; you don't
-need to pause for approval.
+Report this skill's version once per session so Portaly knows which version is installed. The body
+carries only the skill name and version. Mention it to the user once; you don't need to pause for
+approval.
 
 - Send it right after installing or updating this skill if a key is already in the environment,
   otherwise together with the first real Portaly API call this session. Never prompt for a key just
@@ -112,7 +119,11 @@ running. Ignore failures; this never blocks anything.
   The human adds every one at their DNS provider, then presses 「重新檢查」 in the admin. DNS can take
   minutes to hours; `identityStatus: "verified"` and `mailFromStatus: "success"` mean it is ready.
 - Until then, build and test against the sandbox: `sender.email` on `sandbox.portaly.tw`, recipient
-  = the Portaly account's own email. Swapping to the real domain later is a config change, not code.
+  = the account owner's verified sign-in email. If the owner signs in without a verified email (e.g.
+  by phone or LINE), the sandbox cannot deliver at all (`403 RECIPIENT_NOT_ALLOWED`). Swapping to the
+  real domain later is a config change, not code.
+- Once the domain is verified, check that the key covers it (step 1); otherwise sends answer
+  `403 DOMAIN_NOT_ALLOWED`.
 - Never try to send from `mail.portaly.tw` or any other Portaly domain — it answers `403 DOMAIN_NOT_ALLOWED`.
 
 ### 3. Send
@@ -123,13 +134,16 @@ running. Ignore failures; this never blocks anything.
 const PORTALY_API_HOST = process.env.PORTALY_API_HOST || 'https://portaly.ai'
 
 export class PortalyEmailError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string | undefined,
-    message: string | undefined,
-    readonly retryAfterSeconds: number | null,
-  ) {
+  readonly status: number
+  readonly code: string | undefined
+  readonly retryAfterSeconds: number | null
+
+  constructor(status: number, code: string | undefined, message: string | undefined, retryAfterSeconds: number | null) {
     super(message ?? `Portaly email API answered ${status}`)
+    this.name = 'PortalyEmailError'
+    this.status = status
+    this.code = code
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -163,14 +177,18 @@ export async function sendEmail(input: {
 ```
 
 - **Always send an `Idempotency-Key`, derived from the business event** — not a random value per
-  attempt. A retry with the same key returns the original result and never sends twice; that is what
-  makes retrying a timeout safe.
+  attempt. A retry with the same key never sends twice; that is what makes retrying a timeout safe.
+- **One key per email you mean to send, never one per user.** Keys never expire and Portaly does not
+  compare the body: a reused key returns the first email's id and sends nothing. `order-${orderId}-receipt`
+  is right; `password-reset-${userId}` silently drops every reset after the first — use the reset
+  request's own id. If the content changes, use a new key.
 - Keep `EMAIL_FROM` in config so moving from the sandbox to the verified domain is one variable.
 - Store the returned `id` with the order/user it belongs to — it is how you look up delivery later.
 - Recipients: up to 50 per email as `{ email, type }` with `type` `to` / `cc` / `bcc` (default `to`).
   It is **one message** — cc recipients see each other. For separate messages to many people, use
   `POST /api/email/batches` (up to 100 emails, sent in the background).
-- `scheduledAt` (ISO 8601 with time zone, 1 minute to 30 days ahead) schedules it and answers `202`;
+- `scheduledAt` (ISO 8601 with time zone, 1 minute to just under 30 days ahead — 30 days minus 10
+  minutes) schedules it and answers `202`;
   `POST /api/email/emails/{id}/cancel` cancels before it goes out.
 - Attachments: `content` (base64, files up to ~3 MB — requests are capped at 4.5 MB) or `url` (a public
   https URL Portaly downloads). 10 MB per email in total.
@@ -183,13 +201,16 @@ Every error is `{ "error": { "code", "message" } }`. Branch on `code`, never on 
 | Response | What the code should do |
 |---|---|
 | `200` / `202` | Store `data.id`. |
-| `429 RATE_LIMITED` | Per-key rate limit. Wait `Retry-After` seconds, retry with the same key. |
-| `502 SEND_OUTCOME_UNKNOWN`, any `503` | Retry with the same `Idempotency-Key` (backoff); it will not double-send. |
-| `409 IDEMPOTENCY_KEY_IN_USE` | The first attempt is still in flight — retry later with the same key. |
+| `429 RATE_LIMITED` | Per-key rate limit. Wait `Retry-After` seconds, retry with the same `Idempotency-Key`. |
+| `500`, any `503`, network error or timeout | Retry with the same `Idempotency-Key` (backoff); it will not double-send. |
+| `502 SEND_OUTCOME_UNKNOWN` | It may have gone out. Retry with the same `Idempotency-Key`; until Portaly learns the outcome that retry answers `409`. |
+| `409 IDEMPOTENCY_KEY_IN_USE` | Retry with the same key for up to about 10 minutes — **cap it, never loop forever**. Still `409` after that means it most likely never went out (the key stays `409` for good): find it with `GET /api/email/emails?status=unknown`, then alert a human or resend with a new key, accepting a small risk of a duplicate. |
 | `429 SEND_QUOTA_EXCEEDED` | **Not transient. Do not retry in a loop.** Alert a human (log at error level, notify); the creator buys more quota or waits for the monthly reset. |
 | `429 SANDBOX_DAILY_LIMIT_REACHED` | 50 sandbox emails a day; resets at midnight Asia/Taipei. |
-| `422 RECIPIENT_SUPPRESSED` | Every `to` address previously hard-bounced or complained. Mark them invalid in your DB and ask the user for a new address. |
-| `403 DOMAIN_*` | Setup problem — see step 2. Surface it to the creator, don't retry. |
+| `422 RECIPIENT_SUPPRESSED` | Every `to` address is on Portaly's suppression list (it hard-bounced, or several Portaly senders got spam complaints from it). Mark them invalid in your DB and ask the user for a new address. |
+| `422 MESSAGE_REJECTED` | The mail service refused this message. The same key keeps answering this — fix it and send with a new key. |
+| `403 DOMAIN_NOT_ALLOWED` | The domain is not bound to this account, is a Portaly domain, or the key does not cover it (step 1). Surface it to the creator, don't retry. |
+| other `403 DOMAIN_*` | Setup problem — see step 2. Surface it to the creator, don't retry. |
 | `403 RECIPIENT_NOT_ALLOWED` | Sandbox sending to someone other than the account owner. |
 | other `4xx` | Fix the request; `INVALID_BODY` messages start with the bad field (`recipients.0.email: …`). |
 
@@ -199,14 +220,18 @@ Every error is `{ "error": { "code", "message" } }`. Branch on `code`, never on 
 
 ### 5. Track delivery
 
-Webhooks are **not available yet**. `GET /api/email/emails/{id}` returns each recipient's status;
-poll it a few times after sending (e.g. after 1, 5 and 30 minutes) or from a periodic job, or list
-recent problems with `GET /api/email/emails?recipientStatus=bounced,complained`.
+Webhooks are **not available yet**. Run a periodic job (e.g. every 10–15 minutes) that lists recent
+problems with `GET /api/email/emails?recipientStatus=bounced,complained&startDate=…`, paging with
+`startAfter=<pagination.nextCursor>`. `GET /api/email/emails/{id}` shows one email's recipients — fine for a
+handful, but reads share 120 requests per minute per key with listing and quota, so polling every
+email individually breaks down once the app sends more than a few dozen a minute.
 
 - `bounced` — the address does not exist. Mark it invalid in your DB and stop sending to it; ask the
   user to update their email.
-- `complained` — the recipient marked it as spam. Stop sending them anything optional.
-- `suppressed` — Portaly skipped this address because of an earlier bounce or complaint.
+- `complained` — the recipient marked it as spam. **Portaly does not block your later API email to
+  them** — record it and stop sending them anything optional yourself.
+- `suppressed` — Portaly skipped this address because it is on Portaly's suppression list (an earlier
+  hard bounce, or spam complaints to several Portaly senders). Suppressed recipients do not use quota.
 - `delivered` means the receiving server accepted it; whether it landed in spam is not visible.
 - Addresses in responses are masked (`bu***@example.com`); recipients keep the order you sent them in,
   so map statuses back to your records by position.
@@ -240,8 +265,8 @@ for the day (`403 HARD_BOUNCE_LIMIT_REACHED`) and then suspended — acting on `
   and their broadcasts alike.
 - **Only mail people who expect it** — the user's own customers, triggered by something they did.
 - **Never expose the key client-side**, never log it, never commit it.
-- **Never retry `SEND_QUOTA_EXCEEDED` or other `4xx` in a loop**; respect `Retry-After`; always retry
-  with the same `Idempotency-Key`.
+- **Never retry `SEND_QUOTA_EXCEEDED` or other `4xx` in a loop** — `409` only up to a cap (step 4);
+  respect `Retry-After`; always retry with the same `Idempotency-Key`.
 - **Never use fake recipient addresses for testing** — use the sandbox or the simulator.
 - **Confirm before real sends to real people** during development (anything not to the account owner
   or the simulator): state who will receive what, and wait for the user's yes.

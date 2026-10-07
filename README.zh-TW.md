@@ -34,7 +34,7 @@ npx skills update portaly-payment
 | **portaly-product** | 從你 vibe-coded 的網站賣創作者的 Portaly 數位商品 — 商品列表 API、單品或 bundle checkout session、託管結帳 + 寄信、簽章 webhook | `Portaly 數位商品`、`bundle 結帳`、`商品 API` |
 | **portaly-review** | 透過 Portaly 託管的 iframe，在你的網站上嵌入已驗證買家的評價徽章（Trustpilot 風格）— 不需要 API 金鑰 | `嵌入 Portaly 評價`、`評價 widget`、`顯示我的評分`、`Trustpilot 風格徽章`、`Portaly 的社會認同` |
 | **portaly-affiliate** | 讓創作者自己的買家推薦其他買家並抽成——為整個產品開啟推廣、設定一個所有合格一次性方案共用的分潤比例，並在自己的網站上接住推廣碼；連結由 Portaly 發放，分潤也由 Portaly 計算與撥付 | `affiliate program`、`referral program`、`分潤`、`推廣連結`、`聯盟行銷`、`推廣夥伴` |
-| **portaly-email**（beta） | 讓你的網站從自己的網域寄出交易信——訂單確認、驗證碼、通知：API 金鑰與網域設定、sandbox、單封／批次／排程寄送、投遞狀態、額度查詢，以及安全地測試退信 | `Portaly Email`、`網站自己寄信`、`交易信`、`寄信 API`、`pem_ 金鑰`、`信被退回` |
+| **portaly-email**（beta，僅限受邀） | 讓你的網站從自己的網域寄出交易信——訂單確認、驗證碼、通知：API 金鑰與網域設定、sandbox、單封／批次／排程寄送、投遞狀態、額度查詢，以及安全地測試退信 | `Portaly Email`、`網站自己寄信`、`交易信`、`寄信 API`、`pem_ 金鑰`、`信被退回` |
 
 ## Portaly Overview
 
@@ -179,19 +179,21 @@ npx skills add portaly-ai/portaly-skills --skill portaly-affiliate
 
 ## Portaly Email
 
+> **Beta，僅限受邀。** Portaly Email 還在 beta 階段，只有 Portaly 邀請的帳號可以使用。
+
 ```bash
 npx skills add portaly-ai/portaly-skills --skill portaly-email
 ```
 
 透過 Portaly 的寄信 API，讓你的網站從創作者已驗證的網域寄出自己的交易信——訂單確認、驗證碼、重設密碼、通知。
 
-- 先用 sandbox（`sandbox.portaly.tw`，只寄給帳號本人、一天 50 封）把程式跑通，不用先設 DNS
+- 先用 sandbox（`sandbox.portaly.tw`，只寄給帳號本人已驗證的 email、一天 50 封）把程式跑通，不用先設 DNS
 - 網域驗證：三筆 DKIM `CNAME`，加上 MAIL FROM 的 `MX`／`TXT`
 - 單封、批次（最多 100 封）與排程寄送，帶 `Idempotency-Key`，重試不會重複寄
 - 每個收件人的投遞狀態（`delivered`、`bounced`、`complained`…），以及撞到 `429` 前先查的額度端點
 - 用 mailbox simulator 測退信與投訴，不拿亂編的地址測
 
-**前置條件：** Portaly 帳號在寄信 beta 白名單內、是頂級會員（含每月額度），並在 `https://portaly.cc/admin/email/api-keys` 建立寄信 API 金鑰（`pem_…`，跟 Portaly Payment 的金鑰是不同的兩把）。電子報與公告從 Portaly 後台的群發寄，不走這個 API。
+**前置條件：** Portaly 帳號已受邀加入寄信 beta、是頂級會員（含每月額度），並在 `https://portaly.cc/admin/email/api-keys` 建立寄信 API 金鑰（`pem_…`，跟 Portaly Payment 的金鑰是不同的兩把）。電子報與公告從 Portaly 後台的群發寄，不走這個 API。
 
 **觸發語：**
 - 「我想讓網站自己寄驗證信」

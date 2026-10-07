@@ -83,19 +83,22 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Commission, refund clawback and payout are Portaly's alone — never computed or displayed from the creator's own code
 
 **Email Skill:**
-- API host: `https://portaly.ai`, which rewrites `/api/email/*` to the implementation in **portaly-vercel**, not portaly-vibe
+- Invite-only beta: only accounts Portaly has invited can use it (`403 FORBIDDEN` otherwise), and creating a key needs Premium — the skill says so up front
+- API host: `https://portaly.ai`, which rewrites only the public email paths (`/api/email/emails`, `/emails/{id}`, `/emails/{id}/cancel`, `/batches`, `/domains`, `/quota`) to the implementation in **portaly-vercel**, not portaly-vibe
 - Its own key, `pem_*` (from `https://portaly.cc/admin/email/api-keys`); it cannot call payment endpoints and `pcs_*` keys cannot send email. No live/test split — a key limited to `sandbox.portaly.tw` is the test key
-- Sandbox: `<anything>@sandbox.portaly.tw`, delivers only to the account owner, 50/day, no quota. Mailbox simulator addresses need a verified custom domain
+- Sandbox: `<name>@sandbox.portaly.tw` (3–32 chars, no `portaly`, reserved names like `noreply` / `support` refused), delivers only to the account owner's verified sign-in email, 50/day, no quota. A key created before any domain is verified covers only the sandbox by default. Mailbox simulator addresses need a verified custom domain
 - Quota is per recipient and shared with admin broadcasts; `429 SEND_QUOTA_EXCEEDED` is not transient — the skill must tell agents to alert, not retry
-- No webhooks yet: delivery is polled via `GET /api/email/emails/{id}`
+- Idempotency keys never expire and the body is not compared — one key per email, never per user. After `502` the key answers `409` until the outcome is known, possibly forever, so the skill caps `409` retries
+- Complaints are not suppressed for API email (only the global list is checked); the integrator must stop mailing `complained` addresses
+- No webhooks yet: delivery is polled via the list with `recipientStatus` (reads are 120/min per key)
 - Version report: with the project's `pcs_` key when it has one (recorded against that store), otherwise the `pem_` key — which may only report `portaly-email`
 - Contract changes surface as a red tripwire test in portaly-vercel (`tests/unit/lib/email/publicContract.test.ts`), not in portaly-vibe
 
 ## These Skills Mirror a Backend That Ships Without Them
 
 The APIs documented here are implemented in a **separate repo** (`portaly-vibe`, the Portaly
-Payment backend). Nothing in that repo's build can see this one, so a shipped API change does
-**not** automatically reach the skill docs. It has already gone wrong once: POR-4373 added
+Payment backend; the email API is in `portaly-vercel`). Nothing in that repo's build can see this
+one, so a shipped API change does **not** automatically reach the skill docs. It has already gone wrong once: POR-4373 added
 `customerName` / `emailVerified` to both create-checkout-session calls, the feature went live,
 and integrators had no way to discover it.
 
