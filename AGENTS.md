@@ -32,7 +32,7 @@ skills/
     scripts/                  # Callback adapters + production-derived conformance checks
   portaly-review/             # Embed Portaly's hosted review widget (Trustpilot-style badge)
     SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
-  portaly-email/              # Transactional email API (beta), separate pem_ key
+  portaly-email/              # Email API (beta), separate pem_ key
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract (endpoints, error codes, statuses, simulator)
 evals/                        # Cross-skill contract runner and fresh-agent prompt corpus

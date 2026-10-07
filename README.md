@@ -34,7 +34,7 @@ npx skills update portaly-payment
 | **portaly-product** | Sell a creator's Portaly digital products from your own vibe-coded site — list products, build single or bundle checkout sessions, hosted payment + email, signed webhooks | `Portaly digital products`, `bundle checkout`, `digital downloads`, `creator product API` |
 | **portaly-review** | Embed Portaly's hosted, verified-buyer review widget (Trustpilot-style rating badge) on your own site via a Portaly-hosted iframe — no API key needed | `embed Portaly reviews`, `review widget`, `show my ratings`, `Trustpilot-style badge`, `social proof from Portaly` |
 | **portaly-affiliate** | Let the creator's own buyers earn a commission for referring other buyers — switch promotion on for the product, set the one rate every eligible one-time plan shares, and capture the referral code on your own site; Portaly issues the link and owns the payout | `affiliate program`, `referral program`, `buyer promotion`, `分潤`, `推廣連結`, `聯盟行銷`, `推廣夥伴` |
-| **portaly-email** (beta, invite only) | Send your app's own transactional email — receipts, sign-in codes, notifications — from your verified domain: API key and domain setup, sandbox, single / batch / scheduled sends, delivery status, quota, and safe bounce testing | `Portaly Email`, `send email from my app`, `transactional email`, `pem_ key`, `email bounced`, `寄信 API` |
+| **portaly-email** (beta, invite only) | Send your app's own email — receipts, sign-in codes, notifications, newsletters — from your verified domain: API key and domain setup, sandbox, single / batch / scheduled sends, delivery status, quota, and safe bounce testing | `Portaly Email`, `send email from my app`, `transactional email`, `newsletter`, `pem_ key`, `email bounced`, `寄信 API` |
 
 ## Portaly Overview
 
@@ -185,7 +185,7 @@ Turns on **buyer promotion** for a Portaly Payment product: after someone buys, 
 npx skills add portaly-ai/portaly-skills --skill portaly-email
 ```
 
-Sends your app's own transactional email — order receipts, verification codes, password resets, notifications — from the creator's verified domain through Portaly's email API.
+Sends your app's own email — order receipts, verification codes, password resets, notifications, newsletters — from the creator's verified domain through Portaly's email API.
 
 - Sandbox (`sandbox.portaly.tw`, to the account owner's verified email, 50 a day) to prove the code before any DNS work
 - Domain verification: three DKIM `CNAME`s plus the MAIL FROM `MX` / `TXT`
@@ -193,7 +193,7 @@ Sends your app's own transactional email — order receipts, verification codes,
 - Per-recipient delivery status (`delivered`, `bounced`, `complained`, …) and a quota endpoint to check before hitting `429`
 - Bounce and complaint testing with the mailbox simulator, never with made-up addresses
 
-**Prerequisites:** a Portaly account invited to the email beta, on the Premium plan (it carries the monthly quota), and an email API key (`pem_…`) from `https://portaly.cc/admin/email/api-keys` — separate from the Portaly Payment key. Newsletters and announcements are sent from the Portaly admin, not through this API.
+**Prerequisites:** a Portaly account invited to the email beta, on the Premium plan (it carries the monthly quota), and an email API key (`pem_…`) from `https://portaly.cc/admin/email/api-keys` — separate from the Portaly Payment key.
 
 **Skill triggers:**
 - "Send order confirmation emails from my app"

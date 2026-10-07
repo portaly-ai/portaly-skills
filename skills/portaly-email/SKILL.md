@@ -3,21 +3,18 @@ name: portaly-email
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.0
+version: 0.1.1
 metadata:
-  version: "0.1.0"
-description: "Help users send transactional email (order receipts, sign-in codes, notifications) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
+  version: "0.1.1"
+description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
 ---
 
 # Portaly Email (Beta)
 
 Use this skill to help a human user (a creator, usually not an engineer) wire their app's own
-email — receipts, verification codes, password resets, notifications — to Portaly's email API.
+email — receipts, verification codes, password resets, notifications, newsletters — to Portaly's
+email API.
 Keep answers operational: next steps first, then copy-ready code in the project's own stack.
-
-This is **transactional email only**: one message triggered by something one person did.
-Newsletters and announcements to an audience are sent from the Portaly admin
-(`https://portaly.cc/admin/email`), not through this API.
 
 > **Beta — invite only.** Portaly Email is in beta and only accounts Portaly has invited can use it.
 > Any other account gets `403 FORBIDDEN` on every call, and there is nothing the agent can do about
@@ -89,6 +86,9 @@ disagree, the docs win.
   minutes to hours; `identityStatus: "verified"` and `mailFromStatus: "success"` mean it is ready.
   Leave the existing records for the main domain (its `MX`, SPF, DKIM) alone. On Cloudflare, set the
   new records to **DNS only** (grey cloud), not proxied.
+- If the app sends both marketing mail (newsletters, promotions) and account mail (receipts, codes),
+  suggest one subdomain for each, e.g. `news.example.com` and `notify.example.com`: bounces and
+  complaints count per domain, so a complaint spike on a newsletter never blocks sign-in codes.
 - The sending subdomain does not receive mail, so set `replyTo` to an address that does (e.g.
   `support@example.com`); otherwise customers' replies go nowhere.
 - Until then, build and test against the sandbox: `sender.email` on `sandbox.portaly.tw`, recipient
@@ -249,11 +249,12 @@ for the day (`403 HARD_BOUNCE_LIMIT_REACHED`) and then suspended — acting on `
 
 ## Guardrails
 
-- **No marketing or bulk mail through this API** — newsletters, promotions, cold outreach and imported
-  lists belong in the Portaly admin's broadcast tool, which handles consent and unsubscribes. Sending
-  them here drives complaints that get the creator's domain suspended — which stops their receipts
-  and their broadcasts alike.
-- **Only mail people who expect it** — the user's own customers, triggered by something they did.
+- **Newsletters and promotions need an unsubscribe** — a link in the body plus the `List-Unsubscribe`
+  and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers (`references/api-contract.md`).
+  Gmail and Yahoo expect one-click unsubscribe from bulk senders. Stop mailing anyone who unsubscribes
+  or shows up as `complained`.
+- **Only mail people who expect it** — customers and people who signed up; never bought or scraped
+  lists. Complaints count against the creator's domain and can get it suspended.
 - **Rate-limit public forms that send email** (password reset, sign-up, contact) per address and per
   IP. Anyone can trigger them, and a flood burns the quota, draws complaints and gets the domain
   suspended.

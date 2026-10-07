@@ -1,6 +1,6 @@
 # Portaly Email API Contract
 
-Working copy of the contract for Portaly's transactional email API. The authoritative version is
+Working copy of the contract for Portaly's email API. The authoritative version is
 `https://portaly.ai/docs` (Email section) and `https://portaly.ai/openapi.json`; when they disagree,
 those win.
 
