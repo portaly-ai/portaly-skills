@@ -32,7 +32,7 @@ skills/
     scripts/                  # Callback adapters + production-derived conformance checks
   portaly-review/             # Embed Portaly's hosted review widget (Trustpilot-style badge)
     SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
-  portaly-email/              # Transactional email API (beta), separate pem_ key
+  portaly-email/              # Email API (beta), separate pem_ key
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract (endpoints, error codes, statuses, simulator)
 evals/                        # Cross-skill contract runner and fresh-agent prompt corpus
@@ -50,6 +50,15 @@ Each skill follows the same structure:
 Repository-level `evals/` verifies that both independently installable skills keep byte-identical callback artifacts and provides behavior prompts without shipping answer-bearing eval content inside either skill package.
 
 SKILL.md is the entry point when an agent loads a skill. References are loaded on-demand — do not read all of them upfront.
+
+### Guardrails state what the API enforces, not policy
+
+Agents relay a skill's Guardrails to the end user as hard rules. A guardrail that forbids something the
+API accepts becomes a false limitation: `portaly-email` once said "no marketing or bulk mail through
+this API", and agents told creators they could not send newsletters, which the API sends fine. Write
+API limits as limits (with the error code), and best practice as how to do it well (add an unsubscribe,
+separate subdomains), never as a ban. If a restriction is a product decision, enforce it in the API
+first.
 
 ## Key Domain Concepts
 
