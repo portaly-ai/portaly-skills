@@ -32,6 +32,9 @@ skills/
     scripts/                  # Callback adapters + production-derived conformance checks
   portaly-review/             # Embed Portaly's hosted review widget (Trustpilot-style badge)
     SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
+  portaly-email/              # Transactional email API (beta), separate pem_ key
+    SKILL.md                  # Skill definition (entry point)
+    references/               # API contract (endpoints, error codes, statuses, simulator)
 evals/                        # Cross-skill contract runner and fresh-agent prompt corpus
 .github/workflows/            # Deterministic skill eval gate
 ```
@@ -78,6 +81,15 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - `plans[].promotionUrl` is the **resolved** value (plan's own, else the product's `appBaseUrl`), and `commissionAmount` is computed at **list price** — re-base it against active discount codes before publishing a figure
 - Attribution: `?ps=` → server-set `httpOnly` cookie `portaly:profitSharing` (3 days, last-touch) → `profitSharingId` (1–64 chars) on checkout-session creation
 - Commission, refund clawback and payout are Portaly's alone — never computed or displayed from the creator's own code
+
+**Email Skill:**
+- API host: `https://portaly.ai`, which rewrites `/api/email/*` to the implementation in **portaly-vercel**, not portaly-vibe
+- Its own key, `pem_*` (from `https://portaly.cc/admin/email/api-keys`); it cannot call payment endpoints and `pcs_*` keys cannot send email. No live/test split — a key limited to `sandbox.portaly.tw` is the test key
+- Sandbox: `<anything>@sandbox.portaly.tw`, delivers only to the account owner, 50/day, no quota. Mailbox simulator addresses need a verified custom domain
+- Quota is per recipient and shared with admin broadcasts; `429 SEND_QUOTA_EXCEEDED` is not transient — the skill must tell agents to alert, not retry
+- No webhooks yet: delivery is polled via `GET /api/email/emails/{id}`
+- Version report: with the project's `pcs_` key when it has one (recorded against that store), otherwise the `pem_` key — which may only report `portaly-email`
+- Contract changes surface as a red tripwire test in portaly-vercel (`tests/unit/lib/email/publicContract.test.ts`), not in portaly-vibe
 
 ## These Skills Mirror a Backend That Ships Without Them
 

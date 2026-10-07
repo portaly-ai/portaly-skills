@@ -22,21 +22,21 @@ The **API host**, and the review surfaces served from that same origin. Everythi
 |---|---|
 | REST API host (scripts and generated code) | `PORTALY_API_HOST` env var, default `https://portaly.ai` |
 | Review widget + public review page (`/embed/reviews/{slug}`, `/{locale}/reviews/{slug}`) | `PORTALY_API_HOST` — same origin as the API, so `portaly-review` resolves both from it |
-| Other hosted UI URLs (`/checkout`, `/waitlist/{slug}`, `/r/{code}`, `/dashboard/*`) | None — hardcoded in `SKILL.md` and refs as `portaly.ai` strings |
+| Other hosted UI URLs (`/checkout`, `/portal`) | None — hardcoded in `SKILL.md` and refs as `portaly.ai` strings |
 | Brand name ("Portaly", "Portaly Payment") | None — hardcoded in `SKILL.md` and refs |
-| API key prefix (`pcs_live_`, `pcs_test_`) | None — wire-format compatibility required |
+| API key prefix (`pcs_live_`, `pcs_test_`, `pem_`) | None — wire-format compatibility required |
 
 ## Backend compatibility contract
 
 To work unmodified, a fork's backend must be wire-compatible with the Portaly REST API:
 
-- **Auth**: `Authorization: Bearer ${PORTALY_API_KEY}` on all admin endpoints.
+- **Auth**: `Authorization: Bearer ${PORTALY_API_KEY}` on payment and product endpoints; `Bearer ${PORTALY_EMAIL_API_KEY}` (`pem_…`) on email endpoints.
 - **Endpoints** referenced by the skills (relative to `PORTALY_API_HOST`):
   - Payment: `/api/creator-subscription/{config,plans,checkout-sessions,subscriptions,orders,portal-sessions,discount-codes,...}`
-  - Email templates (toggled from the payment flow): `/api/creator-email/templates/{name}`
+  - Email: `/api/email/{emails,emails/{id},emails/{id}/cancel,batches,domains,quota}`
   - Digital products: `/api/digital-products/{,{productId},checkout-sessions,orders}`
 - **Callback signatures**: HMAC-SHA256 of `${timestamp}.${stableJson(JSON.parse(wireBody))}` using the merchant's `callbackSecret`. The committed production-derived vectors and runtime routing live in `skills/portaly-payment/references/callback-signature-v1.md`; a backend must pass those vectors rather than translating the Node implementation by inspection.
-- **Response shapes**: The skills assume `{ data: ... }`-wrapped responses. See `skills/portaly-payment/references/api-contract.md` and `skills/portaly-product/references/api-contract.md` for the full contract.
+- **Response shapes**: The skills assume `{ data: ... }`-wrapped responses. See `skills/portaly-payment/references/api-contract.md`, `skills/portaly-product/references/api-contract.md` and `skills/portaly-email/references/api-contract.md` for the full contract.
 
 If your backend diverges from any of the above, `PORTALY_API_HOST` alone won't be enough — you'll need to fork the skills.
 
