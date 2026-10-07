@@ -93,6 +93,9 @@ Header `Idempotency-Key` (optional, 1–256 chars, strongly recommended). The bo
 | `attachments` | Optional, ≤ 10 `{ filename, content \| url, contentType?, contentId? }`. `content` is base64 (≈ 3 MB max, the request is capped at 4.5 MB); `url` is public https, downloaded when the request arrives (all URLs together within 20 s, ≤ 3 redirects). `contentId` embeds it inline for `<img src="cid:…">`. Email + attachments ≤ 10 MB. Executable extensions are refused. |
 | `scheduledAt` | Optional ISO 8601 with time zone, ≥ 1 minute and at most 30 days minus 10 minutes ahead. |
 
+Optional fields may be omitted or sent as `null`. An empty `replyTo`, `html` or `text` also counts as
+omitted; an empty `scheduledAt` or `idempotencyKey` is rejected.
+
 Responses:
 
 - `200 { "data": { "id": "emsg_…" } }` — handed to the mail service.
