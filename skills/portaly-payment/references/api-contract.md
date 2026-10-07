@@ -91,15 +91,15 @@ Use this when the human user needs to set or update merchant branding for Portal
   - `merchantName`: optional string
   - `merchantLogo`: optional string (URL returned by the images endpoint, or `""` to clear)
   - `appBaseUrl`: optional, must start with `https://` (max 255 chars; trailing slash stripped). Pass `""` to clear.
-  - `inviteRedirectPath`: optional path-only override (max 200 chars; must start with `/`, only letters/digits/`-`/`_`/`/`; trailing slash stripped). When set together with `appBaseUrl`, invitation redirects land on `${appBaseUrl}${inviteRedirectPath}` (skipping the default `/waitlist/{slug}` segment). Pass `""` to clear.
-  - `brandDescription`: optional, free-form text for AI context (max 4000 chars). Pass `""` to clear.
+  - `inviteRedirectPath`: legacy field with **no effect** — still accepted (max 200 chars; must start with `/`, only letters/digits/`-`/`_`/`/`) and returned so existing callers keep working. Don't set it in new integrations.
+  - `brandDescription`: legacy field with **no effect** — still accepted (max 4000 chars) and returned so existing callers keep working. Don't set it in new integrations.
+  - `locale`: optional, `en-US` or `zh-TW`. Stored as `preferredLocale` and used as the language of the review-invite emails Portaly sends this merchant's buyers.
 
 - Request body:
 ```json
 {
   "merchantName": "Example Merchant",
-  "appBaseUrl": "https://example.com",
-  "brandDescription": "Subscription box for indie ceramics."
+  "appBaseUrl": "https://example.com"
 }
 ```
 

@@ -34,6 +34,7 @@ npx skills update portaly-payment
 | **portaly-product** | Sell a creator's Portaly digital products from your own vibe-coded site — list products, build single or bundle checkout sessions, hosted payment + email, signed webhooks | `Portaly digital products`, `bundle checkout`, `digital downloads`, `creator product API` |
 | **portaly-review** | Embed Portaly's hosted, verified-buyer review widget (Trustpilot-style rating badge) on your own site via a Portaly-hosted iframe — no API key needed | `embed Portaly reviews`, `review widget`, `show my ratings`, `Trustpilot-style badge`, `social proof from Portaly` |
 | **portaly-affiliate** | Let the creator's own buyers earn a commission for referring other buyers — switch promotion on for the product, set the one rate every eligible one-time plan shares, and capture the referral code on your own site; Portaly issues the link and owns the payout | `affiliate program`, `referral program`, `buyer promotion`, `分潤`, `推廣連結`, `聯盟行銷`, `推廣夥伴` |
+| **portaly-email** (beta, invite only) | Send your app's own transactional email — receipts, sign-in codes, notifications — from your verified domain: API key and domain setup, sandbox, single / batch / scheduled sends, delivery status, quota, and safe bounce testing | `Portaly Email`, `send email from my app`, `transactional email`, `pem_ key`, `email bounced`, `寄信 API` |
 
 ## Portaly Overview
 
@@ -176,6 +177,30 @@ Turns on **buyer promotion** for a Portaly Payment product: after someone buys, 
 - "我想讓買過的人幫我推廣"
 - "分潤怎麼設定"
 
+## Portaly Email
+
+> **Beta — invite only.** Portaly Email is in beta and only accounts Portaly has invited can use it.
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-email
+```
+
+Sends your app's own transactional email — order receipts, verification codes, password resets, notifications — from the creator's verified domain through Portaly's email API.
+
+- Sandbox (`sandbox.portaly.tw`, to the account owner's verified email, 50 a day) to prove the code before any DNS work
+- Domain verification: three DKIM `CNAME`s plus the MAIL FROM `MX` / `TXT`
+- Single, batch (up to 100) and scheduled sends with `Idempotency-Key`, so retries never double-send
+- Per-recipient delivery status (`delivered`, `bounced`, `complained`, …) and a quota endpoint to check before hitting `429`
+- Bounce and complaint testing with the mailbox simulator, never with made-up addresses
+
+**Prerequisites:** a Portaly account invited to the email beta, on the Premium plan (it carries the monthly quota), and an email API key (`pem_…`) from `https://portaly.cc/admin/email/api-keys` — separate from the Portaly Payment key. Newsletters and announcements are sent from the Portaly admin, not through this API.
+
+**Skill triggers:**
+- "Send order confirmation emails from my app"
+- "Set up Portaly Email"
+- "Why did my Portaly email bounce?"
+- "我想讓網站自己寄驗證信"
+
 ## Using a Different Backend
 
 These skills default to `https://portaly.ai` — direct installers need no setup. To run a fork against a self-hosted or compatible backend, set `PORTALY_API_HOST`; both the bundled scripts and agent-generated code honor it:
@@ -188,7 +213,7 @@ See [PROVIDER.md](./PROVIDER.md) for the backend compatibility contract.
 
 ## Version Telemetry
 
-Once a Portaly Payment API key is present, each skill sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.6.0" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
+Once a Portaly API key is present, each skill except `portaly-email` sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.6.0" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
 
 ## Migrating from Old Repos
 
