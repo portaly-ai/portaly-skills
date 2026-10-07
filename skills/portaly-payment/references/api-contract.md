@@ -592,14 +592,14 @@ Use this when the human user needs reconciliation or a status page.
 
 ## Session List
 
-Use this when the merchant needs **the unfinished-checkout list** — abandoned carts, declined first charges, in-flight sessions — to reconcile, re-market, or audit. This is the only way to get those: `GET /orders` only returns records that settled, and the `creator_subscription.checkout.failed` callback only fires on provider declines (not when the buyer closed the tab or let the session expire).
+Use this when the merchant needs **the unfinished-checkout list** — abandoned carts, declined first charges, in-flight sessions — to reconcile, re-market, or audit. This is the only way to get those: `GET /orders` only returns records that settled, and the `creator_subscription.checkout.failed` callback only fires when a payment attempt fails (a decline, or the buyer canceling on the 91APP page) — not when the buyer closed the tab or let the session expire.
 
 - Endpoint:
   - `GET /api/creator-subscription/checkout-sessions`
 - Required headers:
   - `Authorization: Bearer {portaly_payment_api_key}` (`read`-tier rate limit, 120/minute)
 - Query parameters (all optional):
-  - `outcome` — comma-separated subset of `completed`, `failed`, `abandoned`, `pending`. Unknown values are rejected with 400. Example: `outcome=failed,abandoned`.
+  - `outcome` — comma-separated subset of `completed`, `failed`, `abandoned`, `pending` (`pending` = still in progress: not yet expired, or handed to 91APP and inside the grace period below). Unknown values are rejected with 400. Example: `outcome=failed,abandoned`.
   - `startDate` / `endDate` — filter by `createdAt`. A bare `YYYY-MM-DD` is read as a Taipei (UTC+8) calendar day; a datetime without a timezone offset is also read as Taipei. Include `Z` or `±HH:MM` to use the value as given. Same rules as `GET /orders`.
   - `limit` — 1–200, defaults to 50.
   - `startAfter` — cursor from the previous page's `pagination.nextCursor`.
@@ -608,21 +608,22 @@ Use this when the merchant needs **the unfinished-checkout list** — abandoned 
   - `sessionId`, `outcome`, `status` (raw status, for debugging — use `outcome` for logic), `mode`
   - `planId`, `planName`, `amount`, `currency`, `merchantOrderNumber`
   - `customerName`, `customerEmail`, `customerPhone` (empty until buyer submits; see `customer.phone` note above)
-  - `metadata` — the metadata the merchant sent at session creation, Portaly-owned payment-secret keys stripped
+  - `metadata` — the metadata the merchant sent at session creation, plus bookkeeping keys Portaly writes during checkout (for example `paymentMethod`, `paymentReference`, `paidAmount`, `failureReason`); card secrets are stripped. Read only the keys the merchant set.
   - `failureReason`, `paymentCanceled`, `paymentSubmitted`
   - `createdAt`, `updatedAt`, `expiresAt`
+- Pagination: `outcome` is applied after each page is read, so a page can hold fewer rows than `limit` — even zero — while `pagination.hasMore` is still `true`. Keep requesting with `startAfter=pagination.nextCursor` until `hasMore` is `false`; never stop on a short or empty page. `count` is the number of rows in this page.
 - The response is a **flat summary**, not the hydrated single-session shape — no nested `customer.*`, no `plan.*`, no `invoice`. Buyer email lives in `customerEmail` (top-level), unlike the single-session response.
 - Important behavior for `outcome`:
   - **`abandoned` matches the Portaly dashboard "Unfinished checkouts" tab**. An `initiated` session (buyer handed to 91APP, waiting for the provider to report back) gets a **3.5-hour grace period** after `expiresAt` before it is counted as `abandoned`. Buyers currently mid-payment therefore do **not** appear in the `abandoned` list — if they did, the merchant could email "you did not finish" to someone who was still paying.
   - **`abandoned` combined with `paymentSubmitted: true`** means the buyer did submit payment but the callback was lost. The money may already be in the merchant's account — **reconcile that row, do not re-market to it**.
-  - **`paymentCanceled: true`** is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It only fires on the `failed` outcome, and signals the buyer bailed on the 91APP page rather than being declined by the bank.
+  - **`paymentCanceled: true`** is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It is only set on `failed` rows, and means the buyer bailed on the 91APP page rather than being declined by the bank. Like every `failed` row, that session also sent `checkout.failed` (when it has a `callbackUrl`).
 - Known limits of the list (not bugs; call them out when the merchant notices):
   - The earlier the buyer bailed, the sparser the row — `customerEmail` is written at OTP submission, `customerName` / `customerPhone` only when the buyer presses pay (and phone only on plans with `collectPhone`). Sessions that stopped at `checkout_ready` without the buyer touching anything have at most an email.
   - Buyer phones cannot be seeded by the merchant at session creation. If the merchant needs to join back to their own user, pass their own user id via `metadata` at session creation.
   - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts.
 - Common uses:
   - abandoned-cart email campaigns — `outcome=abandoned`, then **filter out `paymentSubmitted: true`** before sending (those rows are a lost callback, not a lost buyer)
-  - declined-payment follow-up (`outcome=failed`)
+  - declined-payment follow-up (`outcome=failed`) — sessions with a `callbackUrl` already sent `checkout.failed`, so dedupe on `sessionId` if the merchant acts on both
   - monthly reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`) — `paymentSubmitted: true` rows are the ones that most need checking against the merchant's own records
 
 ## Subscription Query And Lifecycle

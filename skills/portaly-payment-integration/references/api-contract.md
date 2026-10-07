@@ -182,23 +182,24 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
 - Required headers:
   - `Authorization: Bearer {portaly_payment_api_key}` (`read`-tier rate limit, 120/minute)
 - Query parameters (all optional):
-  - `outcome` — comma-separated subset of `completed`, `failed`, `abandoned`, `pending`. Unknown values are rejected with 400. Example: `outcome=failed,abandoned`.
+  - `outcome` — comma-separated subset of `completed`, `failed`, `abandoned`, `pending` (`pending` = still in progress: not yet expired, or handed to 91APP and inside the grace period below). Unknown values are rejected with 400. Example: `outcome=failed,abandoned`.
   - `startDate` / `endDate` — filter by `createdAt`. A bare `YYYY-MM-DD` is read as a Taipei (UTC+8) calendar day; a datetime without a timezone offset is also read as Taipei. Include `Z` or `±HH:MM` to use the value as given. Same rules as `GET /orders`.
   - `limit` — 1–200, defaults to 50.
   - `startAfter` — cursor from the previous page's `pagination.nextCursor`.
 - Scope: pinned to the integration key's `profileId` + `mode`. A `pcs_test_itg_` key never sees live sessions and vice versa.
-- Response: `{ data: SessionListItem[], pagination: { hasMore, nextCursor, count } }`. Each `SessionListItem` is a **flat summary** — not the hydrated single-session shape — with `sessionId`, `outcome`, `status`, `mode`, `planId`, `planName`, `amount`, `currency`, `merchantOrderNumber`, `customerName`, `customerEmail`, `customerPhone`, `metadata` (your own keys only; Portaly payment-secret keys stripped), `failureReason`, `paymentCanceled`, `paymentSubmitted`, `createdAt`, `updatedAt`, `expiresAt`.
-- Why this endpoint exists: `GET /orders` only returns records that settled, and `creator_subscription.checkout.failed` only fires on provider declines (not when the buyer closed the tab or let the session expire). This is the only way to see those sessions.
+- Response: `{ data: SessionListItem[], pagination: { hasMore, nextCursor, count } }`. Each `SessionListItem` is a **flat summary** — not the hydrated single-session shape — with `sessionId`, `outcome`, `status`, `mode`, `planId`, `planName`, `amount`, `currency`, `merchantOrderNumber`, `customerName`, `customerEmail`, `customerPhone`, `metadata` (your keys plus bookkeeping keys Portaly writes during checkout, such as `paymentMethod`, `paymentReference`, `failureReason`; card secrets stripped — read only the keys you set), `failureReason`, `paymentCanceled`, `paymentSubmitted`, `createdAt`, `updatedAt`, `expiresAt`.
+- Why this endpoint exists: `GET /orders` only returns records that settled, and `creator_subscription.checkout.failed` only fires when a payment attempt fails (a decline, or the buyer canceling on the 91APP page) — not when the buyer closed the tab or let the session expire. This is the only way to see those sessions.
+- Pagination: `outcome` is applied after each page is read, so a page can hold fewer rows than `limit` — even zero — while `pagination.hasMore` is still `true`. Keep requesting with `startAfter=pagination.nextCursor` until `hasMore` is `false`; never stop on a short or empty page. `count` is the number of rows in this page.
 - `outcome=abandoned` matches the Portaly dashboard "Unfinished checkouts" tab. An `initiated` session (buyer handed to 91APP, waiting for the provider to report back) gets a **3.5-hour grace period** after `expiresAt` before it is counted as `abandoned`, so buyers currently mid-payment do not appear in the `abandoned` list.
 - A row with `outcome: "abandoned"` and `paymentSubmitted: true` means the buyer did submit payment but the callback was lost — the money may already be in the merchant's account. **Reconcile that row, do not re-market to it.**
-- `paymentCanceled: true` is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It only fires on the `failed` outcome, and signals the buyer bailed on the 91APP page rather than being declined by the bank.
+- `paymentCanceled: true` is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It is only set on `failed` rows, and means the buyer bailed on the 91APP page rather than being declined by the bank. Like every `failed` row, that session also sent `checkout.failed` (when it has a `callbackUrl`).
 - Known limits of the list (call these out when the merchant notices):
   - The earlier the buyer bailed, the sparser the row — `customerEmail` is written at OTP submission, `customerName` / `customerPhone` only when the buyer presses pay (and phone only on plans with `collectPhone`). Sessions that stopped at `checkout_ready` without the buyer touching anything have at most an email.
   - Buyer phones cannot be seeded by the merchant at session creation. If you need to join abandoned sessions back to your own user, pass your own user id via `metadata` at session creation.
   - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts.
 - Common uses:
   - abandoned-cart email campaigns — `outcome=abandoned`, then **filter out `paymentSubmitted: true`** before sending (those rows are a lost callback, not a lost buyer)
-  - declined-payment follow-up (`outcome=failed`)
+  - declined-payment follow-up (`outcome=failed`) — sessions with a `callbackUrl` already sent `checkout.failed`, so dedupe on `sessionId` if you act on both
   - periodic reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`) — `paymentSubmitted: true` rows are the ones that most need checking against the integrator's own records
 
 ## Signed Callback
