@@ -3,10 +3,10 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.17.0
+version: 0.18.0
 metadata:
-  version: "0.17.0"
-description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
+  version: "0.18.0"
+description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, wants the list of unfinished or failed checkouts (the dashboard's 未完成結帳 / 付款失敗) to follow up or reconcile, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
 # Portaly Payment Integration
@@ -147,7 +147,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.17.0" }
+  { "skillName": "portaly-payment", "version": "0.18.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -217,11 +217,11 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 ### 6. Consume the result
 
 - The primary external confirmation is the signed callback to `callbackUrl`.
-- **Two checkout-time callbacks exist**: `creator_subscription.checkout.completed` when the first charge succeeds, and `creator_subscription.checkout.failed` when it is declined. Handle both — a merchant who only listens for `.completed` never learns which buyers failed to pay.
+- **Two checkout-time callbacks exist**: `creator_subscription.checkout.completed` when the first charge succeeds, and `creator_subscription.checkout.failed` when it fails (declined, or the buyer canceled on the 91APP page). Handle both — a merchant who only listens for `.completed` never learns which buyers failed to pay.
 - For a hosted checkout, `checkout.completed` is sent only after Portaly has written the subscription and its first order, so the handler may immediately call `GET /subscriptions/{sessionId}`, cancel, or resume with the callback's `sessionId`. In the rare case that recording fails after the buyer was charged, the callback is still sent so the merchant learns about the payment — a `404` from `GET /subscriptions/{sessionId}` right after `checkout.completed` means "contact Portaly support", not "retry until it appears".
 - `creator_subscription.checkout.failed` carries `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`, `metadata`. It **deliberately has no `subscriptionId`** — a failed first charge means no subscription was ever created, so use `sessionId` as both the identifier and the idempotency key.
 - **`test`-mode sessions emit it too** (the payload's `mode` says which), so a sandbox endpoint will start receiving `checkout.failed` as soon as you deploy a handler.
-- Cancelled and expired checkouts still have no callback — poll `GET /api/creator-subscription/checkout-sessions/{sessionId}` for those.
+- `checkout.failed` is the only callback for a checkout that did not complete: it fires when a payment attempt fails, including a buyer canceling on the 91APP page (the list endpoint marks those `paymentCanceled: true`). Buyers who closed the tab or let the session expire fire nothing. Pull unfinished checkouts in bulk with `GET /api/creator-subscription/checkout-sessions?outcome=abandoned,failed` — the dashboard's 「未完成結帳」 is `outcome=abandoned` (filter by `outcome`, `startDate`/`endDate`; keep paging while `pagination.hasMore` is `true` — a page can be short or even empty); use the single-session `GET /api/creator-subscription/checkout-sessions/{sessionId}` only when you already have a `sessionId` to inspect. A list row with `outcome: "abandoned"` and `paymentSubmitted: true` means the buyer did submit payment but Portaly lost the callback — reconcile that record, do not re-market to it.
 - To re-deliver a checkout callback your endpoint missed: `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. Use the session-keyed route for a failed first charge; `/subscriptions/{id}/retry-callback` cannot find it, because there is no subscription.
 - **Recurring renewals and refunds also emit signed callbacks** (same signing/verification as the checkout callback): `creator_subscription.payment.succeeded` / `.failed` cover renewal charges; `creator_subscription.payment.refunded` / `.refund_failed` are terminal outcomes for one payment order. Refund events deduplicate on `orderId`, not `subscriptionId`. Lifecycle events (`creator_subscription.active` / `.cancel_requested` / `.canceled`) are delivered the same way. Switch on the `x-portaly-event` header. See `references/api-contract.md` → Signed Callback for the full event table and payloads, and `references/checkout-and-renewal.md` for renewal behavior.
 - Use manual `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` only as an exception flow when the user is building a non-hosted or recovery flow. It **only** marks the session `completed` / `failed`, records the discount-code redemption, and sends `checkout.completed` / `checkout.failed`. It creates **no** subscription, payment record, order, or invoice: `GET /subscriptions/{sessionId}` returns `404`, nothing renews, nothing reaches the merchant's Portaly revenue or payout, and no e-invoice is issued. Never use it to "finish" a hosted checkout that looks stuck — poll the session instead.

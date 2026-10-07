@@ -173,7 +173,41 @@ A best-practice plan-selection UI never shows a pay button for a plan that isn't
 - `customer.phone` is the mobile number the buyer typed at checkout — empty until they submit, and empty when nothing was collected. A zero-amount live checkout that still saves a card collects one even when `collectPhone` is `false`.
 - `termsOfService` is the terms copied from the plan when the session was created (merchant-authored HTML; empty string when none). The same response carries `termsOfServiceHtml`, a server-sanitized version safe to render as-is — prefer it if you display the terms. A session cannot reach `completed` without the buyer accepting them, so there is no separate consent flag to read.
 - There is **no** flat `customerEmail`, no `metadata`, and no `completedAt` on this response — the buyer email is `customer.email`, and completion time is only carried by the checkout callback's `completedAt`, not by this query. Read the buyer email as `data.customer.email`.
-- Common uses: status pages, reconciliation jobs, callback retry fallback (for non-`completed` outcomes, since the checkout callback only fires on `completed`)
+- Common uses: status pages, reconciliation of one known `sessionId`, callback retry fallback (abandoned or expired sessions fire no callback; only `checkout.completed` / `checkout.failed` exist). For **bulk retrieval** — abandoned carts, declined first charges, periodic audits — use the list endpoint below instead.
+
+## Session List
+
+- Endpoint:
+  - `GET /api/creator-subscription/checkout-sessions`
+- Required headers:
+  - `Authorization: Bearer {portaly_payment_api_key}` (`read`-tier rate limit, 120/minute)
+- Query parameters (all optional):
+  - `outcome` — comma-separated subset of `completed`, `failed`, `abandoned`, `pending` (`pending` = still in progress: not yet expired, or handed to the payment provider and inside the grace period below). Unknown values are rejected with 400. Example: `outcome=failed,abandoned`.
+  - `startDate` / `endDate` — filter by `createdAt`. A bare `YYYY-MM-DD` is read as a Taipei (UTC+8) calendar day; a datetime without a timezone offset is also read as Taipei. Include `Z` or `±HH:MM` to use the value as given. Same rules as `GET /orders`.
+  - `limit` — 1–200, defaults to 50.
+  - `startAfter` — cursor from the previous page's `pagination.nextCursor`.
+- Scope: pinned to the integration key's `profileId` + `mode`. A `pcs_test_itg_` key never sees live sessions and vice versa.
+- Response: `{ data: SessionListItem[], pagination: { hasMore, nextCursor, count } }`. Each `SessionListItem` is a **flat summary** — not the hydrated single-session shape; optional fields with no value are `null` — with `sessionId`, `outcome`, `status`, `mode`, `planId`, `planName`, `amount`, `currency`, `merchantOrderNumber`, `customerName`, `customerEmail`, `customerPhone`, `metadata` (your keys plus bookkeeping keys Portaly writes during checkout, such as `paymentMethod`, `paymentReference`, `failureReason`; card secrets stripped — read only the keys you set), `failureReason`, `paymentCanceled`, `paymentSubmitted`, `createdAt`, `updatedAt`, `expiresAt`.
+- Why this endpoint exists: `GET /orders` only returns records that settled, and `creator_subscription.checkout.failed` only fires when a payment attempt fails (a decline, or the buyer canceling on the 91APP page) — not when the buyer closed the tab or let the session expire. This is the only way to see those sessions.
+- Pagination: `outcome` is applied after each page is read, so a page can hold fewer rows than `limit` — even zero — while `pagination.hasMore` is still `true`. Keep requesting with `startAfter=pagination.nextCursor` until `hasMore` is `false`; never stop on a short or empty page. `count` is the number of rows in this page.
+- Matching the merchant's Portaly dashboard: its order list labels these sessions in Chinese, and each label is one query here, decided by the same rules. When asked for "the 未完成結帳 list", call `outcome=abandoned`.
+  - 「未完成結帳」 (Unfinished checkout) → `outcome=abandoned`
+  - 「付款失敗」 (Payment failed) → `outcome=failed`, rows with `paymentCanceled: false`
+  - 「付款取消」 (Payment canceled) → `outcome=failed`, rows with `paymentCanceled: true`
+  - The dashboard list also mixes in digital-product checkouts and shows only the most recent 200 of each kind; this endpoint covers subscription checkouts only and pages through every session of the key's mode.
+- An `initiated` session (buyer handed to the payment provider — 91APP in live mode, TapPay 3-D Secure in test mode — waiting for it to report back) gets a **3.5-hour grace period** after `expiresAt` before it is counted as `abandoned`, so buyers currently mid-payment do not appear in the `abandoned` list.
+- A row with `outcome: "abandoned"` and `paymentSubmitted: true` means the buyer did submit payment but the callback was lost — the money may already be in the merchant's account. **Reconcile that row, do not re-market to it.** `paymentSubmitted` is only meaningful on `abandoned` rows; ignore it on the others.
+- `paymentCanceled: true` is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It is only set on `failed` rows, and means the buyer bailed on the 91APP page rather than being declined by the bank. Like every `failed` row, that session also sent `checkout.failed` (when it has a `callbackUrl`).
+- Known limits of the list (call these out when the merchant notices):
+  - The earlier the buyer bailed, the sparser the row. `customerEmail` / `customerName` start as whatever was passed when the session was created; otherwise the email is filled in when the buyer requests the verification code, and the name when they press pay. `customerPhone` is only filled in when they press pay and a phone was collected (plans with `collectPhone`, or a zero-amount live checkout that saves a card). A session that stopped at `checkout_ready` has at most the name / email passed at creation plus the email the buyer typed.
+  - The email a buyer types to request a verification code is kept even if they never enter the code, so on a row that never reached payment it may be unconfirmed — a typo, or someone else's address. Treat it as unverified before emailing.
+  - Buyer phones cannot be seeded by the merchant at session creation. If you need to join abandoned sessions back to your own user, pass your own user id via `metadata` at session creation.
+  - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts. A session turns `abandoned` up to about 4 hours after it is created (the 30-minute session window plus the 3.5-hour grace period), so set each run's `startDate` to **4.5 hours before the previous run** — using the previous run time itself silently misses sessions created just before it — and dedupe on `sessionId` across runs.
+  - A failed or expired session cannot be paid again: a buyer who retries does so on a new session, and the old row stays on this list.
+- Common uses:
+  - abandoned-cart email campaigns — `outcome=abandoned`, then before sending **filter out `paymentSubmitted: true`** (those rows are a lost callback, not a lost buyer) and **drop buyers who have since paid** — any `customerEmail` that also has a `completed` row from the same period, or an active subscription in your own records
+  - declined-payment follow-up (`outcome=failed`) — drop buyers who have since paid, as above. Sessions with a `callbackUrl` already sent `checkout.failed`, so dedupe on `sessionId` if you act on both
+  - periodic reconciliation (`outcome=failed,abandoned` + `startDate` / `endDate`) — `paymentSubmitted: true` rows are the ones that most need checking against the integrator's own records
 
 ## Signed Callback
 
@@ -216,7 +250,7 @@ Payload example (`creator_subscription.checkout.completed`):
 | `x-portaly-event` | When | Notes |
 |---|---|---|
 | `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge, after the subscription and its first order are written — `GET /subscriptions/{sessionId}` works as soon as it arrives. |
-| `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | Payload: `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`, `metadata`. **No `subscriptionId`** — none was created; dedup on `sessionId`. Sent in `test` mode too. Re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. |
+| `creator_subscription.checkout.failed` | Initial hosted checkout charge fails (declined, or the buyer canceled on the 91APP page) | Payload: `sessionId`, `profileId`, `planId`, `planName`, `mode`, `amount`, `currency`, `customerEmail`, `failureReason`, `failedAt`, `metadata`. **No `subscriptionId`** — none was created; dedup on `sessionId`. Sent in `test` mode too. Re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback`. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds | Not sent for the first checkout charge. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on every failed attempt; `willCancel: true` + `status: canceled` on the 3rd consecutive failure. |
 | `creator_subscription.payment.refunded` | A merchant/admin refund succeeds | Deduplicate on `event + orderId` (the two refund outcomes share an `orderId`); integration-scope keys receive the event but cannot initiate the refund. |
@@ -292,7 +326,7 @@ All creator-subscription endpoints are rate limited **except** `POST /checkout-s
 
 | Group | Window | Max requests | Applies to |
 |---|---|---|---|
-| read | 1 minute | 120 | GET plans, GET checkout-sessions/{id}, GET subscriptions(-/{id}), GET orders, GET orders/{id} |
+| read | 1 minute | 120 | GET plans, GET checkout-sessions, GET checkout-sessions/{id}, GET subscriptions(-/{id}), GET orders, GET orders/{id} |
 | write | 1 minute | 20 | POST subscriptions/{id}/cancel, POST subscriptions/{id}/resume |
 | _(unlimited)_ | — | — | POST checkout-sessions, POST portal-sessions |
 
