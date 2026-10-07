@@ -213,7 +213,7 @@ See [PROVIDER.md](./PROVIDER.md) for the backend compatibility contract.
 
 ## Version Telemetry
 
-Once a Portaly API key is present (`portaly-email` can also use its email key), each skill sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.6.0" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
+Once a Portaly API key is present, each skill except `portaly-email` sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.6.0" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
 
 ## Migrating from Old Repos
 

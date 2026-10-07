@@ -69,6 +69,12 @@ function checkArtifactParity() {
   console.log(`PASS parity: ${parityFiles.length} callback artifacts`);
 }
 
+// Skills that deliberately do not report their version: portaly-email is
+// account-level and often has only an email key (`pem_`), which the
+// payment-key report flow does not fit. Named here rather than skipped on
+// absence, so every other skill still fails when its example goes missing.
+const SKILLS_WITHOUT_VERSION_REPORT = new Set(["portaly-email"]);
+
 // A skill states its version in up to three places: the line-anchored top-level
 // `version:` (the only one Portaly's skill-versions endpoint can parse),
 // an optional indented `metadata.version`, and the literal in its "Report the
@@ -104,6 +110,13 @@ function checkSkillVersionConsistency() {
     // check: that literal is the only version the dashboard ever receives, so a
     // deleted or reformatted example is precisely the silent drift described
     // above — it has to fail, not be skipped.
+    if (SKILLS_WITHOUT_VERSION_REPORT.has(skillName)) {
+      assert.ok(
+        !skill.includes("/api/creator-subscription/skill-version"),
+        `${skillName}: listed as not reporting its version, but SKILL.md still calls skill-version`
+      );
+      continue;
+    }
     assert.ok(
       skill.includes(`"skillName": "${skillName}", "version": "${version}"`),
       `${skillName}: report example must be present and match top-level version`

@@ -91,7 +91,7 @@ SKILL.md is the entry point when an agent loads a skill. References are loaded o
 - Idempotency keys never expire and the body is not compared — one key per email, never per user. After `502` the key answers `409` until the outcome is known, possibly forever, so the skill caps `409` retries
 - Complaints are not suppressed for API email (only the global list is checked); the integrator must stop mailing `complained` addresses
 - No webhooks yet: delivery is polled via the list with `recipientStatus` (reads are 120/min per key)
-- Version report: with the project's `pcs_` key when it has one (recorded against that store), otherwise the `pem_` key — which may only report `portaly-email`
+- No version report (no step 1.5): it is account-level and often has only a `pem_` key, which the payment-key report flow does not fit. `evals/run-conformance.mjs` lists it in `SKILLS_WITHOUT_VERSION_REPORT` and fails if `SKILL.md` calls `skill-version` again
 - Contract changes surface as a red tripwire test in portaly-vercel (`tests/unit/lib/email/publicContract.test.ts`), not in portaly-vibe
 
 ## These Skills Mirror a Backend That Ships Without Them
