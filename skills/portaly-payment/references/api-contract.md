@@ -607,18 +607,18 @@ Use this when the merchant needs **the unfinished-checkout list** — abandoned 
 - Response: `{ data: SessionListItem[], pagination: { hasMore, nextCursor, count } }`. Each `SessionListItem`:
   - `sessionId`, `outcome`, `status` (raw status, for debugging — use `outcome` for logic), `mode`
   - `planId`, `planName`, `amount`, `currency`, `merchantOrderNumber`
-  - `customerName`, `customerEmail`, `customerPhone` (empty until buyer submits; see `customer.phone` note above)
+  - `customerName`, `customerEmail`, `customerPhone` (`null` until known; see the known limits below and the `customer.phone` note above)
   - `metadata` — the metadata the merchant sent at session creation, plus bookkeeping keys Portaly writes during checkout (for example `paymentMethod`, `paymentReference`, `paidAmount`, `failureReason`); card secrets are stripped. Read only the keys the merchant set.
   - `failureReason`, `paymentCanceled`, `paymentSubmitted`
   - `createdAt`, `updatedAt`, `expiresAt`
 - Pagination: `outcome` is applied after each page is read, so a page can hold fewer rows than `limit` — even zero — while `pagination.hasMore` is still `true`. Keep requesting with `startAfter=pagination.nextCursor` until `hasMore` is `false`; never stop on a short or empty page. `count` is the number of rows in this page.
-- The response is a **flat summary**, not the hydrated single-session shape — no nested `customer.*`, no `plan.*`, no `invoice`. Buyer email lives in `customerEmail` (top-level), unlike the single-session response.
+- The response is a **flat summary**, not the hydrated single-session shape — no nested `customer.*`, no `plan.*`, no `invoice`. Buyer email lives in `customerEmail` (top-level), unlike the single-session response. Optional fields with no value are `null`, not empty strings.
 - Important behavior for `outcome`:
   - **`abandoned` matches the Portaly dashboard "Unfinished checkouts" tab**. An `initiated` session (buyer handed to 91APP, waiting for the provider to report back) gets a **3.5-hour grace period** after `expiresAt` before it is counted as `abandoned`. Buyers currently mid-payment therefore do **not** appear in the `abandoned` list — if they did, the merchant could email "you did not finish" to someone who was still paying.
   - **`abandoned` combined with `paymentSubmitted: true`** means the buyer did submit payment but the callback was lost. The money may already be in the merchant's account — **reconcile that row, do not re-market to it**.
   - **`paymentCanceled: true`** is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It is only set on `failed` rows, and means the buyer bailed on the 91APP page rather than being declined by the bank. Like every `failed` row, that session also sent `checkout.failed` (when it has a `callbackUrl`).
 - Known limits of the list (not bugs; call them out when the merchant notices):
-  - The earlier the buyer bailed, the sparser the row — `customerEmail` is written at OTP submission, `customerName` / `customerPhone` only when the buyer presses pay (and phone only on plans with `collectPhone`). Sessions that stopped at `checkout_ready` without the buyer touching anything have at most an email.
+  - The earlier the buyer bailed, the sparser the row. `customerEmail` / `customerName` start as whatever was passed when the session was created; otherwise the email is filled in when the buyer requests the verification code, and the name when they press pay. `customerPhone` is only filled in when they press pay and a phone was collected (plans with `collectPhone`, or a zero-amount live checkout that saves a card). A session that stopped at `checkout_ready` has at most the name / email passed at creation plus the email the buyer typed.
   - Buyer phones cannot be seeded by the merchant at session creation. If the merchant needs to join back to their own user, pass their own user id via `metadata` at session creation.
   - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts.
 - Common uses:
@@ -836,7 +836,7 @@ Payload example:
 | `x-portaly-event` | When | Notes |
 |---|---|---|
 | `creator_subscription.checkout.completed` | Initial hosted checkout completes | Sent for a successful first charge, after the subscription and its first order are written — `GET /subscriptions/{sessionId}` works as soon as it arrives. A session finished through manual `POST /complete` sends it too but has no subscription (see Manual Completion). |
-| `creator_subscription.checkout.failed` | Initial hosted checkout charge is declined | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Carries `metadata`. Sent in `test` mode too. |
+| `creator_subscription.checkout.failed` | Initial hosted checkout charge fails (declined, or the buyer canceled on the 91APP page) | No `subscriptionId` — none was created. Idempotency key is `sessionId`. Carries `metadata`. Sent in `test` mode too. |
 | `creator_subscription.payment.succeeded` | A recurring **renewal** charge succeeds (monthly/yearly) | Not sent for the first checkout charge — that is `checkout.completed`. |
 | `creator_subscription.payment.failed` | A recurring **renewal** charge fails | Sent on **every** failed attempt. On the 3rd consecutive failure the subscription is canceled and `creator_subscription.canceled` is also sent. |
 | `creator_subscription.payment.refunded` | A payment order is fully refunded | Deduplicate on `event + orderId` — the two refund outcomes share an `orderId`, so without the event prefix they cancel each other out. `amount` and `refundedAmount` are the same post-discount order amount. |
