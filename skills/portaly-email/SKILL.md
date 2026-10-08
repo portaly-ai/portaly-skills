@@ -3,9 +3,9 @@ name: portaly-email
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.1
+version: 0.1.2
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
 description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
 ---
 
@@ -18,9 +18,9 @@ Keep answers operational: next steps first, then copy-ready code in the project'
 
 > **Beta — invite only.** Portaly Email is in beta and only accounts Portaly has invited can use it.
 > Any other account gets `403 FORBIDDEN` on every call, and there is nothing the agent can do about
-> it except tell the user to contact Portaly. Creating an email API key also needs the Premium plan,
-> which carries the monthly quota. Say this before any setup work if the user has not mentioned being
-> invited.
+> it except tell the user to contact Portaly. Creating an email API key or binding a domain also needs
+> the Premium plan, which carries the monthly quota. Say this before any setup work if the user has
+> not mentioned being invited.
 
 ## API Host
 
@@ -35,32 +35,99 @@ disagree, the docs win.
 
 ## Quick Start
 
-1. **Key** — the human creates an email API key in the Portaly admin and puts it in `.env` as
-   `PORTALY_EMAIL_API_KEY`. (Workflow step 1.)
-2. **Sandbox first** — until a domain is verified, send from `<name>@sandbox.portaly.tw`. It only
-   delivers to the account owner's verified sign-in email, up to 50 a day. `<name>` is 3–32 letters,
-   digits, `.`, `_` or `-`, must not contain `portaly`, and must not be a reserved name such as
-   `noreply`, `no-reply`, `support`, `info` or `admin` (`400 INVALID_SENDER`) — e.g. `orders` or
-   `hello`. Good enough to prove the code works.
-3. **Domain** — the human binds a sending subdomain and adds the DNS records, then makes sure the
-   key covers that domain. (Workflow step 2.)
-4. **Send** from server-side code with an `Idempotency-Key`. (Workflow step 3.)
-5. **Handle the response and track delivery** — retry what is retryable, alert on quota, and record
+1. **Ask first** — the sandbox (test mail to the user's own inbox, no DNS) or their own domain (mail
+   to real customers)? The answer decides which key to create. (Workflow step 1.)
+2. **Set up** — send the human to the admin page for each step with a clickable link: create the
+   key, and for their own domain, bind it and add the DNS records. The key goes in `.env` as
+   `PORTALY_EMAIL_API_KEY`. (Workflow step 2.)
+3. **Send** from server-side code with an `Idempotency-Key`. (Workflow step 3.)
+4. **Handle the response and track delivery** — retry what is retryable, alert on quota, and record
    bounced and complained addresses. (Workflow steps 4–5.)
+
+## Admin Pages
+
+The human does every setup step in the Portaly admin. Each link opens the right tab directly; a
+signed-out user is sent through sign-in and back to the same page.
+
+| Page | Link | What the human does there |
+|---|---|---|
+| API 管理 (API keys) | https://portaly.cc/admin/email/api-keys | 「建立 API Key」, copy the key (shown once), 「撤銷」 a leaked one |
+| 信箱設定 (sending domains) | https://portaly.cc/admin/email/domains | 「新增網域」, 「查看」 its DNS records, 「重新檢查」 after adding them |
+| 寄信紀錄 (send log) | https://portaly.cc/admin/email/messages | What was sent and each recipient's status |
+| 訂閱管理 (plan) | https://portaly.cc/admin/subscription | Upgrade to Premium |
+
+- **Hand over the link itself, clickable.** Put the URL on its own line as plain text or a Markdown
+  link — never in backticks or a code block, which most chat panes and terminals show as dead text.
+  Then list the buttons to press, using the admin's own labels as above. Never make the human
+  navigate menus to find a page.
+- If a link lands on the dashboard home instead of 信件管理, the account is not in the email beta:
+  stop and tell them to contact Portaly.
 
 ## Workflow
 
-### 1. Get the API key (human step)
+### 1. Ask where the mail comes from — before any setup
 
-- The human creates it at `https://portaly.cc/admin/email/api-keys` (經營工具 › 信件管理 › API 管理).
-  Keys start with `pem_` and are shown **once**.
-- Permission: `sending` (send, list, look up, cancel, quota) is enough for an app that only sends.
-  Choose `full` only if this integration should also bind domains through the API.
-- The key only sends from the domains picked when it was created. Before any domain is verified the
-  admin's default is `sandbox.portaly.tw` alone, so a key created now cannot send from the real
-  domain later (`403 DOMAIN_NOT_ALLOWED`). Either pick 「全部網域」 (all domains, including ones bound
-  later — `full` keys always have it) or have the human create another key after step 2. A key
-  limited to `sandbox.portaly.tw` is effectively the test key — there is no separate test mode.
+A key's sending domains are fixed when it is created, so settle this before the human makes one.
+Ask, in the user's own language:
+
+> Do you want to test with Portaly's sandbox first, or send from your own domain to real customers?
+
+- **Sandbox** — no DNS, ready in minutes. Mail comes from `<name>@sandbox.portaly.tw` and reaches
+  only the account owner's verified sign-in email, up to 50 a day. Right for proving the code works.
+- **Own domain** — needed to email anyone else. The human must be able to edit the domain's DNS, and
+  verification takes minutes to hours; the sandbox covers the wait.
+- Not sure → sandbox. Moving to a domain later is a new key and a config change, not new code.
+
+Skip the question if the user has already answered it. If `PORTALY_EMAIL_API_KEY` is already set,
+don't have them create another key — ask which domains it covers (the 網域 column on the API 管理
+page) and only create a new one if it lacks the domain they want.
+
+### 2. Set up the sender (human steps)
+
+**Sandbox:**
+
+1. Send them to https://portaly.cc/admin/email/api-keys → 「建立 API Key」 → name it → 權限
+   「僅寄信」 → 網域 `sandbox.portaly.tw` (already ticked while no domain is verified) → 「建立」.
+2. They copy the key — it is shown once — into `.env` (see "The key" below).
+3. Sender: `<name>@sandbox.portaly.tw`. `<name>` is 3–32 letters, digits, `.`, `_` or `-`, must not
+   contain `portaly`, and must not be a reserved name such as `noreply`, `no-reply`, `support`,
+   `info` or `admin` (`400 INVALID_SENDER`) — e.g. `orders` or `hello`. Recipient: the account
+   owner's verified sign-in email. If the owner signs in without a verified email (e.g. by phone or
+   LINE), the sandbox cannot deliver at all (`403 RECIPIENT_NOT_ALLOWED`) — use the own-domain path.
+
+This key is the test key — there is no separate test mode — and it cannot send from a domain bound
+later (`403 DOMAIN_NOT_ALLOWED`). When they move to their own domain, they create a new key there.
+
+**Own domain:**
+
+1. Ask which address mail should come from (`orders@…`). Recommend a **subdomain that does not
+   receive mail**, e.g. `mail.example.com`, so a bounce problem never touches their main inbox. If the
+   app sends both marketing mail (newsletters, promotions) and account mail (receipts, codes),
+   suggest one subdomain for each, e.g. `news.example.com` and `notify.example.com`: bounces and
+   complaints count per domain, so a complaint spike on a newsletter never blocks sign-in codes.
+2. Send them to https://portaly.cc/admin/email/domains → 「新增網域」 → enter the subdomain →
+   「新增」 → 「查看」 on its row. That lists the DNS records: **three DKIM `CNAME`s plus an `MX` and
+   a `TXT` for the MAIL FROM subdomain.**
+3. They add every record at their DNS provider. Leave the existing records for the main domain (its
+   `MX`, SPF, DKIM) alone. On Cloudflare, set the new records to **DNS only** (grey cloud), not
+   proxied.
+4. Back in 「查看」, they press 「重新檢查」. DNS can take minutes to hours; the row shows 「已驗證」
+   when it is ready (`identityStatus: "verified"` and `mailFromStatus: "success"` in the API).
+5. Don't wait for DNS to create the key: send them to https://portaly.cc/admin/email/api-keys →
+   「建立 API Key」 → 權限 「僅寄信」 → tick **both the new domain and `sandbox.portaly.tw`** (or
+   「全部網域」 to also cover domains bound later) → 「建立」 → copy it into `.env`. The same key then
+   sends from the sandbox today and from the domain once it is verified.
+6. Build and test against the sandbox meanwhile (sender and recipient as in the sandbox path).
+   Switching to the domain is a change to `EMAIL_FROM`, not code.
+7. The sending subdomain does not receive mail, so set `replyTo` to an address that does (e.g.
+   `support@example.com`); otherwise customers' replies go nowhere.
+
+**The key, either path:**
+
+- Keys start with `pem_`. Permission 「僅寄信」 (`sending`: send, list, look up, cancel, quota) is
+  enough for an app that only sends. Choose 「完整權限」 (`full`) only if this integration should also
+  bind domains through the API (`POST /api/email/domains` with `{ "host": "mail.example.com" }`, and
+  `GET /api/email/domains` to check status without asking the human); `full` keys cover all domains.
 - **This is not the Portaly Payment key.** `pcs_live_` / `pcs_test_` keys cannot send email, and a
   `pem_` key cannot call payment endpoints. A project using both keeps both.
 - **Never ask the user to paste the key into chat.** Tell them to add it to `.env` themselves:
@@ -70,33 +137,10 @@ disagree, the docs win.
   ```
 
   Read it with `process.env.PORTALY_EMAIL_API_KEY`. Make sure `.env` is in `.gitignore` before
-  anything else. If a key is pasted into chat, tell them to revoke it in the admin and create a new one.
+  anything else. If a key is pasted into chat, tell them to revoke it on the API 管理 page and create
+  a new one.
 - **Server-side only.** Never put the key in browser code, a `NEXT_PUBLIC_` / `VITE_` variable, a
   mobile app, or anything shipped to users: anyone holding it can send email as the creator's domain.
-
-### 2. Choose and verify the sending domain
-
-- Ask which address mail should come from (`orders@…`, `no-reply@…`). Recommend a **subdomain that
-  does not receive mail**, e.g. `mail.example.com`, so a bounce problem never touches their main inbox.
-- With a `full` key, `GET /api/email/domains` shows what is bound and verified; otherwise ask the
-  human to check `https://portaly.cc/admin/email/domains` (信箱設定).
-- Binding (admin, or `POST /api/email/domains` with `{ "host": "mail.example.com" }` and a `full` key)
-  returns `dnsRecords`: **three DKIM `CNAME`s plus an `MX` and a `TXT` for the MAIL FROM subdomain.**
-  The human adds every one at their DNS provider, then presses 「重新檢查」 in the admin. DNS can take
-  minutes to hours; `identityStatus: "verified"` and `mailFromStatus: "success"` mean it is ready.
-  Leave the existing records for the main domain (its `MX`, SPF, DKIM) alone. On Cloudflare, set the
-  new records to **DNS only** (grey cloud), not proxied.
-- If the app sends both marketing mail (newsletters, promotions) and account mail (receipts, codes),
-  suggest one subdomain for each, e.g. `news.example.com` and `notify.example.com`: bounces and
-  complaints count per domain, so a complaint spike on a newsletter never blocks sign-in codes.
-- The sending subdomain does not receive mail, so set `replyTo` to an address that does (e.g.
-  `support@example.com`); otherwise customers' replies go nowhere.
-- Until then, build and test against the sandbox: `sender.email` on `sandbox.portaly.tw`, recipient
-  = the account owner's verified sign-in email. If the owner signs in without a verified email (e.g.
-  by phone or LINE), the sandbox cannot deliver at all (`403 RECIPIENT_NOT_ALLOWED`). Swapping to the
-  real domain later is a config change, not code.
-- Once the domain is verified, check that the key covers it (step 1); otherwise sends answer
-  `403 DOMAIN_NOT_ALLOWED`.
 - Never try to send from `mail.portaly.tw` or any other Portaly domain — it answers `403 DOMAIN_NOT_ALLOWED`.
 
 ### 3. Send
@@ -191,7 +235,7 @@ Every error is `{ "error": { "code", "message" } }`. Branch on `code`, never on 
 | `429 SANDBOX_DAILY_LIMIT_REACHED` | 50 sandbox emails a day; resets at midnight Asia/Taipei. |
 | `422 RECIPIENT_SUPPRESSED` | Every `to` address is on Portaly's suppression list (it hard-bounced, or several Portaly senders got spam complaints from it). Don't retry. Mark them invalid in your DB and ask a signed-in user for a new address; in signed-out flows (password reset) show the usual generic message so you don't reveal whether the account exists. |
 | `422 MESSAGE_REJECTED` | The mail service refused this message. The same key keeps answering this — fix it and send with a new key. |
-| `403 DOMAIN_NOT_ALLOWED` | The domain is not bound to this account, is a Portaly domain, or the key does not cover it (step 1). Surface it to the creator, don't retry. |
+| `403 DOMAIN_NOT_ALLOWED` | The domain is not bound to this account, is a Portaly domain, or the key does not cover it (step 2; the API 管理 page lists each key's domains). Surface it to the creator, don't retry. |
 | other `403 DOMAIN_*` | Setup problem — see step 2. Surface it to the creator, don't retry. |
 | `403 HARD_BOUNCE_LIMIT_REACHED` | The domain hit today's hard-bounce limit and is blocked for the rest of the day, usually suspended next. Stop sending from it, alert a human, and clean up the `bounced` addresses (step 5). Don't retry today. |
 | `403 RECIPIENT_NOT_ALLOWED` | Sandbox sending to someone other than the account owner. |
@@ -271,7 +315,7 @@ for the day (`403 HARD_BOUNCE_LIMIT_REACHED`) and then suspended — acting on `
 
 ## Deliverables
 
-- a short setup checklist for the human (key, domain, DNS, `.env`)
+- a short setup checklist for the human (key, domain, DNS, `.env`), each step with its clickable admin link
 - a server-side `sendEmail` helper in the project's stack, with idempotency and the error handling above
 - a delivery-tracking job that records `bounced` / `complained` addresses
 - test steps using the sandbox and the mailbox simulator
