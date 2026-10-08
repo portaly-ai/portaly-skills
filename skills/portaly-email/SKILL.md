@@ -133,9 +133,10 @@ and checks verification through the API:
    `"verified"` and `mailFromStatus` is `"success"`; DMARC does not affect either.
    - Still `pending`: Portaly does not see the records yet. Wait a minute or more between calls —
      DNS can take minutes to hours, and the human does not have to stay in the session for it.
-   - `failed`: compare every record with `dnsRecords` again. If `identityStatus` stays `failed`, or
+   - `failed`: compare every record with `dnsRecords` again. If either status stays `failed`, or
      the call answers `409 IDENTITY_NOT_FOUND`, they unbind the domain at
-     https://portaly.cc/admin/email/domains and you bind it again.
+     https://portaly.cc/admin/email/domains and you bind it again (step 3), then hand over the new
+     `dnsRecords` — the DKIM values change.
 7. Build and test against the sandbox meanwhile (sender and recipient as in the sandbox path).
    Switching to the domain is a change to `EMAIL_FROM`, not code.
 8. The sending subdomain does not receive mail, so set `replyTo` to an address that does (e.g.

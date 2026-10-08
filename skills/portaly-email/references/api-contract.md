@@ -273,9 +273,9 @@ canceling twice is fine. `404 EMAIL_NOT_FOUND`; `409 EMAIL_NOT_CANCELABLE` once 
   wait a minute or more between calls (it shares the 20-per-minute limit with binding domains and
   canceling emails). Ready to send once `identityStatus` is `verified` and `mailFromStatus` is
   `success`.
-- `failed`: a record is missing or wrong — compare each one with `dnsRecords`. If `identityStatus`
+- `failed`: a record is missing or wrong — compare each one with `dnsRecords`. If either status
   stays `failed`, the human unbinds the domain at `https://portaly.cc/admin/email/domains` and binds
-  it again.
+  it again; the new binding has new DKIM values.
 - Errors: `404 DOMAIN_NOT_FOUND` (no domain with this id on your account); `409 IDENTITY_NOT_FOUND`
   (the mail service no longer has this domain — unbind and bind it again in the admin).
 
