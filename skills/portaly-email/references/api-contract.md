@@ -19,7 +19,7 @@ account answers `403 FORBIDDEN`. Creating a key needs the Premium plan.
 
 - `Authorization: Bearer pem_…` — an email API key from `https://portaly.cc/admin/email/api-keys`.
   Not interchangeable with Portaly Payment keys (`pcs_…`).
-- Permissions: `sending` — everything below except the two domain endpoints; `full` — also domains.
+- Permissions: `sending` — everything below except the three domain endpoints; `full` — also domains.
 - Each key sends only from the domains chosen when it was created, or from all domains (「全部網域」,
   which also covers the sandbox and domains bound later; `full` keys always have it). Before any
   domain is verified the admin's default is `sandbox.portaly.tw` alone. No test/live split: a key
@@ -40,7 +40,7 @@ account answers `403 FORBIDDEN`. Creating a key needs the Premium plan.
 
 - Rate limits, per key per minute: `POST /emails` 60 **recipients** (an email to 50 people uses 50),
   `POST /batches` 10 requests, reads (`GET /emails`, `GET /emails/{id}`, `GET /domains`, `GET /quota`)
-  120, `POST /emails/{id}/cancel` and `POST /domains` 20. A batch counts once toward its own 10;
+  120, `POST /emails/{id}/cancel`, `POST /domains` and `POST /domains/{id}/verify` 20 together. A batch counts once toward its own 10;
   its recipients do not use the 60. Responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
   `X-RateLimit-Reset` (Unix seconds); `Retry-After` is always in seconds.
 
@@ -250,12 +250,34 @@ canceling twice is fine. `404 EMAIL_NOT_FOUND`; `409 EMAIL_NOT_CANCELABLE` once 
     `temporaryFailure` / `failed` / `null`. Sending needs `verified` + `success`.
   - `status`: `active` / `suspended` (too many bounces or complaints — contact support) / `closed`.
   - `isPlatform: true` is Portaly's shared broadcast domain; the API cannot send from it.
-  - `dnsRecords`: `{ type, name, value, priority? }` — three DKIM `CNAME`s plus `MX` and `TXT` for
-    the MAIL FROM subdomain. Add them all.
-- Statuses are as of the last check; after adding DNS records the human presses 「重新檢查」 at
-  `https://portaly.cc/admin/email/domains`.
+  - `dnsRecords`: `{ type, name, value, priority?, optional? }` — three DKIM `CNAME`s, then `MX` and
+    `TXT` for the MAIL FROM subdomain (SPF); add all of them. Last is an optional DMARC `TXT`
+    (`optional: true`, `_dmarc.<host>` = `v=DMARC1; p=none;`): recommended (Gmail requires DMARC
+    above 5,000 emails a day), but skip it if the domain already has DMARC. Optional records never
+    affect `identityStatus` or `mailFromStatus`.
+- Statuses are as of the last check. Until the domain first verifies, they change only through
+  `POST /api/email/domains/{id}/verify` (below) or 「重新檢查」 at
+  `https://portaly.cc/admin/email/domains`; after that Portaly rechecks on its own when the API sends
+  from it or lists domains.
 - `POST` errors: `400 INVALID_BODY` / `INVALID_HOST` / `RESERVED_HOST`; `403 PREMIUM_REQUIRED` /
   `DOMAIN_LIMIT_REACHED`; `409 HOST_ALREADY_BOUND` (already yours) / `HOST_TAKEN` (another account's).
+
+---
+
+## POST `/api/email/domains/{id}/verify` (`full` key)
+
+- Asks the mail service for the domain's current DKIM and MAIL FROM status and returns
+  `{ "data": domain }` (same shape as above). `{id}` is the domain's `id` from the bind or list
+  response. The API version of 「重新檢查」 in the admin; no body.
+- Call it after the DNS records are in. DNS can take minutes to hours: while it answers `pending`,
+  wait a minute or more between calls (it shares the 20-per-minute limit with binding domains and
+  canceling emails). Ready to send once `identityStatus` is `verified` and `mailFromStatus` is
+  `success`.
+- `failed`: a record is missing or wrong — compare each one with `dnsRecords`. If either status
+  stays `failed`, the human unbinds the domain at `https://portaly.cc/admin/email/domains` and binds
+  it again; the new binding has new DKIM values.
+- Errors: `404 DOMAIN_NOT_FOUND` (no domain with this id on your account); `409 IDENTITY_NOT_FOUND`
+  (the mail service no longer has this domain — unbind and bind it again in the admin).
 
 ---
 
@@ -301,4 +323,4 @@ They do not count toward the domain's bounce or complaint rate but do use quota.
 
 - Delivery webhooks — poll the list with `recipientStatus=bounced,complained` from a periodic job
   (reads share 120 per minute per key, so per-email polling does not scale).
-- Re-checking domain verification through the API — use the admin.
+- Unbinding a domain through the API — use `https://portaly.cc/admin/email/domains`.

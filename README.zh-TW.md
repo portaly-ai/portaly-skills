@@ -188,7 +188,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email
 透過 Portaly 的寄信 API，讓你的網站從創作者已驗證的網域寄出自己的信——訂單確認、驗證碼、重設密碼、通知、電子報。
 
 - 先用 sandbox（`sandbox.portaly.tw`，只寄給帳號本人已驗證的 email、一天 50 封）把程式跑通，不用先設 DNS
-- 網域驗證：三筆 DKIM `CNAME`，加上 MAIL FROM 的 `MX`／`TXT`
+- 網域驗證由 agent 處理：用 API 綁定網域，帶創作者設定三筆 DKIM `CNAME`、MAIL FROM 的 `MX`／`TXT`（以及選填的 DMARC `TXT`），再用 API 確認驗證完成
 - 單封、批次（最多 100 封）與排程寄送，帶 `Idempotency-Key`，重試不會重複寄
 - 每個收件人的投遞狀態（`delivered`、`bounced`、`complained`…），以及撞到 `429` 前先查的額度端點
 - 用 mailbox simulator 測退信與投訴，不拿亂編的地址測
