@@ -93,7 +93,8 @@ first.
 
 **Email Skill:**
 - Invite-only beta: only accounts Portaly has invited can use it (`403 FORBIDDEN` otherwise), and creating a key needs Premium — the skill says so up front
-- API host: `https://portaly.ai`, which rewrites only the public email paths (`/api/email/emails`, `/emails/{id}`, `/emails/{id}/cancel`, `/batches`, `/domains`, `/quota`) to the implementation in **portaly-vercel**, not portaly-vibe
+- API host: `https://portaly.ai`, which rewrites only the public email paths (`/api/email/emails`, `/emails/{id}`, `/emails/{id}/cancel`, `/batches`, `/domains`, `/domains/{id}/verify`, `/quota`) to the implementation in **portaly-vercel**, not portaly-vibe
+- Own-domain setup is agent-driven: the human creates a `full` key and adds the DNS records; the agent binds with `POST /domains`, checks the records with `dig`, and confirms with `POST /domains/{id}/verify`. Until a domain first verifies, nothing but verify (or the admin's 「重新檢查」) refreshes its status
 - Its own key, `pem_*` (from `https://portaly.cc/admin/email/api-keys`); it cannot call payment endpoints and `pcs_*` keys cannot send email. No live/test split — a key limited to `sandbox.portaly.tw` is the test key
 - Sandbox: `<name>@sandbox.portaly.tw` (3–32 chars, no `portaly`, reserved names like `noreply` / `support` refused), delivers only to the account owner's verified sign-in email, 50/day, no quota. A key created before any domain is verified covers only the sandbox by default. Mailbox simulator addresses need a verified custom domain
 - Quota is per recipient and shared with admin broadcasts; `429 SEND_QUOTA_EXCEEDED` is not transient — the skill must tell agents to alert, not retry

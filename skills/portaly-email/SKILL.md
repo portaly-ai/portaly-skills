@@ -37,16 +37,16 @@ disagree, the docs win.
 
 1. **Ask first** — the sandbox (test mail to the user's own inbox, no DNS) or their own domain (mail
    to real customers)? The answer decides which key to create. (Workflow step 1.)
-2. **Set up** — send the human to the admin page for each step with a clickable link: create the
-   key, and for their own domain, bind it and add the DNS records. The key goes in `.env` as
-   `PORTALY_EMAIL_API_KEY`. (Workflow step 2.)
+2. **Set up** — the human creates the key from a clickable admin link and puts it in `.env` as
+   `PORTALY_EMAIL_API_KEY`. For their own domain, the agent binds it through the API, walks them
+   through the DNS records, and confirms verification. (Workflow step 2.)
 3. **Send** from server-side code with an `Idempotency-Key`. (Workflow step 3.)
 4. **Handle the response and track delivery** — retry what is retryable, alert on quota, and record
    bounced and complained addresses. (Workflow steps 4–5.)
 
 ## Admin Pages
 
-The human does every setup step in the Portaly admin. Each link opens the right tab directly; a
+The human's setup steps happen on these pages. Each link opens the right tab directly; a
 signed-out user is sent through sign-in and back to the same page.
 
 | Page | Link | What the human does there |
@@ -96,42 +96,60 @@ page) and only create a new one if it lacks the domain they want.
    LINE), the sandbox cannot deliver at all (`403 RECIPIENT_NOT_ALLOWED`) — use the own-domain path.
 
 This key is the test key — there is no separate test mode — and it cannot send from a domain bound
-later (`403 DOMAIN_NOT_ALLOWED`). When they move to their own domain, they create a new key there.
+later (`403 DOMAIN_NOT_ALLOWED`). When they move to their own domain, they follow the own-domain path
+with a new key.
 
-**Own domain:**
+**Own domain** — the human creates the key and adds the DNS records; the agent binds the domain
+and checks verification through the API:
 
 1. Ask which address mail should come from (`orders@…`). Recommend a **subdomain that does not
    receive mail**, e.g. `mail.example.com`, so a bounce problem never touches their main inbox. If the
    app sends both marketing mail (newsletters, promotions) and account mail (receipts, codes),
    suggest one subdomain for each, e.g. `news.example.com` and `notify.example.com`: bounces and
    complaints count per domain, so a complaint spike on a newsletter never blocks sign-in codes.
-2. Send them to https://portaly.cc/admin/email/domains → 「新增網域」 → enter the subdomain →
-   「新增」 → 「查看」 on its row. That lists the DNS records in three groups: **DKIM (three
-   `CNAME`s) and SPF (an `MX` and a `TXT` for the MAIL FROM subdomain), each with its own status, plus
-   an optional DMARC `TXT`.**
-3. They add every DKIM and SPF record at their DNS provider. Leave the existing records for the main
-   domain (its `MX`, SPF, DKIM) alone. On Cloudflare, set the new records to **DNS only** (grey
-   cloud), not proxied. Recommend the DMARC record too — Gmail requires DMARC from senders of more
-   than 5,000 emails a day — **unless the domain already has DMARC**: a stricter existing policy
-   would be loosened for this subdomain.
-4. Back in 「查看」, they press 「重新檢查」. DNS can take minutes to hours; the row shows 「已驗證」
-   when DKIM and SPF are both ready (`identityStatus: "verified"` and `mailFromStatus: "success"`
-   in the API). DMARC does not affect the status.
-5. Don't wait for DNS to create the key: send them to https://portaly.cc/admin/email/api-keys →
-   「建立 API Key」 → 權限 「僅寄信」 → tick **both the new domain and `sandbox.portaly.tw`** (or
-   「全部網域」 to also cover domains bound later) → 「建立」 → copy it into `.env`. The same key then
-   sends from the sandbox today and from the domain once it is verified.
-6. Build and test against the sandbox meanwhile (sender and recipient as in the sandbox path).
+2. Send them to https://portaly.cc/admin/email/api-keys → 「建立 API Key」 → name it → 權限
+   「完整權限」 → 「建立」 → copy it into `.env`. A full key covers every domain — the sandbox now,
+   the new domain once it verifies — and is the only kind that can bind and verify domains.
+3. Bind it: `POST {PORTALY_API_HOST}/api/email/domains` with `{ "host": "mail.example.com" }`, from a
+   shell or script that reads the key from `.env` — never print it. Keep `data.id` for step 6. `409 HOST_ALREADY_BOUND` means it is already theirs — find it with
+   `GET /api/email/domains`. `403 PREMIUM_REQUIRED` → send them to
+   https://portaly.cc/admin/subscription. `409 HOST_TAKEN` → another Portaly account holds it;
+   pick another subdomain or contact Portaly.
+4. Hand over the DNS records from `data.dnsRecords`: three DKIM `CNAME`s, then an `MX` and a `TXT`
+   for the MAIL FROM subdomain (SPF), then the optional DMARC `TXT` (`optional: true`).
+   - Find their DNS provider first (`dig +short NS example.com` — the nameservers name it) and give
+     that provider's steps. Show the records as a table of type, name, value and, for the `MX`,
+     priority. `name` is the full hostname; most providers want only the part before their domain
+     (`bounce.mail` for `bounce.mail.example.com`), so write what to type.
+   - On Cloudflare, every new record is **DNS only** (grey cloud), not proxied.
+   - Leave the existing records for the main domain (its `MX`, SPF, DKIM) alone.
+   - DMARC: recommend it — Gmail requires DMARC from senders of more than 5,000 emails a day —
+     **unless the domain already has DMARC** (`dig +short TXT _dmarc.example.com`): a stricter
+     existing policy would be loosened for this subdomain.
+5. When they say the records are in, check them yourself: `dig +short <TYPE> <name>` for each, or
+   `https://dns.google/resolve?name=<name>&type=<TYPE>` without `dig`. Point out a missing or
+   mistyped record before asking Portaly.
+6. Verify: `POST {PORTALY_API_HOST}/api/email/domains/{id}/verify`. Ready when `identityStatus` is
+   `"verified"` and `mailFromStatus` is `"success"`; DMARC does not affect either.
+   - Still `pending`: Portaly does not see the records yet. Wait a minute or more between calls —
+     DNS can take minutes to hours, and the human does not have to stay in the session for it.
+   - `failed`: compare every record with `dnsRecords` again. If `identityStatus` stays `failed`, or
+     the call answers `409 IDENTITY_NOT_FOUND`, they unbind the domain at
+     https://portaly.cc/admin/email/domains and you bind it again.
+7. Build and test against the sandbox meanwhile (sender and recipient as in the sandbox path).
    Switching to the domain is a change to `EMAIL_FROM`, not code.
-7. The sending subdomain does not receive mail, so set `replyTo` to an address that does (e.g.
+8. The sending subdomain does not receive mail, so set `replyTo` to an address that does (e.g.
    `support@example.com`); otherwise customers' replies go nowhere.
+
+If the human would rather click through it, the admin does the same: https://portaly.cc/admin/email/domains
+→ 「新增網域」 → the DNS records appear right away → after adding them, 「重新檢查」.
 
 **The key, either path:**
 
-- Keys start with `pem_`. Permission 「僅寄信」 (`sending`: send, list, look up, cancel, quota) is
-  enough for an app that only sends. Choose 「完整權限」 (`full`) only if this integration should also
-  bind domains through the API (`POST /api/email/domains` with `{ "host": "mail.example.com" }`, and
-  `GET /api/email/domains` to check status without asking the human); `full` keys cover all domains.
+- Keys start with `pem_`. 「僅寄信」 (`sending`) can send, list, look up, cancel and check quota;
+  「完整權限」 (`full`) can also bind, list and verify domains, and covers every domain. If they
+  would rather the deployed app hold a send-only key, they create a 「僅寄信」 key for the verified
+  domain afterwards and keep the full one out of production.
 - **This is not the Portaly Payment key.** `pcs_live_` / `pcs_test_` keys cannot send email, and a
   `pem_` key cannot call payment endpoints. A project using both keeps both.
 - **Never ask the user to paste the key into chat.** Tell them to add it to `.env` themselves:
