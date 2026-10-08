@@ -250,10 +250,14 @@ canceling twice is fine. `404 EMAIL_NOT_FOUND`; `409 EMAIL_NOT_CANCELABLE` once 
     `temporaryFailure` / `failed` / `null`. Sending needs `verified` + `success`.
   - `status`: `active` / `suspended` (too many bounces or complaints — contact support) / `closed`.
   - `isPlatform: true` is Portaly's shared broadcast domain; the API cannot send from it.
-  - `dnsRecords`: `{ type, name, value, priority? }` — three DKIM `CNAME`s plus `MX` and `TXT` for
-    the MAIL FROM subdomain. Add them all.
-- Statuses are as of the last check; after adding DNS records the human presses 「重新檢查」 at
-  `https://portaly.cc/admin/email/domains`.
+  - `dnsRecords`: `{ type, name, value, priority?, optional? }` — three DKIM `CNAME`s, then `MX` and
+    `TXT` for the MAIL FROM subdomain (SPF); add all of them. Last is an optional DMARC `TXT`
+    (`optional: true`, `_dmarc.<host>` = `v=DMARC1; p=none;`): recommended (Gmail requires DMARC
+    above 5,000 emails a day), but skip it if the domain already has DMARC. Optional records never
+    affect `identityStatus` or `mailFromStatus`.
+- Statuses are as of the last check. Until the domain first verifies, they change only when the
+  human presses 「重新檢查」 at `https://portaly.cc/admin/email/domains`; after that Portaly rechecks
+  on its own when the API sends from it or lists domains.
 - `POST` errors: `400 INVALID_BODY` / `INVALID_HOST` / `RESERVED_HOST`; `403 PREMIUM_REQUIRED` /
   `DOMAIN_LIMIT_REACHED`; `409 HOST_ALREADY_BOUND` (already yours) / `HOST_TAKEN` (another account's).
 

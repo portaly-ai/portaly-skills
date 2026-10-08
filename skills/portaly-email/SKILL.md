@@ -52,7 +52,7 @@ signed-out user is sent through sign-in and back to the same page.
 | Page | Link | What the human does there |
 |---|---|---|
 | API 管理 (API keys) | https://portaly.cc/admin/email/api-keys | 「建立 API Key」, copy the key (shown once), 「撤銷」 a leaked one |
-| 信箱設定 (sending domains) | https://portaly.cc/admin/email/domains | 「新增網域」, 「查看」 its DNS records, 「重新檢查」 after adding them |
+| 寄件網域 (sending domains) | https://portaly.cc/admin/email/domains | 「新增網域」, 「查看」 its DNS records, 「重新檢查」 after adding them |
 | 寄信紀錄 (send log) | https://portaly.cc/admin/email/messages | What was sent and each recipient's status |
 | 訂閱管理 (plan) | https://portaly.cc/admin/subscription | Upgrade to Premium |
 
@@ -106,13 +106,17 @@ later (`403 DOMAIN_NOT_ALLOWED`). When they move to their own domain, they creat
    suggest one subdomain for each, e.g. `news.example.com` and `notify.example.com`: bounces and
    complaints count per domain, so a complaint spike on a newsletter never blocks sign-in codes.
 2. Send them to https://portaly.cc/admin/email/domains → 「新增網域」 → enter the subdomain →
-   「新增」 → 「查看」 on its row. That lists the DNS records: **three DKIM `CNAME`s plus an `MX` and
-   a `TXT` for the MAIL FROM subdomain.**
-3. They add every record at their DNS provider. Leave the existing records for the main domain (its
-   `MX`, SPF, DKIM) alone. On Cloudflare, set the new records to **DNS only** (grey cloud), not
-   proxied.
+   「新增」 → 「查看」 on its row. That lists the DNS records in three groups: **DKIM (three
+   `CNAME`s) and SPF (an `MX` and a `TXT` for the MAIL FROM subdomain), each with its own status, plus
+   an optional DMARC `TXT`.**
+3. They add every DKIM and SPF record at their DNS provider. Leave the existing records for the main
+   domain (its `MX`, SPF, DKIM) alone. On Cloudflare, set the new records to **DNS only** (grey
+   cloud), not proxied. Recommend the DMARC record too — Gmail requires DMARC from senders of more
+   than 5,000 emails a day — **unless the domain already has DMARC**: a stricter existing policy
+   would be loosened for this subdomain.
 4. Back in 「查看」, they press 「重新檢查」. DNS can take minutes to hours; the row shows 「已驗證」
-   when it is ready (`identityStatus: "verified"` and `mailFromStatus: "success"` in the API).
+   when DKIM and SPF are both ready (`identityStatus: "verified"` and `mailFromStatus: "success"`
+   in the API). DMARC does not affect the status.
 5. Don't wait for DNS to create the key: send them to https://portaly.cc/admin/email/api-keys →
    「建立 API Key」 → 權限 「僅寄信」 → tick **both the new domain and `sandbox.portaly.tw`** (or
    「全部網域」 to also cover domains bound later) → 「建立」 → copy it into `.env`. The same key then

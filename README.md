@@ -188,7 +188,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email
 Sends your app's own email — order receipts, verification codes, password resets, notifications, newsletters — from the creator's verified domain through Portaly's email API.
 
 - Sandbox (`sandbox.portaly.tw`, to the account owner's verified email, 50 a day) to prove the code before any DNS work
-- Domain verification: three DKIM `CNAME`s plus the MAIL FROM `MX` / `TXT`
+- Domain verification: three DKIM `CNAME`s plus the MAIL FROM `MX` / `TXT`, and an optional DMARC `TXT`
 - Single, batch (up to 100) and scheduled sends with `Idempotency-Key`, so retries never double-send
 - Per-recipient delivery status (`delivered`, `bounced`, `complained`, …) and a quota endpoint to check before hitting `429`
 - Bounce and complaint testing with the mailbox simulator, never with made-up addresses
