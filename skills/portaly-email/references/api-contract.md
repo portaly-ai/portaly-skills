@@ -124,7 +124,7 @@ Responses:
 | 422 | `RECIPIENT_SUPPRESSED` | Every `to` is on Portaly's suppression list (hard bounce, or spam complaints to several Portaly senders); nothing sent. |
 | 422 | `MESSAGE_REJECTED` | Rejected by the mail service. The same key keeps answering this — fix the message and use a new key. |
 | 422 | `ATTACHMENT_DOWNLOAD_FAILED` | An attachment URL did not answer 200 in time. |
-| 429 | `SEND_QUOTA_EXCEEDED` | Quota does not cover every recipient. Not transient — alert, check `GET /quota`. |
+| 429 | `SEND_QUOTA_EXCEEDED` | Quota does not cover every recipient. Not transient — alert; `monthlyResetsAt` in `GET /quota` says when the monthly allowance comes back. |
 | 429 | `SANDBOX_DAILY_LIMIT_REACHED` | 50 sandbox emails a day, resets midnight Asia/Taipei. |
 | 502 | `SEND_OUTCOME_UNKNOWN` | May have been sent. Retry with the same `Idempotency-Key` — no double send; until the outcome is known the retry answers `409`. |
 | 503 | `SEND_RATE_LIMITED` | Platform sending rate; `Retry-After: 1`. Retry with the same key. |
@@ -301,8 +301,9 @@ canceling twice is fine. `404 EMAIL_NOT_FOUND`; `409 EMAIL_NOT_CANCELABLE` once 
   domains. The monthly allowance is used before packs; packs are bought in the Portaly admin and do
   not reset.
 - `monthlyResetsAt`: when the monthly allowance next resets (midnight Asia/Taipei, ISO 8601). Paid
-  plans reset on their billing cycle and other accounts on the 1st, so the day differs per account —
-  read it, don't compute it. The reset can land a few minutes after this time.
+  plans reset monthly from their billing date (every 30 days on monthly billing; the same day each
+  month on yearly billing, the last day in shorter months) and other accounts on the 1st, so the day
+  differs per account — read it, don't compute it. The reset can land a few minutes after this time.
 - Charged per recipient when the email is handed to the mail service — bounces still count,
   suppressed recipients do not. Shared with broadcasts sent from the admin. Sandbox email only counts
   against `sandboxRemainingToday`.
