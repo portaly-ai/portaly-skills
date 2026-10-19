@@ -3,9 +3,9 @@ name: portaly-email
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.3
+version: 0.1.4
 metadata:
-  version: "0.1.3"
+  version: "0.1.4"
 description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
 ---
 
@@ -51,7 +51,7 @@ signed-out user is sent through sign-in and back to the same page.
 
 | Page | Link | What the human does there |
 |---|---|---|
-| API 寄信 (API keys) | https://portaly.cc/admin/email/api-keys | 「建立 API Key」, copy the key (shown once), 「撤銷」 a leaked one |
+| 系統信件 (API keys) | https://portaly.cc/admin/email/api-keys | 「建立 API Key」, copy the key (shown once), 「撤銷」 a leaked one. On the first visit the page shows 「立即串接」 instead: press it, then close the 「立即開始」 dialog that opens (it only shows this skill's install prompt) |
 | 寄件設定 (sending settings) | https://portaly.cc/admin/email/domains | Under 寄件網域: 「新增網域」, 「查看」 its DNS records, 「重新檢查」 after adding them |
 | 寄信紀錄 (send log) | https://portaly.cc/admin/email/messages | What was sent and each recipient's status |
 | 訂閱管理 (plan) | https://portaly.cc/admin/subscription | Upgrade to Premium |
@@ -79,15 +79,16 @@ Ask, in the user's own language:
 - Not sure → sandbox. Moving to a domain later is a new key and a config change, not new code.
 
 Skip the question if the user has already answered it. If `PORTALY_EMAIL_API_KEY` is already set,
-don't have them create another key — ask which domains it covers (the 網域 column on the API 寄信
+don't have them create another key — ask which domains it covers (the 網域 column on the 系統信件
 page) and only create a new one if it lacks the domain they want.
 
 ### 2. Set up the sender (human steps)
 
 **Sandbox:**
 
-1. Send them to https://portaly.cc/admin/email/api-keys → 「建立 API Key」 → name it → 權限
-   「僅寄信」 → 網域 `sandbox.portaly.tw` (already ticked while no domain is verified) → 「建立」.
+1. Send them to https://portaly.cc/admin/email/api-keys → (first visit: 「立即串接」, close the dialog)
+   → 「建立 API Key」 → name it → 權限 「僅寄信」 → 網域 `sandbox.portaly.tw` (already ticked while
+   no domain is verified) → 「建立」.
 2. They copy the key — it is shown once — into `.env` (see "The key" below).
 3. Sender: `<name>@sandbox.portaly.tw`. `<name>` is 3–32 letters, digits, `.`, `_` or `-`, must not
    contain `portaly`, and must not be a reserved name such as `noreply`, `no-reply`, `support`,
@@ -107,9 +108,10 @@ and checks verification through the API:
    app sends both marketing mail (newsletters, promotions) and account mail (receipts, codes),
    suggest one subdomain for each, e.g. `news.example.com` and `notify.example.com`: bounces and
    complaints count per domain, so a complaint spike on a newsletter never blocks sign-in codes.
-2. Send them to https://portaly.cc/admin/email/api-keys → 「建立 API Key」 → name it → 權限
-   「完整權限」 → 「建立」 → copy it into `.env`. A full key covers every domain — the sandbox now,
-   the new domain once it verifies — and is the only kind that can bind and verify domains.
+2. Send them to https://portaly.cc/admin/email/api-keys → (first visit: 「立即串接」, close the
+   dialog) → 「建立 API Key」 → name it → 權限 「完整權限」 → 「建立」 → copy it into `.env`. A full
+   key covers every domain — the sandbox now, the new domain once it verifies — and is the only kind
+   that can bind and verify domains.
 3. Bind it: `POST {PORTALY_API_HOST}/api/email/domains` with `{ "host": "mail.example.com" }`, from a
    shell or script that reads the key from `.env` — never print it. Keep `data.id` for step 6. `409 HOST_ALREADY_BOUND` means it is already theirs — find it with
    `GET /api/email/domains`. `403 PREMIUM_REQUIRED` → send them to
@@ -160,7 +162,7 @@ If the human would rather click through it, the admin does the same: https://por
   ```
 
   Read it with `process.env.PORTALY_EMAIL_API_KEY`. Make sure `.env` is in `.gitignore` before
-  anything else. If a key is pasted into chat, tell them to revoke it on the API 寄信 page and create
+  anything else. If a key is pasted into chat, tell them to revoke it on the 系統信件 page and create
   a new one.
 - **Server-side only.** Never put the key in browser code, a `NEXT_PUBLIC_` / `VITE_` variable, a
   mobile app, or anything shipped to users: anyone holding it can send email as the creator's domain.
@@ -258,7 +260,7 @@ Every error is `{ "error": { "code", "message" } }`. Branch on `code`, never on 
 | `429 SANDBOX_DAILY_LIMIT_REACHED` | 50 sandbox emails a day; resets at midnight Asia/Taipei. |
 | `422 RECIPIENT_SUPPRESSED` | Every `to` address is on Portaly's suppression list (it hard-bounced, or several Portaly senders got spam complaints from it). Don't retry. Mark them invalid in your DB and ask a signed-in user for a new address; in signed-out flows (password reset) show the usual generic message so you don't reveal whether the account exists. |
 | `422 MESSAGE_REJECTED` | The mail service refused this message. The same key keeps answering this — fix it and send with a new key. |
-| `403 DOMAIN_NOT_ALLOWED` | The domain is not bound to this account, is a Portaly domain, or the key does not cover it (step 2; the API 寄信 page lists each key's domains). Surface it to the creator, don't retry. |
+| `403 DOMAIN_NOT_ALLOWED` | The domain is not bound to this account, is a Portaly domain, or the key does not cover it (step 2; the 系統信件 page lists each key's domains). Surface it to the creator, don't retry. |
 | other `403 DOMAIN_*` | Setup problem — see step 2. Surface it to the creator, don't retry. |
 | `403 HARD_BOUNCE_LIMIT_REACHED` | The domain hit today's hard-bounce limit and is blocked for the rest of the day, usually suspended next. Stop sending from it, alert a human, and clean up the `bounced` addresses (step 5). Don't retry today. |
 | `403 RECIPIENT_NOT_ALLOWED` | Sandbox sending to someone other than the account owner. |
