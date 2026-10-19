@@ -51,7 +51,7 @@ signed-out user is sent through sign-in and back to the same page.
 
 | Page | Link | What the human does there |
 |---|---|---|
-| 系統信件 (API keys) | https://portaly.cc/admin/email/api-keys | 「建立 API Key」, copy the key (shown once), 「撤銷」 a leaked one. On the first visit the page shows 「立即串接」 instead: press it, then close the 「立即開始」 dialog that opens (it only shows this skill's install prompt) |
+| 系統信件 (API keys) | https://portaly.cc/admin/email/api-keys | 「建立 API Key」, copy the key (shown once), 「撤銷」 a leaked one. On the first visit the page shows 「立即串接」 instead: press it, step through (or 「略過」) the short three-step tour, then close the 「立即開始」 dialog that opens (it only shows this skill's install prompt) |
 | 寄件設定 (sending settings) | https://portaly.cc/admin/email/domains | Under 寄件網域: 「新增網域」, 「查看」 its DNS records, 「重新檢查」 after adding them |
 | 寄信紀錄 (send log) | https://portaly.cc/admin/email/messages | What was sent and each recipient's status |
 | 訂閱管理 (plan) | https://portaly.cc/admin/subscription | Upgrade to Premium |
@@ -86,7 +86,7 @@ page) and only create a new one if it lacks the domain they want.
 
 **Sandbox:**
 
-1. Send them to https://portaly.cc/admin/email/api-keys → (first visit: 「立即串接」, close the dialog)
+1. Send them to https://portaly.cc/admin/email/api-keys → (first visit: 「立即串接」, 「略過」 the tour, close the dialog)
    → 「建立 API Key」 → name it → 權限 「僅寄信」 → 網域 `sandbox.portaly.tw` (already ticked while
    no domain is verified) → 「建立」.
 2. They copy the key — it is shown once — into `.env` (see "The key" below).
@@ -108,8 +108,8 @@ and checks verification through the API:
    app sends both marketing mail (newsletters, promotions) and account mail (receipts, codes),
    suggest one subdomain for each, e.g. `news.example.com` and `notify.example.com`: bounces and
    complaints count per domain, so a complaint spike on a newsletter never blocks sign-in codes.
-2. Send them to https://portaly.cc/admin/email/api-keys → (first visit: 「立即串接」, close the
-   dialog) → 「建立 API Key」 → name it → 權限 「完整權限」 → 「建立」 → copy it into `.env`. A full
+2. Send them to https://portaly.cc/admin/email/api-keys → (first visit: 「立即串接」, 「略過」 the
+   tour, close the dialog) → 「建立 API Key」 → name it → 權限 「完整權限」 → 「建立」 → copy it into `.env`. A full
    key covers every domain — the sandbox now, the new domain once it verifies — and is the only kind
    that can bind and verify domains.
 3. Bind it: `POST {PORTALY_API_HOST}/api/email/domains` with `{ "host": "mail.example.com" }`, from a
