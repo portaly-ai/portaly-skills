@@ -139,7 +139,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-review
 
 Embeds Portaly's hosted, verified-buyer review widget — a Trustpilot-style rating badge — onto your own site via a Portaly-hosted iframe. Ratings stay Portaly-hosted and verifiable; this skill never rebuilds the UI or hardcodes a score.
 
-- One-line iframe embed: `https://portaly.ai/embed/reviews/{slug}?theme=light&locale=zh-TW`
+- One-line iframe embed: `https://portaly.ai/embed/reviews/{slug}?theme=light&locale=zh-TW` (scores are per product; a creator's second or later product uses `/embed/reviews/{slug}/{productId}`)
 - `theme` (`light`/`dark`) and `locale` (`zh-TW`/`en-US`) params, matched to your site
 - Click-through backlink to the public review page opens in a new tab — required for the score to stay verifiable
 - No API key needed — a public, unauthenticated embed keyed by your public Portaly slug
