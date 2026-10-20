@@ -3,9 +3,9 @@ name: portaly-email
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.3
+version: 0.1.4
 metadata:
-  version: "0.1.3"
+  version: "0.1.4"
 description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
 ---
 
@@ -254,7 +254,7 @@ Every error is `{ "error": { "code", "message" } }`. Branch on `code`, never on 
 | `500`, any `503`, network error or timeout | Retry with the same `Idempotency-Key`, with exponential backoff and a cap (e.g. 5 attempts), then queue it for a later job and alert; it will not double-send. `Retry-After` is in seconds. |
 | `502 SEND_OUTCOME_UNKNOWN` | It may have gone out. Retry with the same `Idempotency-Key`; until Portaly learns the outcome that retry answers `409`. |
 | `409 IDEMPOTENCY_KEY_IN_USE` | Retry with the same key for up to about 10 minutes — **cap it, never loop forever**. Still `409` after that means it most likely never went out (the key stays `409` for good): find it with `GET /api/email/emails?status=unknown&tag=ref:<key>`, then alert a human or resend with a new key, accepting a small risk of a duplicate. |
-| `429 SEND_QUOTA_EXCEEDED` | **Not transient. Do not retry in a loop.** Alert a human (log at error level, notify); the creator buys more quota or waits for the monthly reset. |
+| `429 SEND_QUOTA_EXCEEDED` | **Not transient. Do not retry in a loop.** Alert a human (log at error level, notify); the creator buys more quota or waits for the reset (`monthlyResetsAt` from `GET /api/email/quota`). |
 | `429 SANDBOX_DAILY_LIMIT_REACHED` | 50 sandbox emails a day; resets at midnight Asia/Taipei. |
 | `422 RECIPIENT_SUPPRESSED` | Every `to` address is on Portaly's suppression list (it hard-bounced, or several Portaly senders got spam complaints from it). Don't retry. Mark them invalid in your DB and ask a signed-in user for a new address; in signed-out flows (password reset) show the usual generic message so you don't reveal whether the account exists. |
 | `422 MESSAGE_REJECTED` | The mail service refused this message. The same key keeps answering this — fix it and send with a new key. |
