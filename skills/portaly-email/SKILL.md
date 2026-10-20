@@ -3,9 +3,9 @@ name: portaly-email
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.4
+version: 0.1.5
 metadata:
-  version: "0.1.4"
+  version: "0.1.5"
 description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
 ---
 
