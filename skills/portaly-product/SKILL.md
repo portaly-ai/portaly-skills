@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.10.0
+version: 0.11.0
 metadata:
-  version: "0.10.0"
+  version: "0.11.0"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Also covers test mode — which test card to use, and why a test purchase sends no email and shows up in no revenue figure. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, bundle pricing of Portaly products, publishing or unpublishing a Portaly product (taking one off sale from their own site), or is troubleshooting a Portaly test payment, test card, sandbox order, or a missing order confirmation email.
 ---
 
@@ -45,7 +45,7 @@ Payment is handled entirely on Portaly's hosted checkout page — you never see 
 
 **That card only works on the `checkoutUrl` this skill creates.** Test mode is a property of the checkout session, not of the product. The same product is also on sale on the creator's own Portaly page (`portaly.cc/<slug>`), and that checkout is always real money with no test mode and no test-card hint — the test card is rejected there with a raw gateway error (e.g. `Failured3DS`). If the user reports "I tested it and got a weird error", first ask which page they paid on.
 
-**A test-mode purchase does not rehearse what happens after the charge.** The charge really executes (against the TapPay sandbox, so no money moves) and the webhook really fires, but the order is written to a separate sandbox ledger and every downstream step is skipped. Tell the creator before they test, so they don't go hunting for something that was never meant to be there:
+**A test-mode purchase does not rehearse what happens after the charge.** The charge really executes (against the 91APP sandbox, through the same redirect-to-91APP page as live, so no money moves) and the webhook really fires, but the order is written to a separate sandbox ledger and every downstream step is skipped. Tell the creator before they test, so they don't go hunting for something that was never meant to be there:
 
 - **No confirmation email to the buyer.** Portaly's order email fires off the live order collection only, so no confirmation email is sent. Verify your own handler's output rather than watching an inbox. The buyer's email-verification code, if your checkout requires one, *is* still sent in test mode — that email arriving is not evidence the confirmation email will.
 - **The `orderSuccessPageUrl` in the callback does not resolve to the order.** That page looks the order up in the live collection only.
@@ -108,7 +108,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.10.0" }
+  { "skillName": "portaly-product", "version": "0.11.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.

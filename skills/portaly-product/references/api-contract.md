@@ -321,7 +321,7 @@ Query params:
 
 The response is a whitelist — `callbackSecret`, `checkoutToken`, and the full `productSnapshot` are never included.
 
-`paymentProvider` is decided by Portaly, not by you: `live` mode is always `91app`, `test` mode is always `tappay`.
+`paymentProvider` is decided by Portaly, not by you: new sessions are `91app` in both modes (test mode uses 91APP's sandbox). Test sessions created before 2026-10 were `tappay`, so don't hardcode the value.
 
 **Known blind spots — don't reconcile off an `?outcome=` filtered list alone:**
 

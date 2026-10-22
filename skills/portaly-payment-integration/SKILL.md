@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.15.0
+version: 0.16.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, list unfinished checkouts, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, wants the merchant's unfinished or failed checkouts (the dashboard's 未完成結帳 / 付款失敗), or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -58,7 +58,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.15.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.16.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -128,7 +128,7 @@ If the integration needs subscription lifecycle management, these are available 
 Mode comes from the key (`pcs_test_itg_` vs `pcs_live_itg_`) and the API is identical either way. What sits behind it is not, so don't report a rehearsal you didn't get:
 
 - **Never invent a card number.** A test-mode checkout page prints the test card in a highlighted box just below the card fields — have whoever is testing read it off the page.
-- **The provider is chosen by mode.** A test session charges through TapPay on the checkout page itself; a live session hands the buyer off to 91APP and finalizes on its callback. So the live redirect-and-return path is never exercised in test, and `paymentMethod` in the callback is `tappay` in test and `91app` in live — branch on it rather than pinning the value you saw while testing, and don't assume those are the only two values (a subscription completed through the manual complete endpoint carries whatever the merchant sent).
+- **Test and live use the same provider and flow.** Both hand the buyer off to 91APP and finalize on its callback; test mode only points at 91APP's sandbox. Warn the tester that landing on a 91APP payment page is expected, and that a free-trial (NT$0) checkout that keeps a card charges NT$1 and refunds it at once. `paymentMethod` is `91app` for new sessions in both modes, but test sessions created before 2026-10 carry `tappay` — branch on it rather than pinning the value you saw while testing, and don't assume those are the only two values (a subscription completed through the manual complete endpoint carries whatever the merchant sent).
 - **A test subscription never renews.** The recurring job skips test subscriptions outright, so a second-cycle `creator_subscription.payment.succeeded` never arrives however long you wait. For a subscription integration this is the one thing test mode cannot cover at all — exercise your renewal branch with a replayed signed payload instead of waiting on the clock.
 - **Test orders sit off the settlement chain.** No invoice, nothing reaching revenue, balance or payouts, no affiliate or promotion commission, no review invite. They *are* listed and refundable in `https://portaly.cc/admin/creator-subscription` once the orders table's **Live/Test** toggle is set to **Test** — send the merchant there rather than to their revenue view. There is no "test tab"; the page's tabs are Subscriptions and Orders.
 

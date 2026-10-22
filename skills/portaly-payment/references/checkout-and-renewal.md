@@ -65,13 +65,13 @@ In the hosted flow, Portaly handles:
 ## Test Mode (Sandbox)
 
 - Each API key is created with a fixed mode: `live` or `test`
-- Test mode (`pcs_test_` keys) uses TapPay sandbox and records orders in a separate sandbox ledger
+- Test mode (`pcs_test_` keys) uses the 91APP sandbox and records orders in a separate sandbox ledger
 - Checkout sessions, subscriptions, and callbacks created with a test key carry `mode: "test"`
 - Merchants should use test keys during integration development and switch to live keys for production
 - The API you call is identical: same endpoints, same request bodies, same callback signature scheme and verification. What happens behind them is not, in two separate ways.
-- **The buyer's checkout differs, because the provider is chosen by mode.** A test session charges through TapPay on the checkout page itself; a live session hands the buyer off to 91APP and finalizes on its callback. Two consequences:
-  - The live redirect-and-return path is never exercised by a test run, however thorough that run was.
-  - `paymentMethod` in the callback is `tappay` in test and `91app` in live. It is a field you are told to persist, so branch on it defensively rather than pinning the value you saw while testing.
+- **The buyer's checkout is the same in both modes.** Test and live sessions both hand the buyer off to 91APP and finalize on its callback; test mode only points at 91APP's sandbox. Two consequences:
+  - A test run exercises the redirect-and-return path, including the NT$1 card check-and-refund on a free-trial (NT$0) checkout that keeps a card on file.
+  - `paymentMethod` in the callback is `91app` in both modes for new sessions, but test sessions created before 2026-10 went through TapPay and carry `tappay`. It is a field you are told to persist, so branch on it defensively rather than pinning the value you saw while testing.
 - **Everything after the first charge is skipped in test mode:**
   - **No renewal.** The recurring job skips test subscriptions, so the second billing cycle never happens and no second `creator_subscription.payment.succeeded` is ever dispatched. Test a renewal handler by replaying a payload, not by waiting.
   - **No invoice.** Test payments queue no invoice task — including the first charge, so a test purchase never produces one at all.

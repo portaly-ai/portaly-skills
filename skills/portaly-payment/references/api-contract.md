@@ -54,7 +54,7 @@ Use this when the human user is creating a new API key from the Portaly Payment 
 Mode behavior:
 
 - `live` keys use prefix `pcs_live_` and connect to production payment providers
-- `test` keys use prefix `pcs_test_` and connect to sandbox payment providers (e.g., TapPay sandbox)
+- `test` keys use prefix `pcs_test_` and connect to the 91APP sandbox (same provider and flow as live)
 - Test mode orders are recorded in a separate sandbox ledger
 - A single `profileId` can have both a live and a test key active simultaneously
 - Mode is fixed at creation time and cannot be changed
@@ -619,7 +619,7 @@ Use this when the merchant needs **the unfinished-checkout list** — abandoned 
   - 「付款取消」 (Payment canceled) → `outcome=failed`, rows with `paymentCanceled: true`
   - The dashboard list also mixes in digital-product checkouts (get those from `GET /api/digital-products/checkout-sessions`) and shows only the most recent 200 of each kind; this endpoint pages through every session of the key's mode.
 - Important behavior for `outcome`:
-  - An `initiated` session (buyer handed to the payment provider — 91APP in live mode, TapPay 3-D Secure in test mode — waiting for it to report back) gets a **3.5-hour grace period** after `expiresAt` before it is counted as `abandoned`. Buyers currently mid-payment therefore do **not** appear in the `abandoned` list — if they did, the merchant could email "you did not finish" to someone who was still paying.
+  - An `initiated` session (buyer handed to the payment provider — 91APP, or its sandbox in test mode — waiting for it to report back) gets a **3.5-hour grace period** after `expiresAt` before it is counted as `abandoned`. Buyers currently mid-payment therefore do **not** appear in the `abandoned` list — if they did, the merchant could email "you did not finish" to someone who was still paying.
   - **`abandoned` combined with `paymentSubmitted: true`** means the buyer did submit payment but the callback was lost. The money may already be in the merchant's account — **reconcile that row, do not re-market to it**. `paymentSubmitted` is only meaningful on `abandoned` rows; ignore it on the others.
   - **`paymentCanceled: true`** is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It is only set on `failed` rows, and means the buyer bailed on the 91APP page rather than being declined by the bank. Like every `failed` row, that session also sent `checkout.failed` (when it has a `callbackUrl`).
 - Known limits of the list (not bugs; call them out when the merchant notices):
