@@ -1,6 +1,6 @@
 ---
 name: portaly-payment-integration
-version: 0.15.0
+version: 0.16.0
 description: Lean Portaly Payment integration skill for a team's engineering side working with an integration-scope API key (pcs_test_itg_ / pcs_live_itg_) — read active plans at runtime, create checkout sessions, list unfinished checkouts, verify signed payment and refund callbacks, and optionally drive subscriber self-service (cancel/resume/portal). Cannot initiate refunds or manage plans, merchant config, or discount codes; those require a live full-scope key or stay in the Portaly dashboard. Trigger when the user mentions Portaly Payment team integration, an integration API key, or a pcs_*_itg_ key, wants the merchant's unfinished or failed checkouts (the dashboard's 未完成結帳 / 付款失敗), or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -25,6 +25,7 @@ This key **cannot**:
 - change merchant config (branding, logo)
 - create or modify discount codes
 - upload plan or merchant images
+- manually complete a checkout session (`POST /checkout-sessions/{sessionId}/complete`)
 
 Any attempt at the above returns **`403 KEY_SCOPE_FORBIDDEN`**. This is by design, not a bug to work around.
 
@@ -58,7 +59,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-payment-integration", "version": "0.15.0" }
+{ "skillName": "portaly-payment-integration", "version": "0.16.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -109,7 +110,7 @@ Content-Type: application/json
 
 - `422 PLAN_INACTIVE` — the plan was archived between page load and checkout. Show a friendly "no longer available" message, re-fetch `GET /plans?status=active`, and re-render. Don't retry the same call.
 - `404 PLAN_NOT_FOUND` — the `planId` doesn't exist for this merchant (misconfigured on your side, or the plan was removed). Log it, then recover the same way as `PLAN_INACTIVE`: re-fetch `GET /plans?status=active`, re-render the current plan list, and prompt the user to pick an available plan. Never show the buyer a raw payment error, and don't retry the same `planId`.
-- `403 KEY_SCOPE_FORBIDDEN` — you (or a library) called the refund endpoint or a plan/config/discount **write** endpoint with this key. **Do not retry. Do not attempt a workaround or use a different key you might have lying around.** Tell the user plainly: this key is for integration only; refunds require the merchant's live full-scope path, while plan, pricing, and discount-code changes go through the Portaly dashboard.
+- `403 KEY_SCOPE_FORBIDDEN` — you (or a library) called the refund endpoint, manual checkout completion (`/complete`), or a plan/config/discount **write** endpoint with this key. **Do not retry. Do not attempt a workaround or use a different key you might have lying around.** Tell the user plainly: this key is for integration only; refunds require the merchant's live full-scope path, while plan, pricing, and discount-code changes go through the Portaly dashboard.
 - See `references/api-contract.md` → "Error responses" and "Out Of Scope For This Key" for the full table.
 
 ### 6. Subscriber self-service (optional)
