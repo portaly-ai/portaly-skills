@@ -35,6 +35,7 @@ npx skills update portaly-payment
 | **portaly-review** | Embed Portaly's hosted, verified-buyer review widget (Trustpilot-style rating badge) on your own site via a Portaly-hosted iframe — no API key needed | `embed Portaly reviews`, `review widget`, `show my ratings`, `Trustpilot-style badge`, `social proof from Portaly` |
 | **portaly-affiliate** | Let the creator's own buyers earn a commission for referring other buyers — switch promotion on for the product, set the one rate every eligible one-time plan shares, and capture the referral code on your own site; Portaly issues the link and owns the payout | `affiliate program`, `referral program`, `buyer promotion`, `分潤`, `推廣連結`, `聯盟行銷`, `推廣夥伴` |
 | **portaly-email** (beta, invite only) | Send your app's own email — receipts, sign-in codes, notifications, newsletters — from your verified domain: API key and domain setup, sandbox, single / batch / scheduled sends, delivery status, quota, and safe bounce testing | `Portaly Email`, `send email from my app`, `transactional email`, `newsletter`, `pem_ key`, `email bounced`, `寄信 API` |
+| **portaly-email-mcp** (beta, invite only, Premium Plus) | Let your AI assistant write and send newsletters to the lists you collected on Portaly, through Portaly's MCP server: draft, test copy to yourself, approve in the Portaly admin, send, and read open / click results | `Portaly Email MCP`, `發信 MCP`, `write my newsletter`, `send a newsletter to my list`, `電子報`, `how did my newsletter do` |
 
 ## Portaly Overview
 
@@ -201,6 +202,28 @@ Sends your app's own email — order receipts, verification codes, password rese
 - "Why did my Portaly email bounce?"
 - "我想讓網站自己寄驗證信"
 
+## Portaly Email MCP
+
+> **Beta — invite only, Premium Plus.** Needs an account invited to the Email MCP beta, on Premium Plus (頂級+) or its 14-day trial.
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-email-mcp
+```
+
+Your AI assistant becomes your newsletter assistant. Instead of writing code, it uses the tools on Portaly's MCP server (`https://portaly.cc/mcp`, OAuth sign-in) to:
+
+- Draft a newsletter for the lists you collected or imported on Portaly — it sees list names and counts, never addresses
+- Send a test copy to your own Portaly sign-in email
+- Hand you a confirmation link: **nothing goes to your list until you approve that exact version in the Portaly admin**, and any later edit needs approving again
+- Send it once approved, and report delivered / opened / clicked / unsubscribed
+
+**Prerequisites:** a Portaly account invited to the Email MCP beta, on Premium Plus, with a sending address set up in the admin's email page. Connection status and the install prompt are under 發信 MCP at `https://portaly.cc/admin/email/mcp`.
+
+**Skill triggers:**
+- "Write this month's newsletter and send it to my subscribers"
+- "幫我寫一封新課開賣的電子報"
+- "How did my last newsletter do?"
+
 ## Using a Different Backend
 
 These skills default to `https://portaly.ai` — direct installers need no setup. To run a fork against a self-hosted or compatible backend, set `PORTALY_API_HOST`; both the bundled scripts and agent-generated code honor it:
@@ -213,7 +236,7 @@ See [PROVIDER.md](./PROVIDER.md) for the backend compatibility contract.
 
 ## Version Telemetry
 
-Once a Portaly API key is present, each skill except `portaly-email` sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.6.0" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
+Once a Portaly API key is present, each skill except `portaly-email` and `portaly-email-mcp` sends a one-time, non-blocking version report to `POST https://portaly.ai/api/creator-subscription/skill-version`. `portaly-email-mcp` reports the same two fields through the `reportSkillVersion` tool on Portaly's MCP server instead. The request body contains only the skill name and version (e.g. `{ "skillName": "portaly-payment", "version": "0.6.0" }`) — no project content or user data — and lets your Portaly dashboard flag when an installed skill is out of date. The agent will mention it the first time it runs. To opt out, remove the "Report the installed skill version" step from the skill's `SKILL.md`.
 
 ## Migrating from Old Repos
 

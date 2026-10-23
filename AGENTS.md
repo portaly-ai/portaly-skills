@@ -35,6 +35,8 @@ skills/
   portaly-email/              # Email API (beta), separate pem_ key
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract (endpoints, error codes, statuses, simulator)
+  portaly-email-mcp/          # Agent-operated newsletters over Portaly's MCP server (beta, Premium Plus)
+    SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
 evals/                        # Cross-skill contract runner and fresh-agent prompt corpus
 .github/workflows/            # Deterministic skill eval gate
 ```
@@ -103,6 +105,13 @@ first.
 - No webhooks yet: delivery is polled via the list with `recipientStatus` (reads are 120/min per key)
 - No version report (no step 1.5): it is account-level and often has only a `pem_` key, which the payment-key report flow does not fit. `evals/run-conformance.mjs` lists it in `SKILLS_WITHOUT_VERSION_REPORT` and fails if `SKILL.md` calls `skill-version` again
 - Contract changes surface as a red tripwire test in portaly-vercel (`tests/unit/lib/email/publicContract.test.ts`), not in portaly-vibe
+
+**Email MCP Skill:**
+- Not an integration skill: the agent itself drafts and sends newsletters through the tools on `https://portaly.cc/mcp` (OAuth sign-in; `Authorization: Bearer mcp_ptly_…` token as fallback). Tools and their rules live in **portaly-vercel** `lib/mcp/emailTools.ts`
+- Invite-only beta (`emailMcp`) plus Premium Plus, including its trial. The server hides the email tools from `tools/list` when the account does not qualify, and every call re-checks
+- Nothing reaches a list until the creator approves that exact version on the confirmation link (`submitForConfirmation` → 「確認上線」 in the admin). Any edit cancels the approval; `sendEmailCampaign` answers `approval_required`. The agent can never approve
+- Version is reported through the MCP `reportSkillVersion` tool with the same `{"skillName", "version"}` literal the runner checks, not through `skill-version` (no `pcs_` key here)
+- The public guide is the "Email MCP" part of the Email tag in portaly-vibe `lib/api-docs/emailMcpGuide.ts`; keep the tool table and error codes in step with it
 
 ## These Skills Mirror a Backend That Ships Without Them
 
