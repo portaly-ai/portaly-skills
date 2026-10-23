@@ -139,7 +139,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-review
 
 透過 Portaly 託管的 iframe，在你自己的網站嵌入已驗證買家的評價徽章 — Trustpilot 風格的評分徽章。分數維持 Portaly 託管、可驗證；這個 skill 絕不會自己重做 UI 或寫死分數。
 
-- 一行 iframe 就能嵌入：`https://portaly.ai/embed/reviews/{slug}?theme=light&locale=zh-TW`
+- 一行 iframe 就能嵌入：`https://portaly.ai/embed/reviews/{slug}?theme=light&locale=zh-TW`（分數以產品為單位；第二個以後的產品用 `/embed/reviews/{slug}/{productId}`）
 - `theme`（`light`/`dark`）與 `locale`（`zh-TW`/`en-US`）參數，依你的網站調整
 - 點擊會在新分頁開啟公開評價頁的回連連結 — 這是分數維持可驗證的關鍵，不是裝飾
 - 不需要 API 金鑰 — 這是用你公開的 Portaly slug 存取的公開、免驗證 embed
