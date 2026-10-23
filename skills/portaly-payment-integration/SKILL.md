@@ -225,7 +225,7 @@ refunds and failed charges never happen in a browser at all. Everything below ru
 
 ## Guardrails
 
-- **This is an integration-scope key, not a money-movement or management key.** Never initiate a refund, create/update a plan, change merchant config, create/update/delete a discount code, or upload a plan/merchant image — all return `403 KEY_SCOPE_FORBIDDEN`. Explain the boundary and stop there; don't retry, look for a bypass, or ask for another key.
+- **This is an integration-scope key, not a money-movement or management key.** Never initiate a refund, manually complete a checkout session (`/complete`), create/update a plan, change merchant config, create/update/delete a discount code, or upload a plan/merchant image — all return `403 KEY_SCOPE_FORBIDDEN`. Explain the boundary and stop there; don't retry, look for a bypass, or ask for another key.
 - **Runtime fetch only.** Plan names, prices, `listPrice`, and discount codes must never be hardcoded in source, config files, or a build-time static page. Plans can be added, repriced, or archived by the merchant at any time — always read them live via `GET /plans`. A plan under `wavePricing` reprices itself on a schedule, so a statically rendered or long-cached page will show a stale price.
 - **Never send a price you computed yourself.** For a fixed-price plan `POST /checkout-sessions` ignores any `amount` you pass and recalculates the wave price server-side from the plan. If the buyer crosses a step boundary between page load and checkout, the session carries the new price — read the charged amount back from the session or the callback rather than trusting what the page displayed.
 - `callbackUrl` must be HTTPS. Serving over plain HTTP exposes the signature and payload in transit.
