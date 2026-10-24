@@ -77,6 +77,10 @@ and on Premium Plus. Tell the creator to open 發信 MCP in the Portaly admin
 (`https://portaly.cc/admin/email/mcp`): it shows whether the account is enabled and offers the upgrade or
 trial. Do not try to send email through other tools.
 
+**Every call answers HTTP 403 with `"code": "plan_required"`?** That gate is in front of all Portaly MCP
+tools: the profile is below Premium (頂級). Tell the creator Email MCP needs Premium Plus (頂級+), or
+Premium with the 14-day Premium Plus trial, and stop.
+
 ### 1.5 Report the installed skill version
 
 Right after installing or updating this skill, and once the email tools are available, call
