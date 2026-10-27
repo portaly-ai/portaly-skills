@@ -3,9 +3,9 @@ name: portaly-email
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.5
+version: 0.1.6
 metadata:
-  version: "0.1.5"
+  version: "0.1.6"
 description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
 ---
 
@@ -60,7 +60,7 @@ signed-out user is sent through sign-in and back to the same page.
   link — never in backticks or a code block, which most chat panes and terminals show as dead text.
   Then list the buttons to press, using the admin's own labels as above. Never make the human
   navigate menus to find a page.
-- If a link lands on the dashboard home instead of 信件管理, the account is not in the email beta:
+- If a link lands on the dashboard home instead of 發信系統, the account is not in the email beta:
   stop and tell them to contact Portaly.
 
 ## Workflow
