@@ -6,7 +6,7 @@ name: portaly-email-mcp
 version: 0.1.0
 metadata:
   version: "0.1.0"
-description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP is in an invite-only beta and needs the Premium Plus plan (頂級+), including the 14-day trial."
+description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP needs an account invited to the Portaly Email beta and on the Premium Plus plan (頂級+), including the 14-day trial."
 ---
 
 # Portaly Email MCP (Beta)
@@ -21,9 +21,9 @@ This is not the skill for wiring an app's own email (receipts, sign-in codes) �
 Reply to the creator in their language (usually 正體中文), in plain words. Do not show them tool names,
 error codes, or JSON.
 
-> **Beta — invite only, Premium Plus.** Only accounts Portaly has invited to the Email MCP beta can use
-> it, and the account must be on Premium Plus (頂級+). Premium (頂級) members can start a 14-day
-> Premium Plus trial in the Portaly admin. Otherwise the email tools do not appear at all, or every call
+> **Beta — invite only, Premium Plus.** Only accounts Portaly has invited to the Portaly Email beta (the
+> same invite as the email API) can use it, and the account must be on Premium Plus (頂級+). Premium
+> (頂級) members can start a 14-day Premium Plus trial in the Portaly admin. Otherwise the email tools do not appear at all, or every call
 > answers `email_mcp_not_enabled` / `email_mcp_plan_required`. Say this before setup if the creator has
 > not mentioned being invited.
 
@@ -73,8 +73,8 @@ If the client cannot do OAuth sign-in, the creator can create a token under 「�
 `Authorization: Bearer mcp_ptly_…`. The token is shown once; it goes in the client's config, never in a
 chat message or a committed file.
 
-**Connected but no email tools?** The server lists the email tools only for accounts that are in the beta
-and on Premium Plus. Tell the creator to open 發信 MCP in the Portaly admin
+**Connected but no email tools?** The server lists the email tools only for accounts that are in the Portaly
+Email beta and on Premium Plus. Tell the creator to open 發信 MCP in the Portaly admin
 (`https://portaly.cc/admin/email/mcp`): it shows whether the account is enabled and offers the upgrade or
 trial. Do not try to send email through other tools.
 
@@ -193,7 +193,7 @@ what to tell the creator and what to do next; follow it.
 | `sender_not_set_up` | No sending address yet | Creator sets it up in the admin's email page |
 | `send_quota_insufficient` | Not enough quota for the whole list | Tell the creator; nothing was sent |
 | `owner_email_unverified` | No verified sign-in email for test copies | Skip the test copy; use the confirmation preview |
-| `email_mcp_not_enabled` | Account not in the beta | Tell the creator; stop |
+| `email_mcp_not_enabled` | Account not invited to the Portaly Email beta | Tell the creator; stop |
 | `email_mcp_plan_required` | Needs Premium Plus | Tell the creator about upgrading or the 14-day trial; stop |
 | `banned_copy_terms` | The new text uses wording Portaly refuses | Rewrite those words and call again |
 | `invalid_arguments` | A parameter is missing or wrong | Fix the named parameter |

@@ -204,7 +204,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email
 
 ## Portaly Email MCP
 
-> **Beta，僅限受邀，頂級+。** 需要受邀加入發信 MCP beta，且是頂級+ 會員（含 14 天頂級+ 體驗）。
+> **Beta，僅限受邀，頂級+。** 需要受邀加入寄信 beta（Portaly Email），且是頂級+ 會員（含 14 天頂級+ 體驗）。
 
 ```bash
 npx skills add portaly-ai/portaly-skills --skill portaly-email-mcp
@@ -217,7 +217,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email-mcp
 - 給你一個確認連結：**你在 Portaly 後台按「確認上線」之前，這封信不會寄給名單**，之後再改內容也要重新確認
 - 確認後寄出，並回報送達、開信、點擊與退訂
 
-**前置條件：** Portaly 帳號已受邀加入發信 MCP beta、是頂級+ 會員，並已在後台信件頁設好寄件地址。連線狀態與安裝 prompt 在後台的發信 MCP（`https://portaly.cc/admin/email/mcp`）。
+**前置條件：** Portaly 帳號已受邀加入寄信 beta、是頂級+ 會員，並已在後台信件頁設好寄件地址。連線狀態與安裝 prompt 在後台的發信 MCP（`https://portaly.cc/admin/email/mcp`）。
 
 **觸發語：**
 - 「幫我寫一封新課開賣的電子報」

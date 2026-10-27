@@ -204,7 +204,7 @@ Sends your app's own email — order receipts, verification codes, password rese
 
 ## Portaly Email MCP
 
-> **Beta — invite only, Premium Plus.** Needs an account invited to the Email MCP beta, on Premium Plus (頂級+) or its 14-day trial.
+> **Beta — invite only, Premium Plus.** Needs an account invited to the Portaly Email beta, on Premium Plus (頂級+) or its 14-day trial.
 
 ```bash
 npx skills add portaly-ai/portaly-skills --skill portaly-email-mcp
@@ -217,7 +217,7 @@ Your AI assistant becomes your newsletter assistant. Instead of writing code, it
 - Hand you a confirmation link: **nothing goes to your list until you approve that exact version in the Portaly admin**, and any later edit needs approving again
 - Send it once approved, and report delivered / opened / clicked / unsubscribed
 
-**Prerequisites:** a Portaly account invited to the Email MCP beta, on Premium Plus, with a sending address set up in the admin's email page. Connection status and the install prompt are under 發信 MCP at `https://portaly.cc/admin/email/mcp`.
+**Prerequisites:** a Portaly account invited to the Portaly Email beta, on Premium Plus, with a sending address set up in the admin's email page. Connection status and the install prompt are under 發信 MCP at `https://portaly.cc/admin/email/mcp`.
 
 **Skill triggers:**
 - "Write this month's newsletter and send it to my subscribers"
