@@ -1,6 +1,6 @@
 ---
 name: portaly-review
-version: 0.1.0
+version: 0.2.0
 description: Embeds Portaly's hosted, verified-buyer review widget — a Trustpilot-style rating badge served from a Portaly iframe — onto a merchant's own site so the score and backlink stay Portaly-hosted and tamper-proof; trigger when the user wants to embed Portaly reviews, add a review widget, show my ratings, a Trustpilot-style badge, or social proof from Portaly.
 ---
 
@@ -14,7 +14,8 @@ Use this skill to help a human user (or their agent) embed Portaly's hosted revi
 
 - Ask the user to open their Portaly admin dashboard (`https://portaly.cc/admin/creator-subscription`) → **Portaly Payment** → **評價** (Reviews) tab, and paste the exact embed code shown there.
 - If they don't have it handy, ask for their public slug instead and construct the iframe from the documented template (Workflow step 2) — always confirm the slug with the user before using it; a wrong slug embeds someone else's ratings.
-- No API key is required for this skill — the iframe is a public, unauthenticated embed keyed only by the public slug.
+- No API key is required for this skill — the iframe is a public, unauthenticated embed keyed only by the public slug (plus the product id for a creator's second or later product).
+- **Scores are per product.** A creator who sells more than one product in Portaly Payment has a separate score, review count, and public page for each product, and a buyer reviews each product they bought separately. Embed the widget for the product the page is about — the admin dashboard shows that product's code when that product is selected. Never put one product's badge on another product's site.
 
 ### 1.5 Report the installed skill version
 
@@ -29,7 +30,7 @@ POST https://portaly.ai/api/creator-subscription/skill-version
 Authorization: Bearer {PORTALY_API_KEY}
 Content-Type: application/json
 
-{ "skillName": "portaly-review", "version": "0.1.0" }
+{ "skillName": "portaly-review", "version": "0.2.0" }
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you're currently running. Ignore failures; it never blocks anything else.
@@ -113,6 +114,10 @@ production.
   ```html
   <iframe src="{host}/embed/reviews/{slug}?theme=light&locale=zh-TW" width="320" height="80" style="border:0" title="Portaly Reviews"></iframe>
   ```
+  That URL is the creator's **main** product. For a second or later product, the path gains that product's id (`merch_…`, shown in the admin dashboard's code for that product) — never guess it:
+  ```html
+  <iframe src="{host}/embed/reviews/{slug}/{productId}?theme=light&locale=zh-TW" width="320" height="80" style="border:0" title="Portaly Reviews"></iframe>
+  ```
 - Adjust `theme` (`light`|`dark`, default `light`) and `locale` (`zh-TW`|`en-US`, default `zh-TW`) to match the host page.
 - `title` (default `"Portaly Reviews"`) is the iframe's accessible name — screen readers announce it, and some browsers show it as a tooltip. It is a fixed brand string, not a translated one: leave it as `"Portaly Reviews"` regardless of `locale`, the same way the "Portaly" brand name itself is never localized elsewhere in this skill. Leave every other attribute as-is.
 
@@ -124,14 +129,14 @@ production.
 
 ### 4. Embed the iframe verbatim
 
-- Drop the `<iframe>` tag exactly where decided in step 3. "Verbatim" means the **contract** — the `src` URL and its query parameters — not the literal HTML characters: JSX and other framework syntaxes require real syntax transformation (e.g. `style="border:0"` becomes `style={{ border: 0 }}` in JSX, attributes become camelCase, the tag may need to self-close). That kind of syntax conversion is expected and allowed. What must not change is the `src`'s origin, path, and query parameters — same host, same `/embed/reviews/{slug}` path, and no query param added, removed, or renamed beyond the documented `theme`/`locale` edits from step 2.
+- Drop the `<iframe>` tag exactly where decided in step 3. "Verbatim" means the **contract** — the `src` URL and its query parameters — not the literal HTML characters: JSX and other framework syntaxes require real syntax transformation (e.g. `style="border:0"` becomes `style={{ border: 0 }}` in JSX, attributes become camelCase, the tag may need to self-close). That kind of syntax conversion is expected and allowed. What must not change is the `src`'s origin, path, and query parameters — same host, same `/embed/reviews/{slug}` (or `/embed/reviews/{slug}/{productId}`) path, and no query param added, removed, or renamed beyond the documented `theme`/`locale` edits from step 2.
 - The only edits allowed are the documented params (`theme`, `locale`) and `width`/`height` within the range below — the badge is a fixed compact layout in MVP; don't stretch it into a full-width banner or squeeze it so the Portaly mark becomes unreadable.
 - `width`/`height`: the documented default is `320`×`80`. Keep both within roughly **240–480px wide, 60–100px tall**, close to that ~4:1 ratio — the badge's internal layout (stars, count, mark) is fixed and does not reflow, so going outside that range clips content or leaves obvious dead space rather than "restyling" anything.
 
 ### 5. Verify
 
 - Load the page and confirm the widget renders: average stars, review count, and the Portaly mark.
-- Click the widget and confirm it opens `{host}/{locale}/reviews/{slug}` in a new tab — this is the trust backlink, not incidental chrome.
+- Click the widget and confirm it opens `{host}/{locale}/reviews/{slug}` (or `{host}/{locale}/reviews/{slug}/{productId}` for a non-main product) in a new tab — this is the trust backlink, not incidental chrome.
 
 ## Guardrails
 
