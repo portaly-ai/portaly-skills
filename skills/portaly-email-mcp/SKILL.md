@@ -35,7 +35,8 @@ error codes, or JSON.
 - `submitForConfirmation` returns a `confirmUrl`. Give it to the creator unchanged. They open it signed
   in to Portaly, look at the preview and recipient count, and press 「確認上線」.
 - Only the profile's manager can approve. You cannot, and Portaly staff cannot.
-- Any change after approval (subject, preview text, content, lists, sending domain) cancels the approval.
+- Any change after approval (subject, preview text, content, signature, lists, sending domain) cancels the
+  approval — including the creator editing it in the admin.
   `sendEmailCampaign` then answers `approval_required` and sends nothing, until the creator confirms the
   new version.
 - Never tell the creator a newsletter was sent until `sendEmailCampaign` returned `ok: true`.
