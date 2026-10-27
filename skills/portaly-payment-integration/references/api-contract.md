@@ -27,7 +27,7 @@ For anything about creating/editing plans, merchant branding, or discount codes,
   - each key has a fixed `mode` (`live` or `test`) — live keys start with `pcs_live_itg_`, test keys start with `pcs_test_itg_`
   - each key has a fixed **scope** — this contract assumes `integration` scope. The authoritative scope is stored server-side against the key, not just the prefix.
   - mode is derived from the key; it is not passed per-request
-  - **integration-scope keys are checkout-only.** They can read plans, create checkout sessions, query sessions/subscriptions/orders, and drive cancel/resume/portal-session. Calls to refund, plan, merchant config, or discount-code **write** endpoints return `403 KEY_SCOPE_FORBIDDEN` — see "Out of Scope" below.
+  - **integration-scope keys are checkout-only.** They can read plans, create checkout sessions, query sessions/subscriptions/orders, and drive cancel/resume/portal-session. Calls to refund, manual checkout completion, plan, merchant config, or discount-code **write** endpoints return `403 KEY_SCOPE_FORBIDDEN` — see "Out of Scope" below.
 
 ## Read Subscription Plans
 
@@ -158,7 +158,7 @@ Every failure returns `{ "error": string }`; business-rule failures also include
 | 404 | `PLAN_NOT_FOUND` | `planId` does not exist for this merchant. | Misconfiguration (or the plan was removed) — log it. Recover like `PLAN_INACTIVE`: re-fetch `GET /plans?status=active`, re-render, and prompt the user to pick an available plan. Don't show the buyer a raw payment error; don't retry the same `planId`. |
 | 400 | `INVALID_DISCOUNT_CODE` | The buyer-entered `discountCode` is invalid (see `reason`). | "That discount code can't be applied." Let them retry without it. |
 | 400 | `PER_CUSTOMER_LIMIT_REACHED` | The buyer-entered `discountCode` has hit its per-customer redemption cap for this buyer. | "That discount code can't be applied." Let them proceed without it — don't retry the same code for the same buyer. |
-| 403 | `KEY_SCOPE_FORBIDDEN` | You called refund or a plan/config/discount **write** endpoint with this key. | This should not happen from a correctly-scoped integration — see "Out of Scope" below. Do not retry or attempt a workaround; ask the merchant to use the authorized path. |
+| 403 | `KEY_SCOPE_FORBIDDEN` | You called refund, manual checkout completion, or a plan/config/discount **write** endpoint with this key. | This should not happen from a correctly-scoped integration — see "Out of Scope" below. Do not retry or attempt a workaround; ask the merchant to use the authorized path. |
 | 401 | _(none)_ | Missing/invalid bearer token. | Server-side key problem — never surface to the buyer. |
 
 A best-practice plan-selection UI never shows a pay button for a plan that isn't `status: "active"` (query `GET …/plans?status=active` first), so `PLAN_INACTIVE` should only ever fire on a race.
@@ -315,10 +315,11 @@ The following endpoints move money or manage the merchant's product catalog, bra
 - `POST /api/creator-subscription/plans/{planId}/images` — plan image upload
 - `PUT /api/creator-subscription/config` / `POST /api/creator-subscription/config/images` — merchant branding and logo
 - `POST /api/creator-subscription/discount-codes` / `PUT /api/creator-subscription/discount-codes/{codeId}` / `DELETE /api/creator-subscription/discount-codes/{codeId}` — discount code create/update/delete
+- `POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` — manual completion. It charges nothing yet sends `checkout.completed`, so it could unlock access without payment
 
 If the merchant needs a new plan, a price change, updated branding, or a new discount code, ask them to do it in the Portaly dashboard — then re-fetch `GET /plans` at runtime; no redeploy needed on your side.
 
-`POST /api/creator-subscription/checkout-sessions/{sessionId}/complete` is not blocked for this key, but it is **not part of this integration**: it only marks the session and sends `checkout.completed` / `.failed` — no subscription, payment record, order, or invoice is created, so `GET /subscriptions/{sessionId}` returns `404` and nothing renews. Never use it to finish a hosted checkout that looks stuck; poll the session instead.
+Manual completion is not part of this integration even with a full-scope key: it only marks the session and sends `checkout.completed` / `.failed` — no subscription, payment record, order, or invoice is created, so `GET /subscriptions/{sessionId}` returns `404` and nothing renews. A hosted checkout that looks stuck is never finished this way; poll the session instead.
 
 ## Rate Limiting
 
