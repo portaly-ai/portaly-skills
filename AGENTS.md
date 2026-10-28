@@ -108,7 +108,7 @@ first.
 
 **Email MCP Skill:**
 - Not an integration skill: the agent itself drafts and sends newsletters through the tools on `https://portaly.cc/mcp` (OAuth sign-in; `Authorization: Bearer mcp_ptly_…` token as fallback). Tools and their rules live in **portaly-vercel** `lib/mcp/emailTools.ts`
-- The Portaly Email invite-only beta (`emailSender`, the same invite as `portaly-email`; there is no separate Email MCP invite) plus Premium Plus, including its trial. The server hides the email tools from `tools/list` when the account does not qualify, and every call re-checks
+- The Portaly Email invite-only beta (`emailSender`, the same invite as `portaly-email`) plus Premium Plus, including its trial, plus a one-time self-serve switch: the creator presses 「開通發信 MCP」 at `/admin/email/mcp` (`emailMcp` beta, no invite; only the profile's manager). The server hides the email tools from `tools/list` when the account does not qualify, and every call re-checks (`email_mcp_not_enabled` / `email_mcp_activation_required` / `email_mcp_plan_required`). Clients cache the tool list, so the skill tells the creator to reconnect after turning it on
 - Nothing reaches a list until the creator approves that exact version on the confirmation link (`submitForConfirmation` → 「確認上線」 in the admin). Any edit cancels the approval; `sendEmailCampaign` answers `approval_required`. The agent can never approve
 - Version is reported through the MCP `reportSkillVersion` tool with the same `{"skillName", "version"}` literal the runner checks, not through `skill-version` (no `pcs_` key here)
 - The public guide is the "Email MCP" part of the Email tag in portaly-vibe `lib/api-docs/emailMcpGuide.ts`; keep the tool table and error codes in step with it
