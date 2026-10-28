@@ -35,7 +35,7 @@ npx skills update portaly-payment
 | **portaly-review** | 透過 Portaly 託管的 iframe，在你的網站上嵌入已驗證買家的評價徽章（Trustpilot 風格）— 不需要 API 金鑰 | `嵌入 Portaly 評價`、`評價 widget`、`顯示我的評分`、`Trustpilot 風格徽章`、`Portaly 的社會認同` |
 | **portaly-affiliate** | 讓創作者自己的買家推薦其他買家並抽成——為整個產品開啟推廣、設定一個所有合格一次性方案共用的分潤比例，並在自己的網站上接住推廣碼；連結由 Portaly 發放，分潤也由 Portaly 計算與撥付 | `affiliate program`、`referral program`、`分潤`、`推廣連結`、`聯盟行銷`、`推廣夥伴` |
 | **portaly-email**（beta，僅限受邀） | 讓你的網站從自己的網域寄信——訂單確認、驗證碼、通知、電子報：API 金鑰與網域設定、sandbox、單封／批次／排程寄送、投遞狀態、額度查詢，以及安全地測試退信 | `Portaly Email`、`網站自己寄信`、`交易信`、`電子報`、`寄信 API`、`pem_ 金鑰`、`信被退回` |
-| **portaly-email-mcp**（beta，僅限受邀，頂級+） | 讓你的 AI 助理透過 Portaly 的 MCP server，幫你寫電子報寄給你在 Portaly 蒐集的名單：草擬、試寄給自己、在 Portaly 後台確認上線、寄出，並回報開信與點擊成效 | `發信 MCP`、`Portaly Email MCP`、`幫我寫電子報`、`寄電子報給訂閱者`、`電子報成效` |
+| **portaly-email-mcp**（beta，限 Portaly Email beta 帳號，頂級+，需在後台開通） | 讓你的 AI 助理透過 Portaly 的 MCP server，幫你寫電子報寄給你在 Portaly 蒐集的名單：草擬、試寄給自己、在 Portaly 後台確認上線、寄出，並回報開信與點擊成效 | `發信 MCP`、`Portaly Email MCP`、`幫我寫電子報`、`寄電子報給訂閱者`、`電子報成效` |
 
 ## Portaly Overview
 
