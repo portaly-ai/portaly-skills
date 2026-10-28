@@ -578,7 +578,7 @@ Use this when the human user needs reconciliation or a status page.
   - `appliedDiscount`
   - `customer.name`
   - `customer.email`
-  - `customer.phone` — the mobile number the buyer entered; empty until they submit, and empty when nothing was collected. A zero-amount live checkout that still saves a card collects one even when `collectPhone` is off
+  - `customer.phone` — the mobile number the buyer entered; empty until they submit, and empty when nothing was collected. Collected only when the plan's `collectPhone` is on
   - `collectPhone` — whether this checkout asks for a mobile number (copied from the plan when the session was created)
   - `plan.{id, name, amount, currency, status}`
   - `expiresAt`
@@ -623,7 +623,7 @@ Use this when the merchant needs **the unfinished-checkout list** — abandoned 
   - **`abandoned` combined with `paymentSubmitted: true`** means the buyer did submit payment but the callback was lost. The money may already be in the merchant's account — **reconcile that row, do not re-market to it**. `paymentSubmitted` is only meaningful on `abandoned` rows; ignore it on the others.
   - **`paymentCanceled: true`** is a 91APP "payment canceled" (`recordStatus=3`), distinct from a payment failure (`recordStatus=2`). It is only set on `failed` rows, and means the buyer bailed on the 91APP page rather than being declined by the bank. Like every `failed` row, that session also sent `checkout.failed` (when it has a `callbackUrl`).
 - Known limits of the list (not bugs; call them out when the merchant notices):
-  - The earlier the buyer bailed, the sparser the row. `customerEmail` / `customerName` start as whatever was passed when the session was created; otherwise the email is filled in when the buyer requests the verification code, and the name when they press pay. `customerPhone` is only filled in when they press pay and a phone was collected (plans with `collectPhone`, or a zero-amount live checkout that saves a card). A session that stopped at `checkout_ready` has at most the name / email passed at creation plus the email the buyer typed.
+  - The earlier the buyer bailed, the sparser the row. `customerEmail` / `customerName` start as whatever was passed when the session was created; otherwise the email is filled in when the buyer requests the verification code, and the name when they press pay. `customerPhone` is only filled in when they press pay on a plan with `collectPhone` on. A session that stopped at `checkout_ready` has at most the name / email passed at creation plus the email the buyer typed.
   - The email a buyer types to request a verification code is kept even if they never enter the code, so on a row that never reached payment it may be unconfirmed — a typo, or someone else's address. Treat it as unverified before emailing.
   - Buyer phones cannot be seeded by the merchant at session creation. If the merchant needs to join back to their own user, pass their own user id via `metadata` at session creation.
   - There is still **no webhook for abandonment** — only `checkout.failed`. Poll this endpoint on a schedule to detect abandoned carts. A session turns `abandoned` up to about 4 hours after it is created (the 30-minute session window plus the 3.5-hour grace period), so set each run's `startDate` to **4.5 hours before the previous run** — using the previous run time itself silently misses sessions created just before it — and dedupe on `sessionId` across runs.
@@ -803,7 +803,7 @@ Use this when the human user needs to verify Portaly callback requests.
   - `paymentReference`
   - `paymentMethod`
   - `customerEmail`
-  - `customerPhone?` — present on `checkout.completed` whenever a number was collected: when the plan's `collectPhone` is on, and also on a zero-amount live checkout that still saves a card, where the hosted checkout asks for one regardless. Absent, not empty, otherwise.
+  - `customerPhone?` — present on `checkout.completed` only when the plan's `collectPhone` is on. Absent, not empty, otherwise. (Before 2026-10 a zero-amount live checkout that saved a card also asked for one regardless of the plan.)
   - `completedAt`
   - `appliedDiscount?` — present when a discount was applied to this checkout. Shape: `{ codeId, code, rule, originalAmount, discountedAmount, finalAmount, source: 'manual' }`. The payload's `amount` is the actually-charged (post-discount) amount.
 
