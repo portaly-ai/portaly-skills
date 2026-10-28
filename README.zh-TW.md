@@ -35,6 +35,7 @@ npx skills update portaly-payment
 | **portaly-review** | 透過 Portaly 託管的 iframe，在你的網站上嵌入已驗證買家的評價徽章（Trustpilot 風格）— 不需要 API 金鑰 | `嵌入 Portaly 評價`、`評價 widget`、`顯示我的評分`、`Trustpilot 風格徽章`、`Portaly 的社會認同` |
 | **portaly-affiliate** | 讓創作者自己的買家推薦其他買家並抽成——為整個產品開啟推廣、設定一個所有合格一次性方案共用的分潤比例，並在自己的網站上接住推廣碼；連結由 Portaly 發放，分潤也由 Portaly 計算與撥付 | `affiliate program`、`referral program`、`分潤`、`推廣連結`、`聯盟行銷`、`推廣夥伴` |
 | **portaly-email**（beta，僅限受邀） | 讓你的網站從自己的網域寄信——訂單確認、驗證碼、通知、電子報：API 金鑰與網域設定、sandbox、單封／批次／排程寄送、投遞狀態、額度查詢，以及安全地測試退信 | `Portaly Email`、`網站自己寄信`、`交易信`、`電子報`、`寄信 API`、`pem_ 金鑰`、`信被退回` |
+| **portaly-email-mcp**（beta，僅限受邀，頂級+） | 讓你的 AI 助理透過 Portaly 的 MCP server，幫你寫電子報寄給你在 Portaly 蒐集的名單：草擬、試寄給自己、在 Portaly 後台確認上線、寄出，並回報開信與點擊成效 | `發信 MCP`、`Portaly Email MCP`、`幫我寫電子報`、`寄電子報給訂閱者`、`電子報成效` |
 
 ## Portaly Overview
 
@@ -201,6 +202,28 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email
 - 「Portaly 寄的信為什麼被退回？」
 - "Send order confirmation emails from my app"
 
+## Portaly Email MCP
+
+> **Beta，僅限受邀，頂級+。** 需要受邀加入寄信 beta（Portaly Email），且是頂級+ 會員（含 14 天頂級+ 體驗）。
+
+```bash
+npx skills add portaly-ai/portaly-skills --skill portaly-email-mcp
+```
+
+讓你的 AI 助理變成電子報小幫手。不用寫程式，它透過 Portaly 的 MCP server（`https://portaly.cc/mcp`，登入 Portaly 授權）：
+
+- 幫你寫電子報，寄給你在 Portaly 蒐集或匯入的名單——它只看得到名單名稱與人數，看不到任何地址
+- 試寄一封到你 Portaly 帳號的信箱
+- 給你一個確認連結：**你在 Portaly 後台按「確認上線」之前，這封信不會寄給名單**，之後再改內容也要重新確認
+- 確認後寄出，並回報送達、開信、點擊與退訂
+
+**前置條件：** Portaly 帳號已受邀加入寄信 beta、是頂級+ 會員，並已在後台信件頁設好寄件地址。連線狀態與安裝 prompt 在後台的發信 MCP（`https://portaly.cc/admin/email/mcp`）。
+
+**觸發語：**
+- 「幫我寫一封新課開賣的電子報」
+- 「把這個月的近況寄給訂閱者」
+- 「上一封電子報成效如何？」
+
 ## 串接到自己的 Server
 
 這些 skill 預設指向 `https://portaly.ai`，直接安裝者不用設定。若 fork 後要串自架或相容後端，設定 `PORTALY_API_HOST` 即可——內建 script 與 Agent 產出的程式碼都會讀：
@@ -213,7 +236,7 @@ PORTALY_API_HOST=https://your-backend.example.com
 
 ## 版本回報（Telemetry）
 
-當環境中已有 Portaly 的 API 金鑰時，除了 `portaly-email` 之外的每個 skill 會送出一次性、非阻塞的版本回報至 `POST https://portaly.ai/api/creator-subscription/skill-version`。請求內容僅包含 skill 名稱與版本（例如 `{ "skillName": "portaly-payment", "version": "0.6.0" }`）——不含任何專案內容或使用者資料——用途是讓你的 Portaly Dashboard 能偵測已安裝的 skill 是否過期。Agent 會在第一次執行時告知使用者。若要關閉，移除該 skill `SKILL.md` 中的「Report the installed skill version」步驟即可。
+當環境中已有 Portaly 的 API 金鑰時，除了 `portaly-email` 與 `portaly-email-mcp` 之外的每個 skill 會送出一次性、非阻塞的版本回報至 `POST https://portaly.ai/api/creator-subscription/skill-version`。`portaly-email-mcp` 則改用 Portaly MCP server 上的 `reportSkillVersion` tool 回報同樣的兩個欄位。請求內容僅包含 skill 名稱與版本（例如 `{ "skillName": "portaly-payment", "version": "0.6.0" }`）——不含任何專案內容或使用者資料——用途是讓你的 Portaly Dashboard 能偵測已安裝的 skill 是否過期。Agent 會在第一次執行時告知使用者。若要關閉，移除該 skill `SKILL.md` 中的「Report the installed skill version」步驟即可。
 
 ## 從舊 Repo 遷移
 
