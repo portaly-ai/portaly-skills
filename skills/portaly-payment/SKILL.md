@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.18.2
+version: 0.18.3
 metadata:
-  version: "0.18.2"
+  version: "0.18.3"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, wants the list of unfinished or failed checkouts (the dashboard's 未完成結帳 / 付款失敗) to follow up or reconcile, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -147,7 +147,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.18.2" }
+  { "skillName": "portaly-payment", "version": "0.18.3" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -199,6 +199,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
 - Create a checkout session before the buyer initiates payment.
 - Call `POST /api/creator-subscription/checkout-sessions` with `Authorization: Bearer {api_key}`.
 - Send `planId` and optional `successRedirectUrl`, `cancelRedirectUrl`, `callbackUrl`, `subscriptionCallbackUrl`, `merchantOrderNumber`, and string-keyed `metadata`.
+  - Point `cancelRedirectUrl` at a page that can start a new checkout (such as your pricing page): Portaly's hosted pages link back to it when the session expires or the buyer cannot finish, and the old session cannot be reused.
 - **If the buyer already signed in to the merchant's own product, skip making them re-enter anything**: send `customerEmail` + `customerName` to pre-fill the checkout form, and `emailVerified: true` to declare that the merchant already verified that email, which drops the emailed verification code. `emailVerified` is accepted **only** on this API-key-authenticated call — never from the buyer's browser — and is ignored without a non-blank `customerEmail`. The email field becomes read-only at checkout. See `references/api-contract.md` for the full field rules.
   - **Custom `metadata` keys are echoed into the signed callback body. Put your own data under the single `tracking` key as a JSON string — `metadata: { tracking: JSON.stringify({ … }) }` — which every adapter verifies. The Python and Go v1 adapters fail closed on any other key outside the committed schema (v1 sorts keys with JavaScript `localeCompare`, which those adapters cannot reproduce for arbitrary keys), and on an object under `tracking`, whose inner keys are checked the same way — so stringify it. For any other custom key, use a Node/WebCrypto receiver.**
 - `callbackUrl` receives the `checkout.completed` callback and — unless `subscriptionCallbackUrl` is set — also the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle callbacks. Set `subscriptionCallbackUrl` to route renewal/lifecycle events to a dedicated endpoint instead.

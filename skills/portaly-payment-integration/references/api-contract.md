@@ -94,7 +94,7 @@ Use this when the buyer is ready to go to Portaly hosted checkout.
   - `callbackUrl`: merchant callback endpoint, **must use HTTPS**. Receives `creator_subscription.checkout.completed`, and — unless `subscriptionCallbackUrl` is set — the recurring renewal and lifecycle callbacks too
   - `subscriptionCallbackUrl`: optional. When set, recurring renewal/lifecycle callbacks go here instead; falls back to `callbackUrl` when empty
   - `successRedirectUrl`: optional merchant success page
-  - `cancelRedirectUrl`: optional merchant cancel page
+  - `cancelRedirectUrl`: optional. The way back to your site when the buyer cannot finish on Portaly's hosted pages: the session expired (30 minutes after creation), the plan is no longer available, or a live-mode payment failed. There is no cancel button. The expired screen only shows its button for an `http://` / `https://` URL; without one it tells the buyer to return to your site. The old session cannot be reused, so point this at a page that creates a new session (such as your pricing page), not a static "cancelled" page.
   - `merchantOrderNumber`: optional merchant-side order id
   - `metadata`: optional string-keyed extra context. **Echoed into the signed callback body. The Python/Go v1 adapters fail closed on any key outside the committed signing whitelist (see the Signed Callback section) — notably every ad identifier, so keep those in your own store instead.**
   - `discountCode`: optional. When provided, Portaly validates and applies the discount up front. **Do not create or manage discount codes yourself** — the merchant issues codes in the Portaly dashboard; you only ever pass a code a buyer typed in, verbatim, to this field.
@@ -112,7 +112,7 @@ Request body (fixed pricing plan):
   "planId": "plan_123",
   "callbackUrl": "https://merchant.example/api/portaly/callback",
   "successRedirectUrl": "https://merchant.example/success",
-  "cancelRedirectUrl": "https://merchant.example/cancel",
+  "cancelRedirectUrl": "https://merchant.example/pricing",
   "merchantOrderNumber": "order_001",
   "customerEmail": "buyer@example.com",
   "customerName": "Mary Smith-Jones",

@@ -420,7 +420,7 @@ Use this when the human user needs to send the buyer into Portaly hosted checkou
   - `planId`: Portaly plan id
   - `amount`: optional positive number. **Required** for dynamic pricing plans; ignored for fixed pricing plans
   - `successRedirectUrl`: optional merchant success page
-  - `cancelRedirectUrl`: optional merchant cancel page
+  - `cancelRedirectUrl`: optional. The way back to your site when the buyer cannot finish on Portaly's hosted pages: the session expired (30 minutes after creation), the plan is no longer available, or a live-mode payment failed. There is no cancel button. The expired screen only shows its button for an `http://` / `https://` URL; without one it tells the buyer to return to your site. The old session cannot be reused, so point this at a page that creates a new session (such as your pricing page), not a static "cancelled" page.
   - `callbackUrl`: optional merchant callback endpoint. Receives `creator_subscription.checkout.completed`, and — unless `subscriptionCallbackUrl` is set — the recurring renewal (`payment.succeeded` / `payment.failed`) and lifecycle (`active` / `cancel_requested` / `canceled`) callbacks too.
   - `subscriptionCallbackUrl`: optional. When set, recurring renewal and lifecycle callbacks are delivered here instead of `callbackUrl` (the checkout-completion callback still goes to `callbackUrl`). Falls back to `callbackUrl` when empty.
   - `merchantOrderNumber`: optional merchant-side order id
@@ -437,7 +437,7 @@ Request body (fixed pricing plan):
 {
   "planId": "plan_123",
   "successRedirectUrl": "https://merchant.example/success",
-  "cancelRedirectUrl": "https://merchant.example/cancel",
+  "cancelRedirectUrl": "https://merchant.example/pricing",
   "callbackUrl": "https://merchant.example/api/portaly/callback",
   "merchantOrderNumber": "order_001",
   "customerEmail": "buyer@example.com",
@@ -458,7 +458,7 @@ Request body (dynamic pricing plan):
   "planId": "plan_dynamic_456",
   "amount": 500,
   "successRedirectUrl": "https://merchant.example/success",
-  "cancelRedirectUrl": "https://merchant.example/cancel",
+  "cancelRedirectUrl": "https://merchant.example/pricing",
   "callbackUrl": "https://merchant.example/api/portaly/callback",
   "merchantOrderNumber": "order_002",
   "customerEmail": "buyer@example.com",
@@ -516,7 +516,7 @@ const response = await fetch(
     body: JSON.stringify({
       planId: "plan_123",
       successRedirectUrl: "https://merchant.example/success",
-      cancelRedirectUrl: "https://merchant.example/cancel",
+      cancelRedirectUrl: "https://merchant.example/pricing",
       callbackUrl: "https://merchant.example/api/portaly/callback",
       merchantOrderNumber: "order_001",
       metadata: {

@@ -3,9 +3,9 @@ name: portaly-product
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.10.0
+version: 0.10.1
 metadata:
-  version: "0.10.0"
+  version: "0.10.1"
 description: Help users integrate Portaly digital products checkout — list a creator's digital products and let buyers purchase one item or a custom bundle via Portaly's hosted checkout, with signed webhook callbacks. Also covers test mode — which test card to use, and why a test purchase sends no email and shows up in no revenue figure. Trigger when the user mentions Portaly digital products, selling courses/downloads/templates via their own site backed by Portaly, building a "powered by Portaly" storefront, bundle pricing of Portaly products, publishing or unpublishing a Portaly product (taking one off sale from their own site), or is troubleshooting a Portaly test payment, test card, sandbox order, or a missing order confirmation email.
 ---
 
@@ -108,7 +108,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-product", "version": "0.10.0" }
+  { "skillName": "portaly-product", "version": "0.10.1" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -191,7 +191,7 @@ const res = await fetch(`${HOST}/api/digital-products/checkout-sessions`, {
       : { customerEmail: form.email }),    // optional, pre-fill only — buyer still gets the code
     callbackUrl: 'https://your-site.com/webhooks/portaly',
     successRedirectUrl: 'https://your-site.com/thanks',
-    cancelRedirectUrl: 'https://your-site.com/cart',
+    cancelRedirectUrl: 'https://your-site.com/cart',  // "Start Over" target once the session can no longer be paid — must be able to create a new session
     merchantOrderNumber: yourInternalId,
     metadata: { tracking: JSON.stringify({ userId: '...', cartId: '...' }) },  // your own data goes under `tracking` as one string (≤ 500 chars) — the Python/Go v1 adapters fail closed on other keys outside the committed schema
   }),
