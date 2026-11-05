@@ -11,6 +11,7 @@ Reach for this when the human user asks the agent to "make a coupon", "build a d
 | 「FOUNDER100 永久折 100 元，限定 plan_pro_monthly」 | code `FOUNDER100`, single rule on `plan_pro_monthly`, fixed 100 TWD, forever |
 | 「年費首年 8 折 ANNUAL20，限 yearly plan」 | code `ANNUAL20`, single rule on yearly plan, percent 20, repeating cycles 1 (= first year) |
 | 「FREEMONTH 首期免費，所有 plan 通用，無使用上限」 | code `FREEMONTH`, single rule appliesTo `all`, free, repeating cycles 1, no caps |
+| 「建立 IGSTORY 首月 9 折，備註寫 IG 限動」 | code `IGSTORY`, single rule appliesTo `all`, percent 10, repeating cycles 1, note `IG 限動` |
 | "Make a 30% off code WELCOME for the first month for any plan, max 1 per customer." | code `WELCOME`, appliesTo `all`, percent 30, repeating cycles 1, maxRedemptionsPerCustomer 1 |
 | "Set up a referral perk REFER10 — anyone using this code gets 10% off every charge for as long as they stay subscribed." | code `REFER10`, appliesTo `all`, percent 10, forever (note: `forever` is unusual with `percent`; most often paired with `fixed`) |
 
@@ -29,6 +30,7 @@ Reach for this when the human user asks the agent to "make a coupon", "build a d
 | `redeemBy` | ISO datetime | End of the redemption window | Optional; null = no end. Must be after `redeemFrom` |
 | `maxRedemptions` | integer | Total cap | Optional; null = unlimited |
 | `maxRedemptionsPerCustomer` | integer | Per-email cap | Optional; null = unlimited |
+| `note` | string | Internal label for the creator (e.g. channel) | Optional; ≤ 30 chars, trimmed; `""` / null = no note. Never shown to buyers |
 | `status` | enum | `active` (default) or `disabled` | Disabled codes can't be redeemed |
 
 ## Two-dimension matrix (discount type × duration)

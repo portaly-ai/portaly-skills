@@ -303,6 +303,7 @@ Request fields:
 - `redeemFrom`, `redeemBy`: optional ISO datetime; `redeemBy` must be after `redeemFrom`.
 - `maxRedemptions`: optional positive integer (total cap).
 - `maxRedemptionsPerCustomer`: optional positive integer (per-email cap).
+- `note`: optional string, ≤ 30 chars after trimming. Internal label for the creator (e.g. which channel the code was shared on); never shown to buyers. `""` or `null` stores no note.
 - `status`: optional, `active` (default) | `disabled`.
 
 Response 201:
@@ -330,6 +331,7 @@ Response 201:
     "redeemBy": "2026-12-31T23:59:59.000Z",
     "maxRedemptions": null,
     "maxRedemptionsPerCustomer": 1,
+    "note": "IG 限動",
     "timesRedeemed": 0,
     "createdAt": "2026-04-25T03:00:00.000Z",
     "updatedAt": "2026-04-25T03:00:00.000Z"
@@ -395,7 +397,7 @@ Founder pricing (fixed forever, single plan):
 
 ### Update / Disable
 
-`PUT /api/creator-subscription/discount-codes/{codeId}` accepts any subset of `rules`, `redeemFrom`, `redeemBy`, `maxRedemptions`, `maxRedemptionsPerCustomer`, `status`. **Sending `code` returns 400 `CODE_IMMUTABLE`.** Rule changes do not retroactively affect already-redeemed subscriptions; their snapshot stays put.
+`PUT /api/creator-subscription/discount-codes/{codeId}` accepts any subset of `rules`, `redeemFrom`, `redeemBy`, `maxRedemptions`, `maxRedemptionsPerCustomer`, `note`, `status`. Send `note: ""` or `note: null` to clear the note; omitting it leaves the note unchanged. **Sending `code` returns 400 `CODE_IMMUTABLE`.** Rule changes do not retroactively affect already-redeemed subscriptions; their snapshot stays put.
 
 `DELETE /api/creator-subscription/discount-codes/{codeId}` soft-deletes by flipping `status` to `disabled`. Disabled codes are excluded from default `GET` listings; pass `?status=disabled` to inspect them.
 
