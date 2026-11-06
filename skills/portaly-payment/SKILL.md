@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.18.3
+version: 0.18.4
 metadata:
-  version: "0.18.3"
+  version: "0.18.4"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, wants the list of unfinished or failed checkouts (the dashboard's 未完成結帳 / 付款失敗) to follow up or reconcile, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -65,7 +65,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 > Do not continue until they have an account and have created a key. Once registered, they create the key in the dashboard at `https://portaly.cc/admin/creator-subscription`.
 
 - Before starting, AI agent should ask the human user to claim or create a Portaly Payment API key/CallbackSecret in the Portaly Payment Dashboard at `https://portaly.cc/admin/creator-subscription` and store the issued secret material safely.
-- Ask the human user whether they want a **live** or **test** key, but make the constraints clear: a **live key requires all three of** — the merchant (the person) has passed Portaly payment verification (金流審核 / KYC, else `403 PAYMENT_KYC_NOT_VERIFIED`), holds a paid membership (Portaly premium or a Portaly Vibe subscription, else `403 PREMIUM_REQUIRED`), and, **from their second product onward, that particular product has passed its own review** (else `403 PRODUCT_REVIEW_NOT_VERIFIED` — the person's identity is already verified and must not be re-submitted; only *this product* is pending). All three are enforced server-side, not just hidden in the dashboard UI. First-time users have almost always not passed verification yet, so Live is not available to them. **Recommend starting with a test key** to build and test the whole integration now; once all three are in place, they can come back to the dashboard and create a live key for production.
+- Ask the human user whether they want a **live** or **test** key, but make the constraints clear: a **live key requires all three of** — the merchant (the person) has passed Portaly payment verification (金流審核 / KYC, else `403 PAYMENT_KYC_NOT_VERIFIED`), holds a paid membership (Portaly premium or above, else `403 PREMIUM_REQUIRED`), and, **from their second product onward, that particular product has passed its own review** (else `403 PRODUCT_REVIEW_NOT_VERIFIED` — the person's identity is already verified and must not be re-submitted; only *this product* is pending). All three are enforced server-side, not just hidden in the dashboard UI. First-time users have almost always not passed verification yet, so Live is not available to them. **Recommend starting with a test key** to build and test the whole integration now; once all three are in place, they can come back to the dashboard and create a live key for production.
 
 1. Confirm what the human user is trying to build.
    Prepare for payment integration tasks such as:
@@ -111,7 +111,7 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 - Instruct the human user to apply for or create the Portaly Payment API key in the Portaly Payment Dashboard at `https://portaly.cc/admin/creator-subscription`.
 - Ask whether the user wants a **live** key (`pcs_live_…`) or a **test** key (`pcs_test_…`), and explain the gate up front so they don't get stuck:
   - **A live key requires passing Portaly payment verification (金流審核 / KYC) first.** Until the merchant completes verification, the dashboard offers only the Test option and explains why the Live one is unavailable; the merchant starts verification via the "金流審核" entry on that page. The server enforces it as well, so there is no way around the dashboard: key creation returns `403 PAYMENT_KYC_NOT_VERIFIED`.
-  - **A live key also requires a paid membership** — Portaly premium or a Portaly Vibe subscription (`403 PREMIUM_REQUIRED`). Passing verification is not enough on a free plan; they upgrade first.
+  - **A live key also requires a paid membership** — Portaly premium or above (`403 PREMIUM_REQUIRED`). Passing verification is not enough on a free plan; they upgrade first.
   - **From the merchant's second product onward, every product is reviewed on its own** (its own service URL and business description). If the person is verified but this particular product is not, key creation returns `403 PRODUCT_REVIEW_NOT_VERIFIED`. Do **not** send them back through identity verification — that part is done; they submit *this product* for review in the dashboard (Payment > 金流審核) and wait for approval.
   - **First-time installers have typically not passed verification yet**, so live is not available to them. Tell them this is expected, not an error.
   - **Recommend starting with a test key** (`pcs_test_…`) — it lets them build and exercise most of the integration (config, plans, checkout, callbacks) against TapPay sandbox immediately, with no real charges — but not all of it. See the test-mode bullets above for what a green test run leaves unproven: renewals, the live 91APP redirect-and-return, invoicing and settlement. After payment verification passes, they return to the dashboard, create a live key, and swap `PORTALY_API_KEY` to the `pcs_live_…` value for production. No code changes are needed — the mode is derived from the key.
@@ -147,7 +147,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.18.3" }
+  { "skillName": "portaly-payment", "version": "0.18.4" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
