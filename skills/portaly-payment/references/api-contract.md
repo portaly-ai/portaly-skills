@@ -64,7 +64,7 @@ Error codes:
 
 - `400 Invalid mode. Use 'live' or 'test'.` — `mode` was present but not one of the two values; it is case-sensitive, so `"LIVE"` is rejected.
 - `400 Invalid scope. Use 'full' or 'integration'.` — same for the optional `scope` field.
-- `403 PREMIUM_REQUIRED` — a **live** key needs a Portaly premium membership or a Portaly Vibe subscription. A verified free member is still blocked; they upgrade first. A `test` key keeps working meanwhile.
+- `403 PREMIUM_REQUIRED` — a **live** key needs a Portaly premium membership (or above). A verified free member is still blocked; they upgrade first. A `test` key keeps working meanwhile.
 - `403 PAYMENT_KYC_NOT_VERIFIED` — a **live** key needs the merchant (the person) to pass Portaly payment verification (金流審核 / KYC). Point them at the "金流審核" entry in the dashboard.
 - `403 PRODUCT_REVIEW_NOT_VERIFIED` — the person is already verified, but **this product** has not passed its own payment review. Every product after the first is reviewed separately (service URL + business description). Do **not** send them back through identity verification — that part is done; they submit *this product* for review in the dashboard (Payment > 金流審核) and wait for approval.
 
