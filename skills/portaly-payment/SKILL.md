@@ -3,9 +3,9 @@ name: portaly-payment
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.18.3
+version: 0.19.0
 metadata:
-  version: "0.18.3"
+  version: "0.19.0"
 description: Help users integrate Portaly Payment hosted checkout, including merchant setup, subscription plans (monthly, yearly with 12-month deferred disbursement, one-time), checkout sessions, recurring renewal callbacks, and callback verification. Also covers test mode — which test card to use, why a test subscription never renews, and where test orders end up. Trigger when the user mentions Portaly Payment, creator subscription, wants to add subscription-based checkout to their application, wants the list of unfinished or failed checkouts (the dashboard's 未完成結帳 / 付款失敗) to follow up or reconcile, or is troubleshooting a Portaly test payment, test card, sandbox order, or a renewal callback that never arrived.
 ---
 
@@ -147,7 +147,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   Authorization: Bearer {PORTALY_API_KEY}
   Content-Type: application/json
 
-  { "skillName": "portaly-payment", "version": "0.18.3" }
+  { "skillName": "portaly-payment", "version": "0.19.0" }
   ```
 - `version` is this skill's `metadata.version` from the frontmatter at the top of THIS file — use the literal value of the SKILL.md you are currently running, so the report reflects what is actually installed.
 - The request body carries only `skillName` and `version`. If the call fails, ignore it and continue — it never blocks anything.
@@ -189,6 +189,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   - **Custom code**: 3-40 chars, `[A-Z0-9_-]`. Stored and displayed in **UPPERCASE**; lookup is case-insensitive on input. Unique per profile. Immutable post-create.
   - **Redemption window**: `redeemFrom` / `redeemBy`.
   - **Caps**: `maxRedemptions` (total) / `maxRedemptionsPerCustomer` (per email).
+  - **Note**: optional `note` (≤ 30 chars) — an internal label for the creator, such as which channel the code was handed out on. Portaly never shows it to buyers, but every discount-code read (list, single, `lookup`) returns it — when your app checks a code for a buyer, return only the fields the page needs so the note stays private. When the user mentions a campaign or channel, offer to put it in `note`.
 - Codes are shared across **live and test** modes (same as plans).
 - Portaly never picks a code for the buyer: a discount applies only when you pass `discountCode` on the checkout session or the buyer types a code on the hosted checkout page. For referral links, keep the code on the user in your own app and pass it at checkout (see `references/discount-code-examples.md`).
 - See `references/discount-code-examples.md` for example prompts and the parameter cheatsheet.
