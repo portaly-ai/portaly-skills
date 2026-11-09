@@ -303,7 +303,7 @@ Request fields:
 - `redeemFrom`, `redeemBy`: optional ISO datetime; `redeemBy` must be after `redeemFrom`.
 - `maxRedemptions`: optional positive integer (total cap).
 - `maxRedemptionsPerCustomer`: optional positive integer (per-email cap).
-- `note`: optional string, ≤ 30 chars after trimming. Internal label for the creator (e.g. which channel the code was shared on); never shown to buyers. `""` or `null` stores no note.
+- `note`: optional string, ≤ 30 chars after trimming, counted in UTF-16 code units (an emoji takes 2 or more). Internal label for the creator (e.g. which channel the code was shared on). Portaly never shows it to buyers, but every discount-code read (list, single, `lookup`) returns it, so relay only the fields a buyer-facing page needs. `""` or `null` stores no note.
 - `status`: optional, `active` (default) | `disabled`.
 
 Response 201:

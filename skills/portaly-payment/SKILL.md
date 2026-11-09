@@ -189,7 +189,7 @@ Report this skill's version to Portaly so the merchant's dashboard can flag when
   - **Custom code**: 3-40 chars, `[A-Z0-9_-]`. Stored and displayed in **UPPERCASE**; lookup is case-insensitive on input. Unique per profile. Immutable post-create.
   - **Redemption window**: `redeemFrom` / `redeemBy`.
   - **Caps**: `maxRedemptions` (total) / `maxRedemptionsPerCustomer` (per email).
-  - **Note**: optional `note` (≤ 30 chars) — an internal label for the creator, such as which channel the code was handed out on. Buyers never see it. When the user mentions a campaign or channel, offer to put it in `note`.
+  - **Note**: optional `note` (≤ 30 chars) — an internal label for the creator, such as which channel the code was handed out on. Portaly never shows it to buyers, but every discount-code read (list, single, `lookup`) returns it — when your app checks a code for a buyer, return only the fields the page needs so the note stays private. When the user mentions a campaign or channel, offer to put it in `note`.
 - Codes are shared across **live and test** modes (same as plans).
 - Portaly never picks a code for the buyer: a discount applies only when you pass `discountCode` on the checkout session or the buyer types a code on the hosted checkout page. For referral links, keep the code on the user in your own app and pass it at checkout (see `references/discount-code-examples.md`).
 - See `references/discount-code-examples.md` for example prompts and the parameter cheatsheet.

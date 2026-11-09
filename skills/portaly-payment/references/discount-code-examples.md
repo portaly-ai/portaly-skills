@@ -30,7 +30,7 @@ Reach for this when the human user asks the agent to "make a coupon", "build a d
 | `redeemBy` | ISO datetime | End of the redemption window | Optional; null = no end. Must be after `redeemFrom` |
 | `maxRedemptions` | integer | Total cap | Optional; null = unlimited |
 | `maxRedemptionsPerCustomer` | integer | Per-email cap | Optional; null = unlimited |
-| `note` | string | Internal label for the creator (e.g. channel) | Optional; ≤ 30 chars, trimmed; `""` / null = no note. Never shown to buyers |
+| `note` | string | Internal label for the creator (e.g. channel) | Optional; ≤ 30 chars, trimmed; `""` / null = no note. Portaly never shows it to buyers; leave it out of what your app shows them |
 | `status` | enum | `active` (default) or `disabled` | Disabled codes can't be redeemed |
 
 ## Two-dimension matrix (discount type × duration)
