@@ -3,9 +3,9 @@ name: portaly-email-mcp
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.2
+version: 0.1.3
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
 description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP needs an account invited to the Portaly Email beta and on the Premium Plus plan (頂級+), including the 14-day trial, and the creator turns it on once in the Portaly admin."
 ---
 
@@ -91,11 +91,13 @@ Premium with the 14-day Premium Plus trial, and stop.
 
 ### 1.5 Report the installed skill version
 
-Right after installing or updating this skill, and once the email tools are available, call
-`reportSkillVersion` once with these arguments:
+Call `reportSkillVersion` the first time you have the email tools in a session — right after
+installing or updating, and again at the start of any later session that uses them. Most clients only
+get the email tools after a reconnect or a new session, so the session that installed the skill often
+cannot report; reporting again later is harmless and is what makes the admin show 「已安裝」. Arguments:
 
 ```json
-{"skillName": "portaly-email-mcp", "version": "0.1.2"}
+{"skillName": "portaly-email-mcp", "version": "0.1.3"}
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you are running.
