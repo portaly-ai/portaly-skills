@@ -3,9 +3,9 @@ name: portaly-email-mcp
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.1
+version: 0.1.2
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
 description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP needs an account invited to the Portaly Email beta and on the Premium Plus plan (頂級+), including the 14-day trial, and the creator turns it on once in the Portaly admin."
 ---
 
@@ -68,8 +68,10 @@ Add it in whatever client you are running in:
 - **Claude (web / desktop), ChatGPT, and other chat apps:** the creator adds a custom connector (remote
   MCP server) with the URL above in the app's settings. You cannot do this for them — walk them through it.
 
-The creator signs in with their Portaly account in the browser and picks the profile to connect; one
-connection covers one profile. Most clients need a restart or a new session before the new tools show up.
+The creator signs in with their Portaly account in the browser and approves access. Most accounts have
+one profile and are connected to it directly; only an account that manages several profiles is asked which
+one to connect, and one connection covers one profile. Do not tell the creator to pick a profile unless
+the sign-in page asks. Most clients need a restart or a new session before the new tools show up.
 
 If the client cannot do OAuth sign-in, the creator can create a token under 「建立 token」 at
 `https://portaly.cc/admin/product/mcp` and configure the same URL with the header
@@ -93,7 +95,7 @@ Right after installing or updating this skill, and once the email tools are avai
 `reportSkillVersion` once with these arguments:
 
 ```json
-{"skillName": "portaly-email-mcp", "version": "0.1.1"}
+{"skillName": "portaly-email-mcp", "version": "0.1.2"}
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you are running.
