@@ -3,24 +3,25 @@ name: portaly-email
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.6
+version: 0.2.0
 metadata:
-  version: "0.1.6"
-description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Portaly Email is in an invite-only beta: only accounts Portaly has invited can use it."
+  version: "0.2.0"
+description: "Help users send email (order receipts, sign-in codes, notifications, newsletters, promotions) from their own domain through Portaly's email API — API key setup, sending-domain verification, the sandbox, sending single, batch and scheduled emails, delivery status, quota, and testing bounces safely with the mailbox simulator. Trigger when the user wants their app to send email through Portaly, mentions Portaly Email, a pem_ key, sandbox.portaly.tw, or is troubleshooting a Portaly email that bounced, was rejected, or never arrived. Creating an email API key needs the Premium plan (頂級) or above."
 ---
 
-# Portaly Email (Beta)
+# Portaly Email
 
 Use this skill to help a human user (a creator, usually not an engineer) wire their app's own
 email — receipts, verification codes, password resets, notifications, newsletters — to Portaly's
 email API.
 Keep answers operational: next steps first, then copy-ready code in the project's own stack.
 
-> **Beta — invite only.** Portaly Email is in beta and only accounts Portaly has invited can use it.
-> Any other account gets `403 FORBIDDEN` on every call, and there is nothing the agent can do about
-> it except tell the user to contact Portaly. Creating an email API key or binding a domain also needs
-> the Premium plan, which carries the monthly quota. Say this before any setup work if the user has
-> not mentioned being invited.
+> **Plan.** Creating an email API key or binding a domain needs the Premium plan (頂級) or above,
+> which carries the monthly quota. Say this before any setup work if the user has not mentioned their
+> plan, and give them the 訂閱管理 link below to upgrade. Below Premium (for example after a downgrade)
+> existing keys keep working, but the monthly allowance is 0: custom-domain sends can only use remaining
+> pack quota. Past that, sends answer `429 SEND_QUOTA_EXCEEDED` and scheduled ones come due as
+> `quota_exceeded`.
 
 ## API Host
 
@@ -60,8 +61,6 @@ signed-out user is sent through sign-in and back to the same page.
   link — never in backticks or a code block, which most chat panes and terminals show as dead text.
   Then list the buttons to press, using the admin's own labels as above. Never make the human
   navigate menus to find a page.
-- If a link lands on the dashboard home instead of 發信系統, the account is not in the email beta:
-  stop and tell them to contact Portaly.
 
 ## Workflow
 
@@ -256,7 +255,7 @@ Every error is `{ "error": { "code", "message" } }`. Branch on `code`, never on 
 | `500`, any `503`, network error or timeout | Retry with the same `Idempotency-Key`, with exponential backoff and a cap (e.g. 5 attempts), then queue it for a later job and alert; it will not double-send. `Retry-After` is in seconds. |
 | `502 SEND_OUTCOME_UNKNOWN` | It may have gone out. Retry with the same `Idempotency-Key`; until Portaly learns the outcome that retry answers `409`. |
 | `409 IDEMPOTENCY_KEY_IN_USE` | Retry with the same key for up to about 10 minutes — **cap it, never loop forever**. Still `409` after that means it most likely never went out (the key stays `409` for good): find it with `GET /api/email/emails?status=unknown&tag=ref:<key>`, then alert a human or resend with a new key, accepting a small risk of a duplicate. |
-| `429 SEND_QUOTA_EXCEEDED` | **Not transient. Do not retry in a loop.** Alert a human (log at error level, notify); the creator buys more quota or waits for the reset (`monthlyResetsAt` from `GET /api/email/quota`; `null` means the reset is due but still pending, usually only minutes after midnight Asia/Taipei — not an error and not a date to parse; check again later). |
+| `429 SEND_QUOTA_EXCEEDED` | **Not transient. Do not retry in a loop.** Alert a human (log at error level, notify); the creator buys more quota or waits for the reset (`monthlyResetsAt` from `GET /api/email/quota`; `null` means the reset is due but still pending, usually only minutes after midnight Asia/Taipei — not an error and not a date to parse; check again later). If `monthlyAllowance` is `0`, the plan has no monthly allowance (below Premium, e.g. after a downgrade): waiting for the reset does nothing — tell the creator to upgrade to Premium. |
 | `429 SANDBOX_DAILY_LIMIT_REACHED` | 50 sandbox emails a day; resets at midnight Asia/Taipei. |
 | `422 RECIPIENT_SUPPRESSED` | Every `to` address is on Portaly's suppression list (it hard-bounced, or several Portaly senders got spam complaints from it). Don't retry. Mark them invalid in your DB and ask a signed-in user for a new address; in signed-out flows (password reset) show the usual generic message so you don't reveal whether the account exists. |
 | `422 MESSAGE_REJECTED` | The mail service refused this message. The same key keeps answering this — fix it and send with a new key. |

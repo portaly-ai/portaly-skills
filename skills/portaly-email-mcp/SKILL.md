@@ -3,10 +3,10 @@ name: portaly-email-mcp
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.3
+version: 0.1.4
 metadata:
-  version: "0.1.3"
-description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP needs an account invited to the Portaly Email beta and on the Premium Plus plan (頂級+), including the 14-day trial, and the creator turns it on once in the Portaly admin."
+  version: "0.1.4"
+description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP is in beta: Portaly turns it on per account, and the account must be on the Premium Plus plan (頂級+)."
 ---
 
 # Portaly Email MCP (Beta)
@@ -21,14 +21,12 @@ This is not the skill for wiring an app's own email (receipts, sign-in codes) �
 Reply to the creator in their language (usually 正體中文), in plain words. Do not show them tool names,
 error codes, or JSON.
 
-> **Beta — Portaly Email beta accounts, Premium Plus.** Only accounts Portaly has invited to the Portaly
-> Email beta (the same invite as the email API) can use it, and the account must be on Premium Plus
-> (頂級+). Premium (頂級) members can start a 14-day Premium Plus trial in the Portaly admin. On top of
-> that, the creator turns Email MCP on once by pressing 「開通發信 MCP」 at
-> `https://portaly.cc/admin/email/mcp` — no invite needed for that step, only the profile's manager can
-> press it. Until all of this holds the email tools do not appear at all, or every call answers
-> `email_mcp_not_enabled` / `email_mcp_activation_required` / `email_mcp_plan_required`. Say this before
-> setup if the creator has not mentioned being invited.
+> **Beta — turned on by Portaly, Premium Plus.** Email MCP is in beta: Portaly turns it on for each
+> account (the creator cannot turn it on themselves), and the account must be on Premium Plus (頂級+).
+> Once it is on, the 發信 MCP page appears in the admin at `https://portaly.cc/admin/email/mcp`. Until
+> both hold the email tools do not appear at all, or every call answers `email_mcp_activation_required` /
+> `email_mcp_plan_required`. Say this before setup if the creator has not mentioned Email MCP being
+> turned on for them.
 
 ## How approval works — read this first
 
@@ -78,16 +76,17 @@ If the client cannot do OAuth sign-in, the creator can create a token under 「�
 `Authorization: Bearer mcp_ptly_…`. The token is shown once; it goes in the client's config, never in a
 chat message or a committed file.
 
-**Connected but no email tools?** The server lists the email tools only for accounts that are in the Portaly
-Email beta, on Premium Plus, and have turned Email MCP on. Tell the creator to open 發信 MCP in the Portaly
-admin (`https://portaly.cc/admin/email/mcp`): if it shows 「開通發信 MCP」, they press it; otherwise it shows
-whether the account is enabled and offers the upgrade or trial. After turning it on or upgrading, the
-creator reconnects Portaly in their app (or refreshes the connector, or you start a new session) — most
-clients keep the tool list from when they first connected. Do not try to send email through other tools.
+**Connected but no email tools?** The server lists the email tools only for accounts that Portaly has
+turned Email MCP on for and that are on Premium Plus. Ask the creator to open 發信 MCP in the Portaly admin
+(`https://portaly.cc/admin/email/mcp`): if the page is missing or says 「發信 MCP 尚未開通」, Portaly has
+not turned it on yet and the creator needs to contact Portaly; if it says the current plan can't use it,
+they need to upgrade to Premium Plus. Once it is on and the plan qualifies, the creator reconnects Portaly
+in their app (or refreshes the connector, or you start a new session) — most clients keep the tool list
+from when they first connected. Do not try to send email through other tools.
 
 **Every call answers HTTP 403 with `"code": "plan_required"`?** That gate is in front of all Portaly MCP
-tools: the profile is below Premium (頂級). Tell the creator Email MCP needs Premium Plus (頂級+), or
-Premium with the 14-day Premium Plus trial, and stop.
+tools: the profile is below Premium (頂級). Tell the creator Email MCP needs Premium Plus (頂級+), and
+stop.
 
 ### 1.5 Report the installed skill version
 
@@ -97,7 +96,7 @@ get the email tools after a reconnect or a new session, so the session that inst
 cannot report; reporting again later is harmless and is what makes the admin show 「已安裝」. Arguments:
 
 ```json
-{"skillName": "portaly-email-mcp", "version": "0.1.3"}
+{"skillName": "portaly-email-mcp", "version": "0.1.4"}
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you are running.
@@ -188,10 +187,10 @@ These are what the tools enforce; quote them as limits, with what to do instead.
   do not retry, and do not split the list to squeeze it through.
 - Rate limits per connection: 120 reads and 20 writes a minute. Do not loop on writes.
 - `email_mcp_not_enabled` / `email_mcp_plan_required`: the account cannot use Email MCP right now. Say so
-  plainly, point to the 發信 MCP page in the admin, and stop — never work around it with other tools.
+  plainly (for the plan, that it needs Premium Plus) and stop — never work around it with other tools.
 - `email_mcp_activation_required`: Email MCP is off for this account (you only see this if it was turned off
-  after you got the tools). Give the creator `https://portaly.cc/admin/email/mcp`, ask them to press
-  「開通發信 MCP」 and reconnect, then continue — never work around it with other tools.
+  after you got the tools). Tell the creator Portaly needs to turn it on for them, and stop; once it is on,
+  they reconnect and you continue — never work around it with other tools.
 
 ## Errors
 
@@ -205,9 +204,9 @@ what to tell the creator and what to do next; follow it.
 | `sender_not_set_up` | No sending address yet | Creator sets it up in the admin's email page |
 | `send_quota_insufficient` | Not enough quota for the whole list | Tell the creator; nothing was sent |
 | `owner_email_unverified` | No verified sign-in email for test copies | Skip the test copy; use the confirmation preview |
-| `email_mcp_not_enabled` | Account not invited to the Portaly Email beta | Tell the creator; stop |
-| `email_mcp_activation_required` | Email MCP not turned on for this account | Creator presses 「開通發信 MCP」 at `https://portaly.cc/admin/email/mcp`, reconnects; then continue |
-| `email_mcp_plan_required` | Needs Premium Plus | Tell the creator about upgrading or the 14-day trial; stop |
+| `email_mcp_not_enabled` | Email is not enabled for this account | Tell the creator to contact Portaly; stop |
+| `email_mcp_activation_required` | Email MCP not turned on for this account | Tell the creator Portaly needs to turn it on; stop. Once it is on, they reconnect and you continue |
+| `email_mcp_plan_required` | Needs Premium Plus | Tell the creator about upgrading to Premium Plus; stop |
 | `banned_copy_terms` | The new text uses wording Portaly refuses | Rewrite those words and call again |
 | `invalid_arguments` | A parameter is missing or wrong | Fix the named parameter |
 
