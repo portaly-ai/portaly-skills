@@ -4,7 +4,8 @@ Working copy of the contract for Portaly's email API. The authoritative version 
 `https://portaly.ai/docs` (Email section) and `https://portaly.ai/openapi.json`; when they disagree,
 those win.
 
-Creating a key needs the Premium plan (頂級) or above.
+Creating a key needs the Premium plan (頂級) or above. Below Premium (for example after a downgrade)
+existing keys keep working, but the monthly allowance is 0, so only remaining packs can be sent.
 
 ## Use This Reference For
 
@@ -123,7 +124,7 @@ Responses:
 | 422 | `RECIPIENT_SUPPRESSED` | Every `to` is on Portaly's suppression list (hard bounce, or spam complaints to several Portaly senders); nothing sent. |
 | 422 | `MESSAGE_REJECTED` | Rejected by the mail service. The same key keeps answering this — fix the message and use a new key. |
 | 422 | `ATTACHMENT_DOWNLOAD_FAILED` | An attachment URL did not answer 200 in time. |
-| 429 | `SEND_QUOTA_EXCEEDED` | Quota does not cover every recipient. Not transient — alert; `monthlyResetsAt` in `GET /quota` says when the monthly allowance comes back (`null` while a due reset is still pending; check again later). |
+| 429 | `SEND_QUOTA_EXCEEDED` | Quota does not cover every recipient. Not transient — alert; `monthlyResetsAt` in `GET /quota` says when the monthly allowance comes back (`null` while a due reset is still pending; check again later). If `monthlyAllowance` is `0` (below Premium, e.g. after a downgrade), no reset brings it back: upgrade to Premium. |
 | 429 | `SANDBOX_DAILY_LIMIT_REACHED` | 50 sandbox emails a day, resets midnight Asia/Taipei. |
 | 502 | `SEND_OUTCOME_UNKNOWN` | May have been sent. Retry with the same `Idempotency-Key` — no double send; until the outcome is known the retry answers `409`. |
 | 503 | `SEND_RATE_LIMITED` | Platform sending rate; `Retry-After: 1`. Retry with the same key. |
@@ -299,6 +300,9 @@ canceling twice is fine. `404 EMAIL_NOT_FOUND`; `409 EMAIL_NOT_CANCELABLE` once 
 - `remaining` = `monthlyRemaining` + `packRemaining`: recipients you can still send to from custom
   domains. The monthly allowance is used before packs; packs are bought in the Portaly admin and do
   not reset.
+- `monthlyAllowance`: recipients the plan includes per period. `0` below Premium (for example
+  after a downgrade): no reset brings quota back, so only `packRemaining` can be sent until the
+  account upgrades.
 - `monthlyResetsAt`: when the monthly allowance next resets (midnight Asia/Taipei, ISO 8601). Paid
   plans reset monthly from their billing date (every 30 days on monthly billing; the same day each
   month on yearly billing, the last day in shorter months) and other accounts on the 1st, so the day
