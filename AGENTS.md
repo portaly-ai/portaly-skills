@@ -32,7 +32,7 @@ skills/
     scripts/                  # Callback adapters + production-derived conformance checks
   portaly-review/             # Embed Portaly's hosted review widget (Trustpilot-style badge)
     SKILL.md                  # Skill definition (entry point; single-file, no references/scripts)
-  portaly-email/              # Email API (beta), separate pem_ key
+  portaly-email/              # Email API, separate pem_ key
     SKILL.md                  # Skill definition (entry point)
     references/               # API contract (endpoints, error codes, statuses, simulator)
   portaly-email-mcp/          # Agent-operated newsletters over Portaly's MCP server (beta, Premium Plus)
@@ -94,7 +94,7 @@ first.
 - Commission, refund clawback and payout are Portaly's alone — never computed or displayed from the creator's own code
 
 **Email Skill:**
-- Invite-only beta: only accounts Portaly has invited can use it (`403 FORBIDDEN` otherwise), and creating a key needs Premium — the skill says so up front
+- Open to every account since 2026-11-18 (portaly-vercel `ACTIVE_BETA_LOCKS.emailSender` unlocked); creating a key or binding a domain needs Premium — the skill says so up front. `403 FORBIDDEN` stays in the contract but only fires if that lock is put back
 - API host: `https://portaly.ai`, which rewrites only the public email paths (`/api/email/emails`, `/emails/{id}`, `/emails/{id}/cancel`, `/batches`, `/domains`, `/domains/{id}/verify`, `/quota`) to the implementation in **portaly-vercel**, not portaly-vibe
 - Own-domain setup is agent-driven: the human creates a `full` key and adds the DNS records; the agent binds with `POST /domains`, checks the records with `dig`, and confirms with `POST /domains/{id}/verify`. Until a domain first verifies, nothing but verify (or the admin's 「重新檢查」) refreshes its status
 - Its own key, `pem_*` (from `https://portaly.cc/admin/email/api-keys`); it cannot call payment endpoints and `pcs_*` keys cannot send email. No live/test split — a key limited to `sandbox.portaly.tw` is the test key
@@ -108,7 +108,7 @@ first.
 
 **Email MCP Skill:**
 - Not an integration skill: the agent itself drafts and sends newsletters through the tools on `https://portaly.cc/mcp` (OAuth sign-in; `Authorization: Bearer mcp_ptly_…` token as fallback). Tools and their rules live in **portaly-vercel** `lib/mcp/emailTools.ts`
-- The Portaly Email invite-only beta (`emailSender`, the same invite as `portaly-email`) plus Premium Plus, including its trial, plus a one-time self-serve switch: the creator presses 「開通發信 MCP」 at `/admin/email/mcp` (`emailMcp` beta, no invite; only the profile's manager). The server hides the email tools from `tools/list` when the account does not qualify, and every call re-checks (`email_mcp_not_enabled` / `email_mcp_activation_required` / `email_mcp_plan_required`). Clients cache the tool list, so the skill tells the creator to reconnect after turning it on
+- Gated by the `emailMcp` beta, which Portaly admins grant per account in Super admin (since 2026-10-29 there is no self-serve 「開通發信 MCP」 button, and the 發信 MCP admin page stays hidden until it is granted), plus Premium Plus. The 14-day Premium Plus trial is locked (portaly-vercel `PREMIUM_PLUS_TRIAL_LOCKED`), so the skill does not offer it; add it back when the trial opens. `email_mcp_not_enabled` only fires if the `emailSender` lock is put back. The server hides the email tools from `tools/list` when the account does not qualify, and every call re-checks (`email_mcp_not_enabled` / `email_mcp_activation_required` / `email_mcp_plan_required`). Clients cache the tool list, so the skill tells the creator to reconnect after turning it on
 - Nothing reaches a list until the creator approves that exact version on the confirmation link (`submitForConfirmation` → 「確認上線」 in the admin). Any edit cancels the approval; `sendEmailCampaign` answers `approval_required`. The agent can never approve
 - Version is reported through the MCP `reportSkillVersion` tool with the same `{"skillName", "version"}` literal the runner checks, not through `skill-version` (no `pcs_` key here)
 - The public guide is the "Email MCP" part of the Email tag in portaly-vibe `lib/api-docs/emailMcpGuide.ts`; keep the tool table and error codes in step with it
