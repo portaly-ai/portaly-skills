@@ -4,8 +4,7 @@ Working copy of the contract for Portaly's email API. The authoritative version 
 `https://portaly.ai/docs` (Email section) and `https://portaly.ai/openapi.json`; when they disagree,
 those win.
 
-**Beta — invite only.** Only accounts Portaly has invited can use this API; every call from any other
-account answers `403 FORBIDDEN`. Creating a key needs the Premium plan.
+Creating a key needs the Premium plan (頂級) or above.
 
 ## Use This Reference For
 
@@ -32,7 +31,7 @@ account answers `403 FORBIDDEN`. Creating a key needs the Premium plan.
 | Status | `code` | Meaning |
 |---|---|---|
 | 401 | `INVALID_API_KEY` | Missing, malformed, unknown or revoked key |
-| 403 | `FORBIDDEN` | Invite-only beta and this account has not been invited |
+| 403 | `FORBIDDEN` | Email is not enabled for this account; retrying won't help — tell the user to contact Portaly |
 | 403 | `PERMISSION_DENIED` | Needs a `full` key (only the domain endpoints) |
 | 429 | `RATE_LIMITED` | Per-key rate limit; `Retry-After` header says how many seconds to wait |
 | 503 | `RATE_LIMIT_UNAVAILABLE` | Rate limiting briefly unavailable, request refused; retry after `Retry-After` |
