@@ -211,7 +211,7 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email-mcp
 Your AI assistant becomes your newsletter assistant. Instead of writing code, it uses the tools on Portaly's MCP server (`https://portaly.cc/mcp`, OAuth sign-in) to:
 
 - Draft a newsletter for the lists you collected or imported on Portaly — it sees list names and counts, never addresses
-- Tell you up front what won't survive sending (buttons, tables, colours) and show the email as it will be sent
+- Tell you up front what won't survive sending (buttons, tables, colors) and show the email as it will be sent
 - Send a test copy to your Portaly sign-in email or the test addresses you saved in the admin
 - Hand you a confirmation link: **nothing goes to your list until you approve that exact version in the Portaly admin**, and any later edit needs approving again
 - Send it once approved — now or at a time you choose — and report delivered / opened / clicked / unsubscribed

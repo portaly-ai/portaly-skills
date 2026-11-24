@@ -132,8 +132,10 @@ It only lets the creator's admin show 「已安裝」 or flag an update; ignore 
 Ask what the newsletter is for (launch, monthly update, event, promotion), the key facts (dates, prices,
 links), and when it should go out. **Do not invent facts** — prices, dates, discount codes, and links come
 from the creator. If you write a placeholder like 「[商品連結]」, ask for it before submitting. Drafts,
-test copies, and `submitForConfirmation` list any left in `unfilledPlaceholders`; a bracketed tag at the
-very start of the subject (「[活動] 新品開賣」) is treated as a tag, not a placeholder.
+test copies, and `submitForConfirmation` list every `[…]` in the subject, preview text, and content in
+`unfilledPlaceholders`. Portaly's own templates leave placeholders such as 「[商品名稱]」 even at the start
+of the subject, so a bracket there is listed too; if the creator wrote it on purpose as a tag (「[活動]
+新品開賣」), confirm once and carry on.
 
 Portaly does not review newsletter content: apart from a short word list (step 4), nothing checks what
 you write. Whether a claim is true, lawful, and fair to the readers is up to you and the creator — if the
@@ -160,18 +162,20 @@ Call `createEmailCampaign` with `subject`, optional `preheader` (the preview tex
 yet — read all three:
 
 - `missing`: what must be added before a test copy or confirmation (subject, content, lists).
-- `unfilledPlaceholders`: brackets still waiting for real content.
-- `contentWarnings`: what Portaly will strip or change when sending (unsupported tags, colours and other
-  styles, links or images it cannot use). If it is not empty, rewrite the content, or tell the creator
-  plainly which effects will not appear in the email. Never report a button, table, or colour as done
-  when `contentWarnings` says it will be removed.
+- `unfilledPlaceholders`: `[…]` brackets that may still need real content (see step 2).
+- `contentWarnings`: what Portaly will strip or change in the content when sending (unsupported tags,
+  colors and other styles, links or images it cannot use). If it is not empty, rewrite the content, or
+  tell the creator plainly which effects will not appear in the email. Never report a button, table, or
+  color as done when `contentWarnings` says it will be removed.
+- `signatureWarnings`: the same, for the creator's signature. You cannot edit the signature — tell the
+  creator to fix it in the admin if it matters.
 
 Content rules (enforced by Portaly):
 
 - Allowed tags: `p`, `h2`, `h3`, `ul`/`ol`/`li`, `strong`/`b`, `em`/`i`, `u`, `br`, `a` (`https://` or
   `mailto:` only), `img` (public `https://` URL). Other tags are removed and only their text is kept;
   styles are dropped except text alignment. Write simple, single-column content.
-- There are no buttons or tables. For a call to action, use a centred bold link:
+- There are no buttons or tables. For a call to action, use a centered bold link:
   `<p style="text-align:center"><a href="https://…"><strong>立即購買</strong></a></p>`.
 - There is no image upload through these tools. Use image URLs the creator gives you (or that they own and
   have published); otherwise ask them to add the image in the admin's email editor. Do not take images from
@@ -187,13 +191,14 @@ Content rules (enforced by Portaly):
   describes; if the text came from the creator, offer them your rewrite.
 
 To revise, call `updateEmailCampaign` with only the fields that change; it returns the same `missing`,
-`unfilledPlaceholders`, and `contentWarnings`. `html` replaces the whole body. Before rewriting `html` from
+`unfilledPlaceholders`, `contentWarnings`, and `signatureWarnings`. `html` replaces the whole body. Before rewriting `html` from
 `getEmailCampaign`, check `htmlTruncated` — if it is `true`, the returned `html` is incomplete and writing
 it back would cut the email.
 
 `getEmailCampaign` returns the content as stored. When the creator asks how it will look, call
-`previewEmailCampaign`: it returns the body as it will be sent (cleaned up, image widths set, signature
-attached, `{{名稱}}` filled in as for a recipient without a name). The frame, sender, and unsubscribe
+`previewEmailCampaign`: it returns the body as it will be sent — the same one the confirmation page shows
+(cleaned up, image widths set, signature attached, `{{名稱}}` filled in as for a recipient without a name;
+for a scheduled campaign the creator edited in the admin, the edited version). The frame, sender, and unsubscribe
 footer are added by Portaly and are not in it. Real mail apps still differ — the test copy is the final check.
 
 To remove drafts the creator no longer wants, call `deleteEmailCampaign`. It deletes drafts only and
@@ -201,15 +206,20 @@ cannot be undone: list the subjects you are about to delete and get the creator'
 
 ### 5. Test copy
 
-Call `sendTestEmail`. Without `emails`, it sends to the test addresses the creator saved in the admin's
-「寄測試信」, or to their Portaly sign-in email if they saved none. `emails` takes up to 5 addresses, but
-only those two kinds — anything else answers `test_recipient_not_allowed` and nothing is sent; the creator
-must first save that address as a test address in the admin. The subject gets 「[試寄]」 in front.
+Call `sendTestEmail`. The subject gets 「[試寄]」 in front.
+
+- Which addresses are allowed: the creator's Portaly sign-in email, and any test addresses they saved
+  under 「寄測試信」 in the admin. Both kinds are always allowed, together or alone.
+- Without `emails`: it sends to the saved test addresses, or to the sign-in email if none are saved.
+- With `emails` (up to 5): only allowed addresses. Any other address answers `test_recipient_not_allowed`
+  and nothing is sent; the creator must first save it as a test address in the admin.
 
 The response has one entry per address in `results` (masked address, `sent`, and an `error` code if that
 one failed), `testSendsRemainingToday`, and `unfilledPlaceholders`. Ask the creator to check layout and
-links on their phone. Limit: 20 test emails a day, and each one uses email quota (`getSendQuota` shows
-both).
+links on their phone. Limit: 20 test emails a day, counted per address (one call to 3 addresses uses 3).
+If the limit runs out partway through a call, the earlier addresses are sent and the rest come back with
+`sent: false` and `test_send_limit_reached`. Each test email also uses email quota; `getSendQuota` shows
+both.
 
 If it answers `owner_email_unverified`, skip the test copy — the confirmation page shows the same preview.
 
@@ -224,8 +234,8 @@ Then wait for the creator to tell you they approved. To check later, call `listE
 | `reviewStatus` | `confirmationSentAt` | Meaning |
 |---|---|---|
 | `approved` | — | Approved this exact version; you can send it |
-| `pendingReview` | a time | Link sent for this version; the creator has not pressed 「確認上線」 yet |
-| `pendingReview` | `null` | Not sent for confirmation yet, or changed since (`approvalOutdated: true` means it was approved and then changed) |
+| `pendingReview` | a time | `submitForConfirmation` was called for this version and the creator has not pressed 「確認上線」 yet. It does not tell you whether the link reached them — if in doubt, give it again |
+| `pendingReview` | `null` | `submitForConfirmation` not called for this version yet, or the campaign changed since (`approvalOutdated: true` means it was approved and then changed) |
 
 ### 7. Send or schedule
 
@@ -234,15 +244,17 @@ Confirm the timing with the creator, then call `sendEmailCampaign`. A send canno
 - Without `scheduledAt` it starts sending now.
 - With `scheduledAt` it schedules the send. Give an ISO 8601 time **with a time zone**, e.g.
   `2026-12-01T09:00:00+08:00` for 9 a.m. Taipei time; a time without a zone is refused. It must be at least
-  a minute ahead and within 30 days. Once scheduled you cannot change the time or cancel it through these
+  a minute ahead and at most 30 days minus 10 minutes ahead. Once scheduled you cannot change the time or cancel it through these
   tools — the creator does that in the admin. Tell them the time in Taipei time as the response gives it.
 - Recipients are fixed when sending starts; anyone who unsubscribed before then does not get it.
 - Before sending a large list, call `previewAudience`. `recipientCount` already leaves out
-  `duplicateCount` (the same address on two lists gets one copy) and `suppressedCount` (unsubscribed,
-  bounced, or complained). `multiDay` (with `firstDay` and `finishDay`) means today's sending limit spreads
+  `duplicateCount` (the same address on two lists gets one copy), `suppressedCount` (unsubscribed,
+  bounced, or complained), and `notAllowlistedCount` (test environments only; always 0 on Portaly). `multiDay` (with `firstDay` and `finishDay`) means today's sending limit spreads
   it over several days; tell the creator — it continues automatically.
 - Check `getSendQuota` when the list is large: `sendQuota.availableForNewCampaign` must cover the whole
-  list, or the send is refused with `send_quota_insufficient`.
+  list, or the send is refused with `send_quota_insufficient`. `platformDaily` is today's limit on the
+  Portaly domain; when it is `null`, `hasPlatformDailyCap: false` means no daily limit, while `true` means
+  the sending address is not set up yet and the first day will allow `platformDailyStart` emails.
 
 ### 8. Results
 
@@ -255,7 +267,8 @@ Other fields:
 
 - `recipientCount` is the number of recipients fixed when sending started; it is `null` for drafts and
   scheduled campaigns — use `previewAudience` for those.
-- `lists` gives each list's `id` and `name`; `found: false` means that list no longer exists.
+- `lists` gives each list's `id` and `name`; `found: false` means that list no longer exists. If the lists
+  could not be read just then, `lists` is left out and only `listIds` is there.
 - `scheduledAt`, `sentAt`, `approvedAt`, `confirmationSentAt` are Taipei times.
 - `signatureEnabled`: the creator's signature is attached when sending.
 - `pauseReason` not `null`: sending stopped (for example too many bounces or complaints, quota ran out, or
@@ -299,9 +312,9 @@ what to tell the creator and what to do next; follow it.
 | `sender_not_set_up` | No sending address yet | Creator sets it up in the admin's email page |
 | `send_quota_insufficient` | Not enough quota for the whole list | Tell the creator; nothing was sent |
 | `send_quota_reserved` | The quota left is held by campaigns still sending | Wait for them, or the creator buys more; nothing was sent |
-| `schedule_in_past` / `schedule_too_far` | `scheduledAt` is under a minute ahead, or over 30 days ahead | Fix the time (a time without a zone answers `invalid_arguments`) |
+| `schedule_in_past` / `schedule_too_far` | `scheduledAt` is under a minute ahead, or more than 30 days minus 10 minutes ahead | Fix the time (a time without a zone answers `invalid_arguments`) |
 | `test_recipient_not_allowed` | Test address not the creator's own or saved | Creator saves it as a test address in the admin first |
-| `test_send_limit_reached` | 20 test copies already today | Use the confirmation preview instead |
+| `test_send_limit_reached` | 20 test copies (counted per address) already today | Use the confirmation preview instead |
 | `recipient_suppressed` | That test address bounced or complained before | Use another address or the confirmation preview |
 | `owner_email_unverified` | No verified sign-in email and no saved test address | Skip the test copy; use the confirmation preview |
 | `email_mcp_not_enabled` | Email is not enabled for this account | Tell the creator to contact Portaly; stop |
