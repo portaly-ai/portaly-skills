@@ -879,7 +879,7 @@ Failed-first-charge payload (`creator_subscription.checkout.failed`):
 - **No `subscriptionId`, on purpose.** Every other `creator_subscription.*` event follows `subscriptionId === checkoutSessionId === sessionId`, but a declined first charge never creates a subscription. Key this event on `sessionId` alone; do not synthesize a subscription record from it.
 - Covers both payment paths (TapPay and 91APP). Not to be confused with `creator_subscription.payment.failed`, which is a **renewal** failure on an existing subscription and does carry `subscriptionId`.
 - **`test` mode dispatches it too** — check `mode` before acting on it in production systems.
-- Re-deliver with `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback` (body `{}`). The subscription-keyed `/subscriptions/{subscriptionId}/retry-callback` cannot reach a failed first charge.
+- It cannot be re-delivered with an API key: `POST /api/creator-subscription/checkout-sessions/{sessionId}/retry-callback` accepts only a Portaly dashboard login and answers `403` to a `pcs_*` key. If your endpoint missed it, `GET /api/creator-subscription/checkout-sessions/{sessionId}` returning `status: "failed"` is the same fact.
 
 Renewal-success payload (`creator_subscription.payment.succeeded`):
 
