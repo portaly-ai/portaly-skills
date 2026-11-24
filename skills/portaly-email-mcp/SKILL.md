@@ -3,10 +3,10 @@ name: portaly-email-mcp
 # Top-level `version` is what Portaly's skill-versions endpoint parses (its regex
 # is anchored to the start of a line, so it cannot read the indented
 # metadata.version). Keep the two in sync until that parser reads YAML.
-version: 0.1.4
+version: 0.2.0
 metadata:
-  version: "0.1.4"
-description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP is in beta: Portaly turns it on per account, and the account must be on the Premium Plus plan (頂級+)."
+  version: "0.2.0"
+description: "Act as a Portaly creator's newsletter assistant through Portaly's Email MCP tools — connect the Portaly MCP server, draft newsletters to the creator's own mailing lists, send a test copy to the creator, hand over the confirmation link, send or schedule once the creator approves, and report open and click results. Trigger when the user wants their AI assistant to write or send a Portaly newsletter / 電子報 / 發信, mentions Portaly Email MCP or 發信 MCP, asks how their last Portaly newsletter performed, or pastes a Portaly 發信 MCP install prompt. Email MCP is in beta: Portaly turns it on per account, and the account must be on the Premium Plus plan (頂級+)."
 ---
 
 # Portaly Email MCP (Beta)
@@ -38,9 +38,25 @@ error codes, or JSON.
 - Only the profile's manager can approve. You cannot, and Portaly staff cannot.
 - Any change after approval (subject, preview text, content, signature, lists, sending domain) cancels the
   approval — including the creator editing it in the admin.
-  `sendEmailCampaign` then answers `approval_required` and sends nothing, until the creator confirms the
-  new version.
-- Never tell the creator a newsletter was sent until `sendEmailCampaign` returned `ok: true`.
+  `sendEmailCampaign` then answers `approval_required` and sends nothing (or schedules nothing), until the
+  creator confirms the new version.
+- Never tell the creator a newsletter was sent or scheduled until `sendEmailCampaign` returned `ok: true`.
+
+## Tools at a glance
+
+| Tool | What it does |
+|---|---|
+| `listMailingProjects` | The creator's lists (`id`, `name`, `subscriberCount`) and sending domains |
+| `getSendQuota` | Email quota left, today's sending limit, and test copies left today |
+| `listEmailCampaigns` / `getEmailCampaign` | Campaigns, approval progress, stored content, and results |
+| `previewEmailCampaign` | The content as it will actually be sent |
+| `previewAudience` | How many people a campaign would reach right now |
+| `createEmailCampaign` / `updateEmailCampaign` | Write a draft |
+| `deleteEmailCampaign` | Delete a draft |
+| `sendTestEmail` | Test copy to the creator's own addresses |
+| `submitForConfirmation` | Get the confirmation link for the creator |
+| `sendEmailCampaign` | Send an approved draft now, or schedule it |
+| `reportSkillVersion` | Tell the admin which version of this skill is installed |
 
 ## Workflow
 
@@ -76,6 +92,12 @@ If the client cannot do OAuth sign-in, the creator can create a token under 「�
 `Authorization: Bearer mcp_ptly_…`. The token is shown once; it goes in the client's config, never in a
 chat message or a committed file.
 
+**Your own client may ask before sending.** Many AI clients treat sending a newsletter as an outbound
+action and stop to ask the creator first — or, in an automatic mode, block it outright. When that happens
+the request never reached Portaly and nothing was sent or scheduled. Tell the creator it is their AI
+tool's permission setting, not a Portaly error, and let them allow it in the client's prompt or settings.
+Do not look for another way around it.
+
 **Connected but no email tools?** The server lists the email tools only for accounts that Portaly has
 turned Email MCP on for and that are on Premium Plus. Ask the creator to open 發信 MCP in the Portaly admin
 (`https://portaly.cc/admin/email/mcp`): if the page is missing or says 「發信 MCP 尚未開通」, Portaly has
@@ -83,6 +105,9 @@ not turned it on yet and the creator needs to contact Portaly; if it says the cu
 they need to upgrade to Premium Plus. Once it is on and the plan qualifies, the creator reconnects Portaly
 in their app (or refreshes the connector, or you start a new session) — most clients keep the tool list
 from when they first connected. Do not try to send email through other tools.
+
+**Some tools from this file missing?** The client cached an older tool list. Ask the creator to reconnect
+Portaly (or start a new session); until then, do not promise what the missing tool does.
 
 **Every call answers HTTP 403 with `"code": "plan_required"`?** That gate is in front of all Portaly MCP
 tools: the profile is below Premium (頂級). Tell the creator Email MCP needs Premium Plus (頂級+), and
@@ -96,7 +121,7 @@ get the email tools after a reconnect or a new session, so the session that inst
 cannot report; reporting again later is harmless and is what makes the admin show 「已安裝」. Arguments:
 
 ```json
-{"skillName": "portaly-email-mcp", "version": "0.1.4"}
+{"skillName": "portaly-email-mcp", "version": "0.2.0"}
 ```
 
 `version` is this file's frontmatter `version` — use the literal value from the SKILL.md you are running.
@@ -106,8 +131,14 @@ It only lets the creator's admin show 「已安裝」 or flag an update; ignore 
 
 Ask what the newsletter is for (launch, monthly update, event, promotion), the key facts (dates, prices,
 links), and when it should go out. **Do not invent facts** — prices, dates, discount codes, and links come
-from the creator. If you write a placeholder like 「[商品連結]」, ask for it before submitting;
-`submitForConfirmation` lists any left in `unfilledPlaceholders`.
+from the creator. If you write a placeholder like 「[商品連結]」, ask for it before submitting. Drafts,
+test copies, and `submitForConfirmation` list any left in `unfilledPlaceholders`; a bracketed tag at the
+very start of the subject (「[活動] 新品開賣」) is treated as a tag, not a placeholder.
+
+Portaly does not review newsletter content: apart from a short word list (step 4), nothing checks what
+you write. Whether a claim is true, lawful, and fair to the readers is up to you and the creator — if the
+creator asks for something deceptive, such as a guaranteed-profit claim or a fake deadline, say why it is
+a problem before writing it.
 
 ### 3. Pick the lists
 
@@ -118,36 +149,67 @@ imported by the creator in the admin.
 - If it returns `senderNote`, the account has no sending address yet: the creator must press 「立即開始」
   in the Portaly admin's email page first.
 - If there is more than one list, confirm with the creator which ones. Do not default to "all".
+- Use the list `id`, not its name. An id that does not exist is refused with `list_not_found` and nothing
+  is written.
 - Leave `domainId` out to send from the Portaly domain; pass a custom domain's `id` only if the creator asks.
 
 ### 4. Draft
 
 Call `createEmailCampaign` with `subject`, optional `preheader` (the preview text shown in the inbox),
-`html`, and `listIds`. It returns a draft; nothing is sent.
+`html`, and `listIds`. It returns a draft; nothing is sent. The response also tells you what is not ready
+yet — read all three:
+
+- `missing`: what must be added before a test copy or confirmation (subject, content, lists).
+- `unfilledPlaceholders`: brackets still waiting for real content.
+- `contentWarnings`: what Portaly will strip or change when sending (unsupported tags, colours and other
+  styles, links or images it cannot use). If it is not empty, rewrite the content, or tell the creator
+  plainly which effects will not appear in the email. Never report a button, table, or colour as done
+  when `contentWarnings` says it will be removed.
 
 Content rules (enforced by Portaly):
 
 - Allowed tags: `p`, `h2`, `h3`, `ul`/`ol`/`li`, `strong`/`b`, `em`/`i`, `u`, `br`, `a` (`https://` or
-  `mailto:` only), `img` (`https://` only). Other tags are removed and only their text is kept; styles are
-  dropped except text alignment. Write simple, single-column content.
+  `mailto:` only), `img` (public `https://` URL). Other tags are removed and only their text is kept;
+  styles are dropped except text alignment. Write simple, single-column content.
+- There are no buttons or tables. For a call to action, use a centred bold link:
+  `<p style="text-align:center"><a href="https://…"><strong>立即購買</strong></a></p>`.
+- There is no image upload through these tools. Use image URLs the creator gives you (or that they own and
+  have published); otherwise ask them to add the image in the admin's email editor. Do not take images from
+  other sites.
 - `{{名稱}}` inserts each recipient's name. Some recipients have no name; Portaly then drops the
   placeholder with its surrounding space and a following comma, so 「嗨 {{名稱}}，」 reads 「嗨」. Still
   write sentences that read naturally without the name.
 - Subject and preview text: up to 200 characters each. Content: up to 900 KB.
 - Portaly appends the unsubscribe link to every email. Do not add your own.
-- Some wording is refused (`banned_copy_terms`): mainland-Chinese phrasing, AI filler, guarantee or
-  exaggeration terms that carry legal risk in Taiwan, and unfilled 【請填】-style placeholders. Rewrite as
-  the error message describes; if the text came from the creator, offer them your rewrite.
+- A fixed word list is refused (`banned_copy_terms`): some mainland-Chinese phrasing, AI filler, a few
+  guarantee words such as 「保證錄取」, and unfilled 【請填】-style placeholders. It is a word list, not a
+  content check — wording that is not on it is not thereby approved. Rewrite as the error message
+  describes; if the text came from the creator, offer them your rewrite.
 
-To revise, call `updateEmailCampaign` with only the fields that change. `html` replaces the whole body.
-Before rewriting `html` from `getEmailCampaign`, check `htmlTruncated` — if it is `true`, the returned
-`html` is incomplete and writing it back would cut the email.
+To revise, call `updateEmailCampaign` with only the fields that change; it returns the same `missing`,
+`unfilledPlaceholders`, and `contentWarnings`. `html` replaces the whole body. Before rewriting `html` from
+`getEmailCampaign`, check `htmlTruncated` — if it is `true`, the returned `html` is incomplete and writing
+it back would cut the email.
+
+`getEmailCampaign` returns the content as stored. When the creator asks how it will look, call
+`previewEmailCampaign`: it returns the body as it will be sent (cleaned up, image widths set, signature
+attached, `{{名稱}}` filled in as for a recipient without a name). The frame, sender, and unsubscribe
+footer are added by Portaly and are not in it. Real mail apps still differ — the test copy is the final check.
+
+To remove drafts the creator no longer wants, call `deleteEmailCampaign`. It deletes drafts only and
+cannot be undone: list the subjects you are about to delete and get the creator's go-ahead first.
 
 ### 5. Test copy
 
-Call `sendTestEmail`. It sends one copy to the creator's own Portaly sign-in email (never anyone else),
-with 「[試寄]」 in front of the subject, and returns the masked address. Ask the creator to check layout and
-links on their phone. Limit: 20 test emails a day, and they use the email quota.
+Call `sendTestEmail`. Without `emails`, it sends to the test addresses the creator saved in the admin's
+「寄測試信」, or to their Portaly sign-in email if they saved none. `emails` takes up to 5 addresses, but
+only those two kinds — anything else answers `test_recipient_not_allowed` and nothing is sent; the creator
+must first save that address as a test address in the admin. The subject gets 「[試寄]」 in front.
+
+The response has one entry per address in `results` (masked address, `sent`, and an `error` code if that
+one failed), `testSendsRemainingToday`, and `unfilledPlaceholders`. Ask the creator to check layout and
+links on their phone. Limit: 20 test emails a day, and each one uses email quota (`getSendQuota` shows
+both).
 
 If it answers `owner_email_unverified`, skip the test copy — the confirmation page shows the same preview.
 
@@ -156,35 +218,61 @@ If it answers `owner_email_unverified`, skip the test copy — the confirmation 
 Call `submitForConfirmation`. Give the creator the `confirmUrl` as-is and say what it is: 「請點這個連結登入
 Portaly，看過預覽和收件人數後按『確認上線』，按了我才能寄出。」 Also tell them the `recipientCount`.
 
-Then wait for the creator to tell you they approved. To check, call `listEmailCampaigns` or
-`getEmailCampaign`: `reviewStatus` is `approved` once they did; `pendingReview` with
-`approvalOutdated: true` means it changed after approval and needs confirming again.
+Then wait for the creator to tell you they approved. To check later, call `listEmailCampaigns` or
+`getEmailCampaign`:
 
-### 7. Send
+| `reviewStatus` | `confirmationSentAt` | Meaning |
+|---|---|---|
+| `approved` | — | Approved this exact version; you can send it |
+| `pendingReview` | a time | Link sent for this version; the creator has not pressed 「確認上線」 yet |
+| `pendingReview` | `null` | Not sent for confirmation yet, or changed since (`approvalOutdated: true` means it was approved and then changed) |
 
-Confirm the timing with the creator, then call `sendEmailCampaign`. There is no scheduling parameter: it
-starts sending now, so if the creator wants a later time, wait and call it then (or have them schedule it
-in the admin). A send cannot be recalled.
+### 7. Send or schedule
 
-- Recipients are fixed at this moment; anyone who unsubscribed after the approval does not get it.
-- Before sending a large list, `previewAudience` tells you if today's sending limit spreads it over several
-  days (`multiDay` with `firstDay` and `finishDay`). Tell the creator — it continues automatically.
+Confirm the timing with the creator, then call `sendEmailCampaign`. A send cannot be recalled.
+
+- Without `scheduledAt` it starts sending now.
+- With `scheduledAt` it schedules the send. Give an ISO 8601 time **with a time zone**, e.g.
+  `2026-12-01T09:00:00+08:00` for 9 a.m. Taipei time; a time without a zone is refused. It must be at least
+  a minute ahead and within 30 days. Once scheduled you cannot change the time or cancel it through these
+  tools — the creator does that in the admin. Tell them the time in Taipei time as the response gives it.
+- Recipients are fixed when sending starts; anyone who unsubscribed before then does not get it.
+- Before sending a large list, call `previewAudience`. `recipientCount` already leaves out
+  `duplicateCount` (the same address on two lists gets one copy) and `suppressedCount` (unsubscribed,
+  bounced, or complained). `multiDay` (with `firstDay` and `finishDay`) means today's sending limit spreads
+  it over several days; tell the creator — it continues automatically.
+- Check `getSendQuota` when the list is large: `sendQuota.availableForNewCampaign` must cover the whole
+  list, or the send is refused with `send_quota_insufficient`.
 
 ### 8. Results
 
-`getEmailCampaign` returns cumulative `stats` (`delivered`, `opened`, `clicked`, `bounced`, `complained`,
-`failed`) and `unsubscribedCount`. Opens and clicks keep arriving for days; say "so far". Summarise in
-plain words (e.g. 「目前送達 980 封，開信 410 人（約 42%），點擊 63 人」).
+`getEmailCampaign` returns cumulative `stats` (`delivered`, `opened`, `clicked`, `bounced` with
+`bouncedHard` for addresses that do not exist, `complained`, `failed`) and `unsubscribedCount`. Opens and
+clicks keep arriving for days; say "so far". Summarise in plain words (e.g. 「目前送達 980 封，開信 410
+人（約 42%），點擊 63 人」).
+
+Other fields:
+
+- `recipientCount` is the number of recipients fixed when sending started; it is `null` for drafts and
+  scheduled campaigns — use `previewAudience` for those.
+- `lists` gives each list's `id` and `name`; `found: false` means that list no longer exists.
+- `scheduledAt`, `sentAt`, `approvedAt`, `confirmationSentAt` are Taipei times.
+- `signatureEnabled`: the creator's signature is attached when sending.
+- `pauseReason` not `null`: sending stopped (for example too many bounces or complaints, quota ran out, or
+  the sending domain cannot send). Tell the creator to check the admin; only they can resume it.
 
 ## Guardrails
 
 These are what the tools enforce; quote them as limits, with what to do instead.
 
-- Only drafts can be edited or sent through these tools (`campaign_not_draft` otherwise). Scheduled,
-  sending, or sent campaigns are changed in the Portaly admin; for a new version, create a new draft.
+- Only drafts can be edited, deleted, sent, or scheduled through these tools (`campaign_not_draft`
+  otherwise). Scheduled, sending, or sent campaigns are changed in the Portaly admin; for a new version,
+  create a new draft.
 - A paused send is resumed only by the creator pressing 「繼續寄送」 in the admin.
 - `send_quota_insufficient`: not enough email quota for the whole list; nothing was sent. Tell the creator —
   do not retry, and do not split the list to squeeze it through.
+- Test copies go only to the creator's sign-in email or the test addresses they saved
+  (`test_recipient_not_allowed` otherwise); there is no way to send a test to a list member.
 - Rate limits per connection: 120 reads and 20 writes a minute. Do not loop on writes.
 - `email_mcp_not_enabled` / `email_mcp_plan_required`: the account cannot use Email MCP right now. Say so
   plainly (for the plan, that it needs Premium Plus) and stop — never work around it with other tools.
@@ -200,14 +288,28 @@ what to tell the creator and what to do next; follow it.
 | Code | Meaning | What to do |
 |---|---|---|
 | `approval_required` | Not approved, or changed after approval | `submitForConfirmation` and hand over the link again |
+| `campaign_not_found` | No such campaign on this account | Check the id with `listEmailCampaigns` |
 | `campaign_not_draft` | Scheduled, sending, or sent | Change it in the admin, or draft a new one |
+| `list_not_found` | A `listIds` entry is not one of the creator's lists | Use ids from `listMailingProjects`; nothing was written |
+| `subject_required` / `content_required` / `audience_required` | No subject / no content / no lists yet | Add it with `updateEmailCampaign` |
+| `no_recipients` | Nobody left to send to after unsubscribes and bounces | Check `lists` for `found: false`; otherwise the creator picks another list |
+| `subject_too_long` / `preheader_too_long` | Over 200 characters | Shorten it |
+| `content_too_large` | Over 900 KB | Shorten it; link images instead of embedding them |
+| `domain_not_found` / `domain_purpose_mismatch` | That sending domain cannot be used for newsletters | Use a domain from `listMailingProjects`, or leave `domainId` out |
 | `sender_not_set_up` | No sending address yet | Creator sets it up in the admin's email page |
 | `send_quota_insufficient` | Not enough quota for the whole list | Tell the creator; nothing was sent |
-| `owner_email_unverified` | No verified sign-in email for test copies | Skip the test copy; use the confirmation preview |
+| `send_quota_reserved` | The quota left is held by campaigns still sending | Wait for them, or the creator buys more; nothing was sent |
+| `schedule_in_past` / `schedule_too_far` | `scheduledAt` is under a minute ahead, or over 30 days ahead | Fix the time (a time without a zone answers `invalid_arguments`) |
+| `test_recipient_not_allowed` | Test address not the creator's own or saved | Creator saves it as a test address in the admin first |
+| `test_send_limit_reached` | 20 test copies already today | Use the confirmation preview instead |
+| `recipient_suppressed` | That test address bounced or complained before | Use another address or the confirmation preview |
+| `owner_email_unverified` | No verified sign-in email and no saved test address | Skip the test copy; use the confirmation preview |
 | `email_mcp_not_enabled` | Email is not enabled for this account | Tell the creator to contact Portaly; stop |
 | `email_mcp_activation_required` | Email MCP not turned on for this account | Tell the creator Portaly needs to turn it on; stop. Once it is on, they reconnect and you continue |
 | `email_mcp_plan_required` | Needs Premium Plus | Tell the creator about upgrading to Premium Plus; stop |
-| `banned_copy_terms` | The new text uses wording Portaly refuses | Rewrite those words and call again |
+| `banned_copy_terms` | The new text uses a word on Portaly's list | Rewrite those words and call again |
 | `invalid_arguments` | A parameter is missing or wrong | Fix the named parameter |
+
+Codes not listed here come with a `message` that says what happened; follow it.
 
 Full reference: `https://portaly.ai/docs#tag/email` (Email section, "Email MCP").
