@@ -35,7 +35,7 @@ npx skills update portaly-payment
 | **portaly-review** | Embed Portaly's hosted, verified-buyer review widget (Trustpilot-style rating badge) on your own site via a Portaly-hosted iframe — no API key needed | `embed Portaly reviews`, `review widget`, `show my ratings`, `Trustpilot-style badge`, `social proof from Portaly` |
 | **portaly-affiliate** | Let the creator's own buyers earn a commission for referring other buyers — switch promotion on for the product, set the one rate every eligible one-time plan shares, and capture the referral code on your own site; Portaly issues the link and owns the payout | `affiliate program`, `referral program`, `buyer promotion`, `分潤`, `推廣連結`, `聯盟行銷`, `推廣夥伴` |
 | **portaly-email** | Send your app's own email — receipts, sign-in codes, notifications, newsletters — from your verified domain: API key and domain setup, sandbox, single / batch / scheduled sends, delivery status, quota, and safe bounce testing | `Portaly Email`, `send email from my app`, `transactional email`, `newsletter`, `pem_ key`, `email bounced`, `寄信 API` |
-| **portaly-email-mcp** (beta, Premium Plus, turned on by Portaly) | Let your AI assistant write and send newsletters to the lists you collected on Portaly, through Portaly's MCP server: draft, test copy to yourself, approve in the Portaly admin, send, and read open / click results | `Portaly Email MCP`, `發信 MCP`, `write my newsletter`, `send a newsletter to my list`, `電子報`, `how did my newsletter do` |
+| **portaly-email-mcp** (beta, Premium Plus, turned on by Portaly) | Let your AI assistant write and send newsletters to the lists you collected on Portaly, through Portaly's MCP server: draft, test copy to yourself, approve in the Portaly admin, send now or schedule, and read open / click results | `Portaly Email MCP`, `發信 MCP`, `write my newsletter`, `send a newsletter to my list`, `電子報`, `how did my newsletter do` |
 
 ## Portaly Overview
 
@@ -211,9 +211,11 @@ npx skills add portaly-ai/portaly-skills --skill portaly-email-mcp
 Your AI assistant becomes your newsletter assistant. Instead of writing code, it uses the tools on Portaly's MCP server (`https://portaly.cc/mcp`, OAuth sign-in) to:
 
 - Draft a newsletter for the lists you collected or imported on Portaly — it sees list names and counts, never addresses
-- Send a test copy to your own Portaly sign-in email
+- Tell you up front what won't survive sending (buttons, tables, colors) and show the email as it will be sent
+- Send a test copy to your Portaly sign-in email or the test addresses you saved in the admin
 - Hand you a confirmation link: **nothing goes to your list until you approve that exact version in the Portaly admin**, and any later edit needs approving again
-- Send it once approved, and report delivered / opened / clicked / unsubscribed
+- Send it once approved — now or at a time you choose — and report delivered / opened / clicked / unsubscribed
+- Check how much email quota is left, and clean up drafts you no longer want
 
 **Prerequisites:** a Portaly account on Premium Plus that Portaly has turned Email MCP on for, with a sending address set up in the admin's email page. Once it is on, connection status and the install prompt are under 發信 MCP at `https://portaly.cc/admin/email/mcp`.
 
