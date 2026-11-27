@@ -191,6 +191,8 @@ Content rules (enforced by Portaly):
 - Wrap every paragraph in `<p>` and use `<br>` for a line break inside one. Newline characters do not show
   in an email. If the whole `html` has no paragraph tags at all, Portaly turns its newlines into
   paragraphs and says so in `note`.
+- Write HTML, not Markdown. `# heading`, `**bold**` and `[text](url)` show up as literal symbols in the
+  email; `contentWarnings` flags them.
 - Close every tag. A tag left open inside a paragraph is closed at the end of that paragraph; one left open
   outside a paragraph runs to the end of the email.
 - There are no buttons or tables. For a call to action, use a centered bold link:
